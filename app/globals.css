@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #FFFFFF;
+  --color-surface: #F9F8F7;
+  --color-border: #E6E5E3;
+  --color-text: #2C2C2B;
+  --color-muted: #7D7A75;
+  --color-blue: #2783DE;
+  --color-green: #46A171;
+  --color-orange: #D5803B;
+  --color-red: #E56458;
+}
+
+:root{scroll-behavior:smooth}
+html{scroll-snap-type:y proximity}
+body{background:#F9F8F7;color:#2C2C2B}
+
+@keyframes rise{
+  from{opacity:0;transform:translateY(28px);filter:blur(6px)}
+  to{opacity:1;transform:translateY(0);filter:blur(0)}
+}
+@keyframes drift{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(18px,-14px,0) scale(1.04)}
+}
+.animate-rise{animation:rise .9s cubic-bezier(.22,1,.36,1) both}
+.animate-rise-delay{animation:rise .9s cubic-bezier(.22,1,.36,1) .18s both}
+.animate-drift{animation:drift 9s ease-in-out infinite}
+
+@media (prefers-reduced-motion: reduce){
+  :root{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
