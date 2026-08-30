@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
 import { ArrowRight, BarChart3, Boxes, ClipboardCheck, Factory, ShieldAlert, Target, Truck, Users } from 'lucide-react'
 
 const areas = [
@@ -29,6 +30,7 @@ export default function LandingPage() {
           </a>
           <div className="hidden items-center gap-6 text-sm text-[#7D7A75] md:flex">
             <a href="#areas" className="hover:text-[#2C2C2B]">7 Area</a>
+            <a href="#top" className="hover:text-[#2C2C2B]">Customer Map</a>
             <a href="#workflow" className="hover:text-[#2C2C2B]">Workflow</a>
             <a href="#access" className="hover:text-[#2C2C2B]">Access</a>
           </div>
@@ -36,7 +38,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <section id="top" className="relative flex min-h-screen scroll-mt-24 snap-start items-center overflow-hidden px-5 pt-24 md:px-8">
+      <section id="intro" className="relative flex min-h-screen scroll-mt-24 snap-start items-center overflow-hidden px-5 pt-24 md:px-8">
         <div className="absolute left-1/2 top-28 h-72 w-72 -translate-x-1/2 rounded-full bg-[#2783DE]/15 blur-3xl" />
         <div className="absolute bottom-24 right-10 h-80 w-80 rounded-full bg-[#46A171]/15 blur-3xl" />
         <div className="mx-auto grid max-w-7xl items-center gap-12 md:grid-cols-[1.05fr_.95fr]">
@@ -83,6 +85,12 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="top" className="scroll-mt-24 px-5 py-10 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <CustomerStockMapClient publicOnly />
         </div>
       </section>
 

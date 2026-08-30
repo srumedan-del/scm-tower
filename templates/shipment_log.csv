@@ -1,0 +1,7 @@
+pss_no,shipment_date,customer_name,destination_city,destination_address,origin_warehouse,vendor_code,vehicle_no,driver_name,driver_phone,service_type,qty_ordered,qty_shipped,weight_kg,eta_date,actual_delivery_date,status,pod_received,pod_notes,delay_reason,invoice_no,invoice_amount,notes
+PSS-2026-08-25-001,2026-08-25,RS Siloam Group,Banda Aceh,Jl. Teuku Umar No.1,SRU Medan,ASSA,,Andi,081111222333,courier,10,10,5,2026-08-26,2026-08-26,delivered,true,,,INV-2026-0825-001,85000,
+PSS-2026-08-27-002,2026-08-27,Kimia Farma,Pekanbaru,Jl. Sudirman No.50,SRU Medan,ASSA,,,081111222334,courier,5,5,2,2026-08-28,2026-08-28,delivered,true,,,INV-2026-0827-002,120000,
+PSS-2026-08-28-003,2026-08-28,RS Eka Hospital,Tangerang,Jl. Cikupa Raya,SRU Medan,INDAH,BK 1234 XX,Suparman,081234567890,trucking,50,50,500,2026-08-30,,in_transit,false,,,,
+PSS-2026-08-29-004,2026-08-29,Customer Demo,Banda Aceh,,SRU Medan,ASSA,,,081111222335,courier,3,3,1,2026-08-30,,planned,false,,,,
+PSS-2026-08-30-005,2026-08-30,Customer Banda Aceh,Banda Aceh,Jl. Sultan Iskandar Muda,SRU Medan,ASSA,,,081111222336,courier,8,,2,2026-08-31,,planned,false,,,,
+PSS-2026-08-30-006,2026-08-30,PT Mesin Industri,Cikupa,Jl. Industri Cikupa,SRU Medan,,BK 1235 XX,Budi,081234567891,internal,2,,1500,2026-08-31,,picking,false,,Koordinasi Sisca,,,Belum final ETA - tunggu Sisca

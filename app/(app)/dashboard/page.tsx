@@ -1,96 +1,166 @@
-import { AlertTriangle, ArrowUpRight, Boxes, CircleCheck, CircleX, Clock3, PackageCheck, Truck } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { KpiCard } from '@/components/kpi-card'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
+import Link from 'next/link'
+import { AlertTriangle, Box, CheckCircle2, Clock3, MapPin, PackageCheck, Truck, XCircle } from 'lucide-react'
 
-type CustomerHealth = {
-	customer: string
-	criticalSkus: number
-	coverageDays: number
-	avgDemand: string
-	status: 'Safe' | 'Warning' | 'Critical'
-	action: string
+export const dynamic = 'force-dynamic'
+
+async function getDashboardData() {
+  const [
+    { count: vendorCount },
+    { count: shipmentCount },
+    { count: receivingCount },
+    { count: issueCount },
+    { data: customers },
+    { data: openIssues },
+    { data: todayShipments },
+  ] = await Promise.all([
+    supabase.from('vendors').select('*', { count: 'exact', head: true }),
+    supabase.from('shipments').select('*', { count: 'exact', head: true }),
+    supabase.from('receiving_header').select('*', { count: 'exact', head: true }),
+    supabase.from('issue_log').select('*', { count: 'exact', head: true }),
+    supabase.from('customers').select('id, customer_name, city, is_active, machine_count, latitude, longitude').eq('is_active', true).limit(200),
+    supabase.from('issue_log').select('issue_no, title, status, category, due_date').in('status', ['open', 'in_progress']).order('due_date', { ascending: true }).limit(5),
+    supabase.from('shipments').select('shipment_no, status, destination_city, vendor_name').in('status', ['planned', 'picking', 'loaded', 'in_transit']).order('shipment_date', { ascending: false }).limit(5),
+  ])
+
+  return {
+    counts: {
+      vendors: vendorCount ?? 0,
+      shipments: shipmentCount ?? 0,
+      receiving: receivingCount ?? 0,
+      issues: issueCount ?? 0,
+    },
+    customers: customers ?? [],
+    openIssues: openIssues ?? [],
+    todayShipments: todayShipments ?? [],
+  }
 }
 
-const fallbackHealth: CustomerHealth[] = [
-	{ customer: 'RS Siloam Group', criticalSkus: 8, coverageDays: 3, avgDemand: 'Tinggi', status: 'Critical', action: 'Replenish' },
-	{ customer: 'Kimia Farma', criticalSkus: 4, coverageDays: 6, avgDemand: 'Sedang', status: 'Warning', action: 'Monitor' },
-	{ customer: 'RS Hermina', criticalSkus: 2, coverageDays: 8, avgDemand: 'Tinggi', status: 'Warning', action: 'Monitor' },
-	{ customer: 'Bio Farma', criticalSkus: 0, coverageDays: 14, avgDemand: 'Tinggi', status: 'Safe', action: 'Normal' },
-]
+export default async function DashboardPage() {
+  const { counts, customers, openIssues, todayShipments } = await getDashboardData()
+  const customerActive = customers.length
+  const totalMesinHD = (customers as any[]).reduce((s:number,r:any)=> s + (Number(r.machine_count)||0), 0)
+  const withLokasi = (customers as any[]).filter((r:any)=> r.latitude!=null && r.longitude!=null).length
+  const lokasiCoverage = customerActive ? Math.round(withLokasi*100/customerActive) : 0
 
-const statusStyles = {
-	Safe: 'bg-green/10 text-green',
-	Warning: 'bg-orange/10 text-orange',
-	Critical: 'bg-red/10 text-red',
-}
+  return (
+    <div className="space-y-8">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-medium text-blue">
+            <span className="h-2 w-2 rounded-full bg-blue"/>
+            Live control tower
+          </div>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight">SCM Dashboard</h1>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Clock3 size={16}/> Update terakhir: hari ini, {new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}
+        </div>
+      </header>
 
-const statusIcons = {
-	Safe: CircleCheck,
-	Warning: AlertTriangle,
-	Critical: CircleX,
-}
+      {/* Top KPI strip — linked to other pages */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Link href="/vendor" className="rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <div className="flex items-center gap-2 text-xs text-gray-500"><Box size={14}/> Vendors</div>
+          <div className="mt-2 text-3xl font-bold">{counts.vendors}</div>
+          <div className="text-xs text-gray-500 mt-1">Master vendor transport</div>
+        </Link>
+        <Link href="/shipment" className="rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <div className="flex items-center gap-2 text-xs text-gray-500"><Truck size={14}/> Shipments</div>
+          <div className="mt-2 text-3xl font-bold">{counts.shipments}</div>
+          <div className="text-xs text-gray-500 mt-1">Total shipment tracking</div>
+        </Link>
+        <Link href="/receiving" className="rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <div className="flex items-center gap-2 text-xs text-gray-500"><PackageCheck size={14}/> Receiving</div>
+          <div className="mt-2 text-3xl font-bold">{counts.receiving}</div>
+          <div className="text-xs text-gray-500 mt-1">Penerimaan barang</div>
+        </Link>
+        <Link href="/issues" className="rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <div className="flex items-center gap-2 text-xs text-gray-500"><AlertTriangle size={14}/> Issues</div>
+          <div className="mt-2 text-3xl font-bold">{openIssues.length}</div>
+          <div className="text-xs text-gray-500 mt-1">Open + In progress</div>
+        </Link>
+      </div>
 
-export default async function Dashboard() {
-	const { data: healthData } = await (supabase as any)
-		.from('vw_pareto_customer_stock_health')
-		.select('*')
-		.order('coverage_days', { ascending: true })
+      {/* Customer map */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2"><MapPin size={18}/> Customer Map</h2>
+          <div className="text-xs text-gray-500">{customerActive} customer aktif · {totalMesinHD.toLocaleString('id-ID')} MESIN HD · {withLokasi}/{customerActive} LOKASI ({lokasiCoverage}%)</div>
+        </div>
+        <CustomerStockMapClient/>
+      </section>
 
-	const health: CustomerHealth[] = healthData?.length ? healthData.map((row: any) => ({
-		customer: row.customer ?? row.customer_name,
-		criticalSkus: row.critical_skus ?? row.sku_critical ?? 0,
-		coverageDays: row.coverage_days ?? 0,
-		avgDemand: row.avg_demand ?? 'Tidak ada data',
-		status: row.status ?? 'Safe',
-		action: row.action ?? (row.status === 'Critical' ? 'Replenish' : row.status === 'Warning' ? 'Monitor' : 'Normal'),
-	})) : fallbackHealth
+      {/* 2-column: Active Shipments + Open Issues */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border p-4">
+            <h2 className="font-semibold flex items-center gap-2"><Truck size={16}/> Shipments In Progress</h2>
+            <Link href="/shipment" className="text-xs text-blue-600 hover:underline">Lihat semua →</Link>
+          </div>
+          {todayShipments.length === 0 ? (
+            <div className="p-6 text-sm text-gray-500 text-center">
+              Belum ada shipment in-progress. Tambah shipment di <Link href="/shipment" className="text-blue-600 hover:underline">/shipment</Link>.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {todayShipments.map((s:any, i:number) => (
+                <li key={i} className="flex items-center gap-3 p-3 text-sm">
+                  <span className="font-mono text-xs text-gray-500">{s.shipment_no}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">{s.status}</span>
+                  <span className="flex-1 truncate">{s.destination_city}</span>
+                  <span className="text-xs text-gray-500 truncate max-w-[140px]">{s.vendor_name ?? '-'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-	const criticalCustomers = health.filter((row) => row.status === 'Critical').length
-	const warningCustomers = health.filter((row) => row.status === 'Warning').length
-	const safeCustomers = health.filter((row) => row.status === 'Safe').length
-	const criticalSkus = health.reduce((total, row) => total + row.criticalSkus, 0)
-	const averageCoverage = Math.round(health.reduce((total, row) => total + row.coverageDays, 0) / health.length)
+        <section className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border p-4">
+            <h2 className="font-semibold flex items-center gap-2"><AlertTriangle size={16}/> Open Issues</h2>
+            <Link href="/issues" className="text-xs text-blue-600 hover:underline">Lihat semua →</Link>
+          </div>
+          {openIssues.length === 0 ? (
+            <div className="p-6 text-sm text-gray-500 text-center">
+              Tidak ada open issue. 🎉
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {openIssues.map((iss:any) => (
+                <li key={iss.issue_no} className="flex items-start gap-3 p-3 text-sm">
+                  <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 whitespace-nowrap">{iss.status}</span>
+                  <div className="flex-1">
+                    <div className="font-medium">{iss.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{iss.category}{iss.due_date && ` · Due ${iss.due_date}`}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
-	return <div className="space-y-8">
-		<header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-			<div>
-				<div className="flex items-center gap-2 text-sm font-medium text-blue"><span className="h-2 w-2 rounded-full bg-blue" />Live control tower</div>
-				<h1 className="mt-3 text-3xl font-bold tracking-tight">Pareto Customer Stock Monitor</h1>
-				<p className="mt-2 max-w-2xl text-muted">Sinyal prioritas untuk menjaga ketersediaan stok customer utama dan mencegah service risk.</p>
-			</div>
-			<div className="flex items-center gap-2 text-sm text-muted"><Clock3 size={16} /> Update terakhir: hari ini, 08:30</div>
-		</header>
-
-		<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-			<KpiCard title="Total Pelanggan Pareto" value={health.length} caption="Customer prioritas aktif" />
-			<KpiCard title="Stok Aman" value={safeCustomers} caption="Coverage di atas 7 hari" tone="green" />
-			<KpiCard title="Stok Warning" value={warningCustomers} caption="Perlu monitoring harian" tone="orange" />
-			<KpiCard title="Stok Critical" value={criticalCustomers} caption="Perlu tindakan segera" tone="red" />
-			<KpiCard title="Estimasi Coverage" value={`${averageCoverage} hari`} caption="Rata-rata customer Pareto" tone="green" />
-			<KpiCard title="SKU Critical" value={criticalSkus} caption="Di bawah safety stock" tone="red" />
-			<KpiCard title="Service Risk" value={criticalCustomers ? 'Tinggi' : 'Rendah'} caption="Potensi lost sales" tone={criticalCustomers ? 'red' : 'green'} />
-			<KpiCard title="Open Replenishment" value={criticalCustomers} caption="Rencana perlu dibuat" tone="orange" />
-		</div>
-
-		<section className="overflow-hidden rounded-xl border border-border bg-white">
-			<div className="flex flex-col gap-3 border-b border-border p-6 sm:flex-row sm:items-center sm:justify-between">
-				<div><h2 className="text-lg font-semibold">Pareto Customer Stock Health</h2><p className="mt-1 text-sm text-muted">Urutan berdasarkan coverage stok terendah.</p></div>
-				<button className="inline-flex items-center gap-2 self-start rounded-lg bg-text px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">View customer stock <ArrowUpRight size={16} /></button>
-			</div>
-			<div className="overflow-x-auto">
-				<table className="w-full min-w-[760px] text-left text-sm">
-					<thead className="bg-surface text-xs uppercase tracking-wide text-muted"><tr><th className="px-6 py-4 font-medium">Customer</th><th className="px-4 py-4 font-medium">SKU Critical</th><th className="px-4 py-4 font-medium">Stock Coverage</th><th className="px-4 py-4 font-medium">Avg Demand</th><th className="px-4 py-4 font-medium">Status</th><th className="px-6 py-4 text-right font-medium">Action</th></tr></thead>
-					<tbody className="divide-y divide-border">
-						{health.map((row) => { const StatusIcon = statusIcons[row.status]; return <tr key={row.customer} className="transition hover:bg-surface/70"><td className="px-6 py-4 font-medium">{row.customer}</td><td className="px-4 py-4">{row.criticalSkus}</td><td className="px-4 py-4 font-medium">{row.coverageDays} hari</td><td className="px-4 py-4 text-muted">{row.avgDemand}</td><td className="px-4 py-4"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[row.status]}`}><StatusIcon size={13} />{row.status}</span></td><td className="px-6 py-4 text-right"><button className="font-medium text-blue hover:underline">{row.action}</button></td></tr> })}
-					</tbody>
-				</table>
-			</div>
-		</section>
-
-		<section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-			<button className="flex items-center justify-between rounded-xl border border-border bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-blue"><span><span className="block text-sm font-semibold">Create replenishment plan</span><span className="mt-1 block text-xs text-muted">Tindak lanjuti {criticalSkus} SKU critical</span></span><Boxes className="text-blue" size={21} /></button>
-			<button className="flex items-center justify-between rounded-xl border border-border bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-blue"><span><span className="block text-sm font-semibold">Check outbound status</span><span className="mt-1 block text-xs text-muted">Pastikan order prioritas terpenuhi</span></span><Truck className="text-orange" size={21} /></button>
-			<button className="flex items-center justify-between rounded-xl border border-border bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-blue"><span><span className="block text-sm font-semibold">Check pending shipment</span><span className="mt-1 block text-xs text-muted">Review pengiriman customer Pareto</span></span><PackageCheck className="text-green" size={21} /></button>
-		</section>
-	</div>
+      {/* Quick action links */}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Link href="/workflow" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <span className="rounded-lg bg-blue-100 p-2"><CheckCircle2 className="text-blue-600" size={20}/></span>
+          <div><div className="text-sm font-semibold">Workflow Overview</div><div className="text-xs text-gray-500">Status flow harian</div></div>
+        </Link>
+        <Link href="/master-data" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <span className="rounded-lg bg-indigo-100 p-2"><Box className="text-indigo-600" size={20}/></span>
+          <div><div className="text-sm font-semibold">Master Data</div><div className="text-xs text-gray-500">Vendor, Route, SKU</div></div>
+        </Link>
+        <Link href="/warehouse-checklist" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <span className="rounded-lg bg-purple-100 p-2"><CheckCircle2 className="text-purple-600" size={20}/></span>
+          <div><div className="text-sm font-semibold">Warehouse Checklist</div><div className="text-xs text-gray-500">Cek kesiapan gudang</div></div>
+        </Link>
+        <Link href="/settings" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-blue transition">
+          <span className="rounded-lg bg-gray-100 p-2"><XCircle className="text-gray-600" size={20}/></span>
+          <div><div className="text-sm font-semibold">Settings</div><div className="text-xs text-gray-500">Status Supabase</div></div>
+        </Link>
+      </section>
+    </div>
+  )
 }

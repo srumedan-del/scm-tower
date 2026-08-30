@@ -1,0 +1,6 @@
+vendor_code,vendor_name,vendor_type,pic_name,pic_phone,pic_email,address,city,province,coverage_areas,sla_days,sla_notes,contract_start,contract_end,payment_terms,status,notes
+ASSA,ASSA,external_courier,,,,,Medan,Sumatera Utara,"Medan, Banda Aceh, Pekanbaru",2,,2026-01-01,2026-12-31,COD,active,
+RSA,RSA,external_courier,,,,,Medan,Sumatera Utara,"Medan, Siantar, Rantauprapat",2,,2026-01-01,2026-12-31,COD,active,
+INDAH,Indah Logistik,external_trucking,,,,,Medan,Sumatera Utara,"Medan, Banda Aceh, Lhokseumawe",3,,2026-01-01,2026-12-31,Net 14,active,
+RAJACEPT,Raja Cepat,external_trucking,,,,,Medan,Sumatera Utara,"Medan, Pematangsiantar, Tebing Tinggi",3,,2026-09-01,2027-08-31,Net 30,onboarding,Proses pendaftaran
+SRU_INTERNAL,SRU Medan Internal,internal,,,,,Medan,Sumatera Utara,"SRU Medan area",1,,,Internal,,active,Armada milik sendiri

@@ -1,0 +1,5 @@
+issue_no,issue_date,category,title,impact,severity,status,due_date,assigned_to,resolution,resolved_date
+ISS-2026-001,2026-08-20,Vendor,Delay shipment Banda Aceh karena cuaca,Customer complain,medium,in_progress,2026-08-25,Erwin,,,
+ISS-2026-002,2026-08-22,Receiving,Lead time JKT-CKPA tinggi (19 hari),Stok menipis,high,in_progress,2026-08-30,Erwin,Koordinasi dengan planner,,
+ISS-2026-003,2026-08-25,Warehouse,Pallet rusak di receiving area,Stok tidak bisa masuk,low,resolved,2026-08-26,Erwin,Pallet diganti,2026-08-26
+ISS-2026-004,2026-08-27,Outbound,PSS ke Cikupa belum ada vendor,Sisca koordinasi,medium,in_progress,2026-08-30,Erwin,Belum final ETA,

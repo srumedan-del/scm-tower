@@ -1,0 +1,6 @@
+checklist_date,warehouse_code,shift,completion_rate,checked_items,total_items,issue_notes,checked_by
+2026-08-25,SRU-MDN,Pagi,95,19,20,Satu item cleaning area belum,Mandra
+2026-08-26,SRU-MDN,Pagi,100,20,20,Semua selesai,Mandra
+2026-08-27,SRU-MDN,Pagi,90,18,20,Kurang 2 item FIFO check,Mandra
+2026-08-28,SRU-MDN,Siang,100,20,20,Shift siang aman,Lina
+2026-08-29,SRU-MDN,Pagi,85,17,20,Ada pallet rusak,Mandra

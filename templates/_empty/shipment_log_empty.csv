@@ -1,0 +1,1 @@
+pss_no,shipment_date,customer_name,destination_city,destination_address,origin_warehouse,vendor_code,vehicle_no,driver_name,driver_phone,service_type,qty_ordered,qty_shipped,weight_kg,eta_date,actual_delivery_date,status,pod_received,pod_notes,delay_reason,invoice_no,invoice_amount,notes
