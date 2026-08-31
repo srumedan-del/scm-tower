@@ -1,4 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import ReceivingUploadButton from '@/components/receiving/ReceivingUploadButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,7 @@ export default async function ReceivingPage() {
     <div className="space-y-4">
       <header className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-bold">RECEIVING / INBOUND</h1>
+        <ReceivingUploadButton />
       </header>
 
       <div className="bg-white border border-border rounded-xl overflow-auto">

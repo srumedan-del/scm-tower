@@ -1,11 +1,12 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import OutboundDeleteButton from '@/components/outbound/OutboundDeleteButton'
 
 export const dynamic = 'force-dynamic'
 
 async function getOutbound() {
   const { data } = await supabase
     .from('outbound_detail')
-    .select('id, posting_date, entry_type, document_no, item_no, description, branch_representative, project, location_code, quantity, qty_out, is_sale, import_period')
+    .select('id, outbound_header_id, posting_date, entry_type, document_no, item_no, description, branch_representative, project, location_code, quantity, qty_out, is_sale, import_period')
     .eq('is_sale', true)
     .order('posting_date', { ascending: false })
     .limit(200)
@@ -85,6 +86,7 @@ export default async function OutboundPage() {
               <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LOCATION</th>
               <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">QTY</th>
               <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">PERIOD</th>
+              <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ACTION</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -97,9 +99,16 @@ export default async function OutboundPage() {
                 <td className="px-4 py-2.5 text-xs">{String(r.location_code ?? '-').toUpperCase()}</td>
                 <td className="px-4 py-2.5 text-right text-xs font-bold">{Math.abs(Number(r.qty_out ?? r.quantity ?? 0)).toLocaleString('id-ID')}</td>
                 <td className="px-4 py-2.5 text-xs">{String(r.import_period ?? '-').toUpperCase()}</td>
+                <td className="px-4 py-2.5 text-center">
+                  <OutboundDeleteButton row={{
+                    id: r.id,
+                    outbound_header_id: r.outbound_header_id,
+                    document_no: r.document_no,
+                  }} />
+                </td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">BELUM ADA DATA OUTBOUND</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">BELUM ADA DATA OUTBOUND</td></tr>}
           </tbody>
         </table>
       </div>
