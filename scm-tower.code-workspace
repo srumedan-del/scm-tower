@@ -4,5 +4,7 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"9router-for-github-copilot.serverUrl": "http://localhost:20128/v1"
+	}
 }

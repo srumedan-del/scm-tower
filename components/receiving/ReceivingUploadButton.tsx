@@ -2,8 +2,10 @@
 
 import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
-import { FileUp, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
-import { getExistingReceivingHeaderPtrs, insertReceivingHeaderRows, getReceivingHeadersByPtrs, insertReceivingDetailRows } from '@/app/(app)/receiving/actions'
+import { FileUp, Loader2 } from 'lucide-react'
+import { ReactNode } from 'react'
+import { getExistingReceivingHeaderPtrs, insertReceivingHeaderRows, getReceivingHeadersByPtrs, getExistingReceivingDetailKeys, insertReceivingDetailRows } from '@/app/(app)/receiving/actions'
+import { Modal } from '@/components/ui/Modal'
 
 const normalizeKey = (value: string) =>
   value
@@ -154,17 +156,108 @@ function getDuplicateSafeRows(rows: Record<string, any>[]) {
   return result
 }
 
+function detailKey(row: Record<string, any>): string {
+  return [
+    String(row.document_no ?? '').trim(),
+    String(row.item_no ?? '').trim(),
+    String(row.variant_code ?? '').trim(),
+    String(row.lot_no ?? '').trim(),
+    String(row.serial_no ?? '').trim(),
+  ].join('|')
+}
+
+function formatError(error: any): string {
+  if (!error) return 'Terjadi kesalahan yang tidak diketahui.'
+
+  if (typeof error === 'string') return error
+
+  if (error?.message && typeof error.message === 'string') {
+    let msg = error.message
+    if (error.code) msg += ` (code: ${error.code})`
+    if (error.details) msg += `\nDetail: ${error.details}`
+    if (error.hint) msg += `\nHint: ${error.hint}`
+    return msg
+  }
+
+  if (error?.code) {
+    let msg = error.message ?? error.error_description ?? 'Error'
+    if (error.code) msg += ` (code: ${error.code})`
+    if (error.details) msg += `\nDetail: ${error.details}`
+    if (error.hint) msg += `\nHint: ${error.hint}`
+    return msg
+  }
+
+  return JSON.stringify(error)
+}
+
+type AlertState = { type: 'success' | 'error' | 'info'; title: string; message: string } | null
+
+function useAlert() {
+  const [alert, setAlert] = useState<AlertState>(null)
+
+  const showAlert = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setAlert({ type, title, message })
+  }
+
+  const closeAlert = () => setAlert(null)
+
+  return { alert, showAlert, closeAlert }
+}
+
+function UploadButtonShell({
+  label,
+  loading,
+  onClick,
+  alert,
+  closeAlert,
+  color = 'indigo',
+  children,
+}: {
+  label: string
+  loading: boolean
+  onClick: () => void
+  alert: AlertState
+  closeAlert: () => void
+  color?: 'indigo' | 'emerald'
+  children: ReactNode
+}) {
+  const colorClasses = color === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'
+
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${colorClasses}`}
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+        {loading ? 'Uploading...' : label}
+      </button>
+
+      <Modal
+        isOpen={!!alert}
+        onClose={closeAlert}
+        type={alert?.type ?? 'info'}
+        title={alert?.title ?? ''}
+        message={alert?.message ?? ''}
+      />
+      {children}
+    </div>
+  )
+}
+
 export function PtrHeaderUploadButton() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    setMessage(null)
+    closeAlert()
 
     try {
       const buffer = await file.arrayBuffer()
@@ -197,6 +290,11 @@ export function PtrHeaderUploadButton() {
         })
       }).filter((r) => r.ptr_no)
 
+      const issues = validateRows(cleanRows)
+      if (issues.length > 0) {
+        throw new Error(`Validasi gagal:\n${issues.join('\n')}`)
+      }
+
       if (!cleanRows.length) throw new Error('Tidak ada baris valid. Pastikan kolom No. (PTR) terisi.')
 
       const ptrs = cleanRows.map((r) => String(r.ptr_no ?? '').trim()).filter(Boolean)
@@ -215,9 +313,13 @@ export function PtrHeaderUploadButton() {
 
       await insertReceivingHeaderRows(toInsert)
       const skipped = cleanRows.length - toInsert.length
-      setMessage({ type: 'success', text: `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.` })
+      showAlert(
+        'success',
+        'Upload Berhasil',
+        `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.`
+      )
     } catch (error: any) {
-      setMessage({ type: 'error', text: error?.message || 'Gagal upload PTR header.' })
+      showAlert('error', 'Upload Gagal', formatError(error))
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -225,25 +327,16 @@ export function PtrHeaderUploadButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <UploadButtonShell
+      label="Upload PTR Header"
+      loading={loading}
+      onClick={() => inputRef.current?.click()}
+      alert={alert}
+      closeAlert={closeAlert}
+      color="indigo"
+    >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-        {loading ? 'Uploading...' : 'Upload PTR Header'}
-      </button>
-
-      {message && (
-        <div className={`inline-flex max-w-xl items-start gap-2 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-          {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-          <span>{message.text}</span>
-        </div>
-      )}
-    </div>
+    </UploadButtonShell>
   )
 }
 
@@ -310,14 +403,14 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
 export function PtrDetailUploadButton() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    setMessage(null)
+    closeAlert()
 
     try {
       const buffer = await file.arrayBuffer()
@@ -356,13 +449,40 @@ export function PtrDetailUploadButton() {
         throw new Error('Tidak ada baris yang bisa di-link ke PTR Header.')
       }
 
-      await insertReceivingDetailRows(rowsWithHeaderId)
-      setMessage({
-        type: 'success',
-        text: `${rowsWithHeaderId.length} baris detail berhasil ditambahkan${skippedCount ? `, ${skippedCount} dilewati (header tidak ditemukan)` : ''}.`,
+      const existingDetailKeys = new Set<string>()
+      try {
+        const { data: existingDetails } = await getExistingReceivingDetailKeys(docNos)
+        for (const row of existingDetails ?? []) {
+          existingDetailKeys.add(detailKey(row))
+        }
+      } catch {
+        // ignore — proceed to insert; if unique constraint hits, error will show in modal
+      }
+
+      const seenDetailKeys = new Set<string>()
+      const toInsertDetails = rowsWithHeaderId.filter((row) => {
+        const key = detailKey(row)
+        if (existingDetailKeys.has(key) || seenDetailKeys.has(key)) return false
+        seenDetailKeys.add(key)
+        return true
       })
+
+      const detailInsertedCount = toInsertDetails.length
+      const detailSkippedCount = rowsWithHeaderId.length - toInsertDetails.length
+
+      if (!toInsertDetails.length) {
+        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris detail sudah ada di database.`)
+        return
+      }
+
+      await insertReceivingDetailRows(toInsertDetails)
+      showAlert(
+        'success',
+        'Upload Berhasil',
+        `${detailInsertedCount} baris detail berhasil ditambahkan${detailSkippedCount ? `, ${detailSkippedCount} dilewati (sudah ada)` : ''}.`
+      )
     } catch (error: any) {
-      setMessage({ type: 'error', text: error?.message || 'Gagal upload PTR detail.' })
+      showAlert('error', 'Upload Gagal', formatError(error))
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -370,39 +490,30 @@ export function PtrDetailUploadButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <UploadButtonShell
+      label="Upload PTR Detail"
+      loading={loading}
+      onClick={() => inputRef.current?.click()}
+      alert={alert}
+      closeAlert={closeAlert}
+      color="emerald"
+    >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-        {loading ? 'Uploading...' : 'Upload PTR Detail'}
-      </button>
-
-      {message && (
-        <div className={`inline-flex max-w-xl items-start gap-2 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-          {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-          <span>{message.text}</span>
-        </div>
-      )}
-    </div>
+    </UploadButtonShell>
   )
 }
 
 export default function ReceivingUploadButton() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    setMessage(null)
+    closeAlert()
 
     try {
       const buffer = await file.arrayBuffer()
@@ -453,9 +564,13 @@ export default function ReceivingUploadButton() {
 
       await insertReceivingHeaderRows(toInsert)
       const skipped = cleanRows.length - toInsert.length
-      setMessage({ type: 'success', text: `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.` })
+      showAlert(
+        'success',
+        'Upload Berhasil',
+        `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.`
+      )
     } catch (error: any) {
-      setMessage({ type: 'error', text: error?.message || 'Gagal upload PTR header.' })
+      showAlert('error', 'Upload Gagal', formatError(error))
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -463,24 +578,15 @@ export default function ReceivingUploadButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <UploadButtonShell
+      label="Upload PTR Header"
+      loading={loading}
+      onClick={() => inputRef.current?.click()}
+      alert={alert}
+      closeAlert={closeAlert}
+      color="indigo"
+    >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-        {loading ? 'Uploading...' : 'Upload PTR Header'}
-      </button>
-
-      {message && (
-        <div className={`inline-flex max-w-xl items-start gap-2 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-          {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-          <span>{message.text}</span>
-        </div>
-      )}
-    </div>
+    </UploadButtonShell>
   )
 }

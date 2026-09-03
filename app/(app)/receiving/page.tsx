@@ -2,6 +2,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { PtrHeaderUploadButton, PtrDetailUploadButton } from '@/components/receiving/ReceivingUploadButton'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
+import ReceivingVerifyButton from '@/components/receiving/ReceivingVerifyButton'
 import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
@@ -12,15 +13,19 @@ function getNextMonthFirstDay(month: string): string {
   return next
 }
 
-async function getReceiving(month?: string) {
+async function getReceiving(months: string[]) {
   let query = supabase
     .from('receiving_header')
     .select('id, ptr_no, transfer_order_no, transfer_from_code, transfer_to_code, posting_date, shipment_date, receipt_date, shipping_agent_code, ship_to_receipt_days, receipt_to_posting_days, ship_to_posting_days')
-    .order('receipt_date', { ascending: false })
+    .order('posting_date', { ascending: false })
+    .order('ptr_no', { ascending: false })
+    .order('transfer_order_no', { ascending: false })
 
-  if (month) {
-    const end = getNextMonthFirstDay(month)
-    query = query.gte('receipt_date', `${month}-01`).lt('receipt_date', end)
+  if (months.length > 0) {
+    const conditions = months
+      .map((m) => `and(posting_date.gte.${m}-01,posting_date.lt.${getNextMonthFirstDay(m)})`)
+      .join(',')
+    query = query.or(conditions)
   }
 
   const { data } = await query
@@ -30,16 +35,28 @@ async function getReceiving(month?: string) {
 async function getAvailableMonths() {
   const { data } = await supabase
     .from('receiving_header')
-    .select('receipt_date')
-    .order('receipt_date', { ascending: true })
+    .select('posting_date')
+    .order('posting_date', { ascending: true })
+    .limit(1)
 
-  const months = new Set<string>()
-  for (const row of data ?? []) {
-    if (row.receipt_date) {
-      months.add(row.receipt_date.slice(0, 7))
+  const minDate = data?.[0]?.posting_date
+  const minDateNormalized = minDate ?? '2020-01'
+  const [minYear, minMonth] = minDateNormalized.slice(0, 7).split('-').map(Number)
+
+  const now = new Date()
+  const maxYear = now.getFullYear()
+  const maxMonth = now.getMonth() + 1
+
+  const months: string[] = []
+  for (let y = minYear; y <= maxYear; y++) {
+    const startM = y === minYear ? minMonth : 1
+    const endM = y === maxYear ? maxMonth : 12
+    for (let m = startM; m <= endM; m++) {
+      months.push(`${y}-${String(m).padStart(2, '0')}`)
     }
   }
-  return [...months].sort().reverse()
+
+  return months.sort().reverse()
 }
 
 async function getReceivingDetails() {
@@ -51,9 +68,14 @@ async function getReceivingDetails() {
   return data ?? []
 }
 
-export default async function ReceivingPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
-  const { month } = await searchParams
-  const [rows, details, months] = await Promise.all([getReceiving(month), getReceivingDetails(), getAvailableMonths()])
+export default async function ReceivingPage({ searchParams }: { searchParams: Promise<{ month?: string | string[] }> }) {
+  const sp = await searchParams
+  const monthParam = sp.month
+  const months = typeof monthParam === 'string'
+    ? monthParam.split(',').filter(Boolean)
+    : (monthParam ?? [])
+
+  const [rows, details, availableMonths] = await Promise.all([getReceiving(months), getReceivingDetails(), getAvailableMonths()])
 
   return (
     <div className="space-y-4">
@@ -61,10 +83,11 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
         <h1 className="text-3xl font-bold">RECEIVING / INBOUND</h1>
         <div className="flex items-center gap-3">
           <Suspense>
-            <ReceivingFilter months={months} />
+            <ReceivingFilter months={availableMonths} />
           </Suspense>
           <PtrHeaderUploadButton />
           <PtrDetailUploadButton />
+          <ReceivingVerifyButton />
         </div>
       </header>
 
