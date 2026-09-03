@@ -1,6 +1,1 @@
-document_no,receipt_date,posting_date,source_code,supplier_name,supplier_invoice,line_count,total_qty,lead_time_days,status
-RCV-2026-09-001,2026-09-01,2026-09-01,JKT-JP12,PT Sumber Medik,INV-SM-2026-09-01,12,1500,3,received
-RCV-2026-09-002,2026-09-02,2026-09-02,JKT-JP12,PT Sumber Medik,INV-SM-2026-09-02,8,800,2,received
-RCV-2026-09-003,2026-09-05,2026-09-05,MDN-CAR,PT Crossdock Medan,XD-2026-09-05,15,2200,1,received
-RCV-2026-09-004,2026-09-08,2026-09-08,JKT-CKPA,PT Cikupa Pharma,CKP-2026-09-08,20,3500,18,in_inspection,Lama lead time
-RCV-2026-09-005,2026-09-10,2026-09-10,JKT-JP12,PT Sumber Medik,INV-SM-2026-09-10,18,1800,4,received
+ptr_no,transfer_order_no,transfer_from_code,transfer_to_code,posting_date,shipment_date,receipt_date,shipping_agent_code,ship_to_receipt_days,receipt_to_posting_days,ship_to_posting_days,source_file,import_period

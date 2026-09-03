@@ -1,1 +1,1 @@
-document_no,receipt_date,posting_date,source_code,supplier_name,supplier_invoice,line_count,total_qty,lead_time_days,status
+ptr_no,transfer_order_no,transfer_from_code,transfer_to_code,posting_date,shipment_date,receipt_date,shipping_agent_code,ship_to_receipt_days,receipt_to_posting_days,ship_to_posting_days,source_file,import_period

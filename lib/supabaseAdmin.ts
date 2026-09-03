@@ -1,7 +1,6 @@
 // Server-side Supabase client (pakai service role — bypass RLS untuk full read/write)
 // Hanya untuk Server Components & Server Actions
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 
 const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -12,7 +11,7 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
   )
 }
 
-export const supabaseAdmin = createClient<Database>(
+export const supabaseAdmin = createClient<any>(
   supabaseUrl,
   supabaseServiceRoleKey,
   {

@@ -43,7 +43,8 @@ psql -h db.xxx.supabase.co -U postgres -d postgres -c "\copy vendor_master FROM 
 | `shipment_log.csv` | `shipment_log` | pss_no, shipment_date, destination_city, status |
 | `warehouse_checklist.csv` | `warehouse_checklist` | checklist_date, warehouse_code, shift |
 | `issue_log.csv` | `issue_log` | issue_no, issue_date, title, severity, status |
-| `receiving_header.csv` | `receiving_header` | document_no, receipt_date, source_code |
+| `receiving_header.csv` | `receiving_header` | ptr_no, transfer_from_code, transfer_to_code, receipt_date |
+| `receiving_detail.csv` | `receiving_detail` | receiving_header_id, item_no, quantity |
 
 ---
 
