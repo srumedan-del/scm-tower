@@ -13,7 +13,6 @@ const items = [
   ['Dashboard',         '/dashboard',           LayoutDashboard],
   ['Workflow',          '/workflow',             Activity],
   ['Shipment',          '/shipment',             Truck],
-  ['Vendor',            '/vendor',               Users],
   ['Receiving',         '/receiving',            Package],
   ['Outbound',          '/outbound',             Truck],
   ['Inventory',         '/inventory',            Warehouse],
