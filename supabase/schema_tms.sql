@@ -91,10 +91,14 @@ ALTER TABLE public.transport_fleet
 -- 4. CROSSDOCKING HEADER
 --    Shipment dari Kantor Pusat yang transit via Medan — input manual
 -- ============================================================================
+
+-- Buat sequence DULU sebelum tabel yang menggunakannya
+CREATE SEQUENCE IF NOT EXISTS public.crossdocking_seq START 1;
+
 CREATE TABLE IF NOT EXISTS public.crossdocking_header (
   id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   crossdocking_no       text   NOT NULL UNIQUE
-                        DEFAULT ('CD-' || to_char(now(), 'YYMM') || '-' || lpad(nextval('crossdocking_seq')::text, 4, '0')),
+                        DEFAULT ('CD-' || to_char(now(), 'YYMM') || '-' || lpad(nextval('public.crossdocking_seq')::text, 4, '0')),
   customer_code         text   REFERENCES public.customers(customer_code) ON UPDATE CASCADE,
   customer_name         text,                    -- diisi manual jika belum ada di master
   destination_address   text,
@@ -109,8 +113,7 @@ CREATE TABLE IF NOT EXISTS public.crossdocking_header (
   updated_at            timestamptz NOT NULL DEFAULT now()
 );
 
--- Sequence untuk nomor crossdocking
-CREATE SEQUENCE IF NOT EXISTS public.crossdocking_seq START 1;
+-- (sequence sudah dibuat di atas)
 
 CREATE INDEX IF NOT EXISTS crossdocking_header_status_idx
   ON public.crossdocking_header (status);
