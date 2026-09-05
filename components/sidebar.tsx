@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import {
   LayoutDashboard, Truck, Package, ClipboardCheck,
   AlertTriangle, Settings, Users, Warehouse, Activity,
-  Database, LogOut,
+  Database, LogOut, ArrowLeftRight,
 } from 'lucide-react'
 
 const items = [
@@ -15,6 +15,7 @@ const items = [
   ['Shipment',          '/shipment',             Truck],
   ['Receiving',         '/receiving',            Package],
   ['Outbound',          '/outbound',             Truck],
+  ['Crossdocking',      '/crossdocking',         ArrowLeftRight],
   ['Inventory',         '/inventory',            Warehouse],
   ['Checklist',         '/warehouse-checklist',  ClipboardCheck],
   ['Issue Log',         '/issues',               AlertTriangle],
