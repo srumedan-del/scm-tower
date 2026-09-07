@@ -64,6 +64,19 @@ DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_
   ALTER TABLE public.shipment_tracking ADD COLUMN invoice_value numeric;
 END IF; END $$;
 
+-- Kolom yang mungkin juga belum ada di tabel lama
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='shipment_tracking' AND column_name='cost_model') THEN
+  ALTER TABLE public.shipment_tracking ADD COLUMN cost_model text CHECK (cost_model IN ('Internal','Retail','Trucking',NULL));
+END IF; END $$;
+
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='shipment_tracking' AND column_name='trip_cost') THEN
+  ALTER TABLE public.shipment_tracking ADD COLUMN trip_cost numeric;
+END IF; END $$;
+
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='shipment_tracking' AND column_name='weight_kg') THEN
+  ALTER TABLE public.shipment_tracking ADD COLUMN weight_kg numeric;
+END IF; END $$;
+
 -- GENERATED: total_biaya
 -- Semua kolom komponen (bbm_rupiah, dll) harus sudah ada dulu di atas sebelum baris ini
 DO $$
