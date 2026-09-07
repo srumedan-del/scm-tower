@@ -107,13 +107,33 @@ ON CONFLICT (transporter_code) DO NOTHING;
 
 -- ============================================================================
 -- BAGIAN 4: ALTER transport_fleet — tambah kolom kapasitas jika belum ada
+-- Setiap kolom di-handle dalam DO block terpisah untuk isolasi error.
 -- ============================================================================
-ALTER TABLE public.transport_fleet
-  ADD COLUMN IF NOT EXISTS capacity_kg  numeric,
-  ADD COLUMN IF NOT EXISTS capacity_cbm numeric,
-  ADD COLUMN IF NOT EXISTS brand        text,
-  ADD COLUMN IF NOT EXISTS year         integer,
-  ADD COLUMN IF NOT EXISTS is_active    boolean NOT NULL DEFAULT true;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='transport_fleet' AND column_name='capacity_kg') THEN
+    ALTER TABLE public.transport_fleet ADD COLUMN capacity_kg numeric;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='transport_fleet' AND column_name='capacity_cbm') THEN
+    ALTER TABLE public.transport_fleet ADD COLUMN capacity_cbm numeric;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='transport_fleet' AND column_name='brand') THEN
+    ALTER TABLE public.transport_fleet ADD COLUMN brand text;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='transport_fleet' AND column_name='year') THEN
+    ALTER TABLE public.transport_fleet ADD COLUMN year integer;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='transport_fleet' AND column_name='is_active') THEN
+    ALTER TABLE public.transport_fleet ADD COLUMN is_active boolean DEFAULT true;
+  END IF;
+END $$;
 
 
 -- ============================================================================
