@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import RouteEditPanel from './RouteEditPanel'
 
 type Route = {
@@ -14,8 +15,12 @@ type Route = {
 
 export function RouteRow({ route }: { route: Route }) {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const lt   = route.standard_lead_time_hours ?? 0
   const days = (lt / 24).toFixed(1)
+
+  useEffect(() => { setMounted(true) }, [])
+
   return (
     <>
       <tr className="hover:bg-blue-50 cursor-pointer transition-colors" onClick={() => setOpen(true)}>
@@ -34,12 +39,13 @@ export function RouteRow({ route }: { route: Route }) {
         </td>
         <td className="px-4 py-2.5 text-xs text-gray-600">{String(route.notes ?? '-').toUpperCase()}</td>
       </tr>
-      {open && (
+      {mounted && open && createPortal(
         <RouteEditPanel
           route={route}
           onClose={() => setOpen(false)}
           onSaved={() => { if (typeof window !== 'undefined') window.location.reload() }}
-        />
+        />,
+        document.body
       )}
     </>
   )

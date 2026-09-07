@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import CustomerEditPanel from './CustomerEditPanel'
 
 type Customer = {
@@ -27,7 +28,10 @@ function locLabel(c: Customer) {
 
 export function CustomerRow({ customer }: { customer: Customer }) {
   const [editOpen, setEditOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const hasLoc = customer.latitude != null && customer.longitude != null
+
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <>
@@ -68,12 +72,13 @@ export function CustomerRow({ customer }: { customer: Customer }) {
         </td>
         <td className="px-4 py-2.5 text-center">{customer.is_active ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span> : <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-300"></span>}</td>
       </tr>
-      {editOpen && (
+      {mounted && editOpen && createPortal(
         <CustomerEditPanel
           customer={customer}
           onClose={() => setEditOpen(false)}
           onSaved={() => { if (typeof window !== 'undefined') window.location.reload() }}
-        />
+        />,
+        document.body
       )}
     </>
   )

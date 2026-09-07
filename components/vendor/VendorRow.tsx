@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import VendorEditPanel from './VendorEditPanel'
 
 type Vendor = {
@@ -18,6 +19,10 @@ type Vendor = {
 
 export function VendorRow({ vendor }: { vendor: Vendor }) {
   const [editOpen, setEditOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
   return (
     <>
       <tr className="hover:bg-blue-50 cursor-pointer transition-colors" onClick={() => setEditOpen(true)}>
@@ -30,7 +35,10 @@ export function VendorRow({ vendor }: { vendor: Vendor }) {
         <td className="px-4 py-2.5 text-right">{vendor.default_sla ? `${vendor.default_sla} HARI` : '-'}</td>
         <td className="px-4 py-2.5 text-center">{vendor.is_active ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span> : <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-300"></span>}</td>
       </tr>
-      {editOpen && <VendorEditPanel vendor={vendor} onClose={()=>setEditOpen(false)} onSaved={()=>{ if(typeof window!=='undefined') window.location.reload() }} />}
+      {mounted && editOpen && createPortal(
+        <VendorEditPanel vendor={vendor} onClose={()=>setEditOpen(false)} onSaved={()=>{ if(typeof window!=='undefined') window.location.reload() }} />,
+        document.body
+      )}
     </>
   )
 }

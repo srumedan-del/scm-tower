@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import IssueEditPanel from './IssueEditPanel'
 
 type Issue = {
@@ -62,9 +63,12 @@ function AgeBadge({ days, status }: { days: number | null; status: string | null
 
 export function IssueRow({ issue }: { issue: Issue }) {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const impactStyle = IMPACT_STYLE[issue.impact ?? ''] ?? 'bg-gray-100 text-gray-500'
   const statusStyle = STATUS_STYLE[issue.status ?? ''] ?? 'bg-gray-100 text-gray-500'
   const age = calcAge(issue.issue_date, issue.closed_at, issue.status)
+
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <>
@@ -86,12 +90,13 @@ export function IssueRow({ issue }: { issue: Issue }) {
         <td className="px-4 py-2.5"><AgeBadge days={age} status={issue.status} /></td>
         <td className="px-4 py-2.5 text-xs whitespace-nowrap">{issue.due_date ?? '-'}</td>
       </tr>
-      {open && (
+      {mounted && open && createPortal(
         <IssueEditPanel
           issue={issue}
           onClose={() => setOpen(false)}
           onSaved={() => { if (typeof window !== 'undefined') window.location.reload() }}
-        />
+        />,
+        document.body
       )}
     </>
   )

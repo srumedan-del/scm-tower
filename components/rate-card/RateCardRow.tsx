@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import RateCardEditPanel from './RateCardEditPanel'
 
 type Rate = {
@@ -26,6 +27,10 @@ function statusBadge(s: string | null) {
 
 export function RateCardRow({ rate }: { rate: Rate }) {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
   return (
     <>
       <tr className="hover:bg-blue-50 cursor-pointer transition-colors" onClick={()=>setOpen(true)}>
@@ -37,7 +42,10 @@ export function RateCardRow({ rate }: { rate: Rate }) {
         <td className="px-4 py-2.5 text-right font-medium">{rate.price != null ? Number(rate.price).toLocaleString('id-ID') : '-'}</td>
         <td className="px-4 py-2.5 text-center">{statusBadge(rate.status)}</td>
       </tr>
-      {open && <RateCardEditPanel rate={rate as any} onClose={()=>setOpen(false)} onSaved={()=>{ if(typeof window!=='undefined') window.location.reload() }} />}
+      {mounted && open && createPortal(
+        <RateCardEditPanel rate={rate as any} onClose={()=>setOpen(false)} onSaved={()=>{ if(typeof window!=='undefined') window.location.reload() }} />,
+        document.body
+      )}
     </>
   )
 }

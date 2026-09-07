@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import SkuEditPanel from './EditPanel'
 
 type Sku = {
@@ -16,6 +17,9 @@ type Sku = {
 
 export function SkuRow({ sku }: { sku: Sku }) {
   const [editOpen, setEditOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <>
@@ -49,14 +53,15 @@ export function SkuRow({ sku }: { sku: Sku }) {
           )}
         </td>
       </tr>
-      {editOpen && (
+      {mounted && editOpen && createPortal(
         <SkuEditPanel
           sku={sku}
           onClose={() => setEditOpen(false)}
           onSaved={() => {
             if (typeof window !== 'undefined') window.location.reload()
           }}
-        />
+        />,
+        document.body
       )}
     </>
   )
