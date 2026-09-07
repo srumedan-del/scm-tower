@@ -34,13 +34,7 @@ CREATE TABLE public.shipment_tracking (
                          CHECK (status IN ('Draft','Dispatched','In Transit','Delivered')),
   dispatch_time          timestamptz,
   delivery_time          timestamptz,
-  is_on_time             boolean GENERATED ALWAYS AS (
-                           CASE
-                             WHEN delivery_time IS NULL OR promised_delivery_date IS NULL THEN NULL
-                             WHEN delivery_time::date <= promised_delivery_date THEN true
-                             ELSE false
-                           END
-                         ) STORED,
+  is_on_time             boolean,   -- dihitung otomatis via trigger calc_shipment_biaya
   weight_kg              numeric,
   trip_cost              numeric,
   cost_model             text CHECK (cost_model IN ('Internal','Retail','Trucking',NULL)),
@@ -83,6 +77,13 @@ CREATE TRIGGER shipment_tracking_updated_at
 CREATE OR REPLACE FUNCTION public.calc_shipment_biaya()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
+  -- Hitung is_on_time
+  IF NEW.delivery_time IS NOT NULL AND NEW.promised_delivery_date IS NOT NULL THEN
+    NEW.is_on_time := (NEW.delivery_time AT TIME ZONE 'UTC')::date <= NEW.promised_delivery_date;
+  ELSE
+    NEW.is_on_time := NULL;
+  END IF;
+
   -- Hitung total_biaya
   IF NEW.cost_model = 'Internal' OR NEW.cost_model IS NULL THEN
     NEW.total_biaya :=
