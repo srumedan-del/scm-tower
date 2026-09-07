@@ -57,33 +57,10 @@ CREATE TABLE public.shipment_tracking (
   invoice_no_eksternal   text,
   total_biaya_eksternal  numeric,
   invoice_value          numeric,
-  total_biaya            numeric GENERATED ALWAYS AS (
-                           CASE
-                             WHEN cost_model = 'Internal' OR cost_model IS NULL THEN
-                               COALESCE(bbm_rupiah,0) + COALESCE(bongkar_muat_cost,0)
-                               + COALESCE(hotel_cost,0) + COALESCE(uang_makan_driver,0)
-                               + COALESCE(uang_makan_helper,0) + COALESCE(toll_cost,0)
-                               + COALESCE(parkir_cost,0) + COALESCE(kirim_paket_cost,0)
-                             ELSE COALESCE(total_biaya_eksternal,0)
-                           END
-                         ) STORED,
-  cost_ratio             numeric GENERATED ALWAYS AS (
-                           CASE
-                             WHEN invoice_value IS NOT NULL AND invoice_value > 0 THEN
-                               CASE
-                                 WHEN cost_model = 'Internal' OR cost_model IS NULL THEN
-                                   ROUND((
-                                     COALESCE(bbm_rupiah,0) + COALESCE(bongkar_muat_cost,0)
-                                     + COALESCE(hotel_cost,0) + COALESCE(uang_makan_driver,0)
-                                     + COALESCE(uang_makan_helper,0) + COALESCE(toll_cost,0)
-                                     + COALESCE(parkir_cost,0) + COALESCE(kirim_paket_cost,0)
-                                   ) / invoice_value * 100, 2)
-                                 ELSE
-                                   ROUND(COALESCE(total_biaya_eksternal,0) / invoice_value * 100, 2)
-                               END
-                             ELSE NULL
-                           END
-                         ) STORED,
+  -- total_biaya dan cost_ratio dihitung otomatis via trigger (bukan GENERATED)
+  -- karena CASE WHEN dengan nullable columns tidak selalu immutable di semua versi PostgreSQL
+  total_biaya            numeric,
+  cost_ratio             numeric,
   notes                  text,
   created_by             text,
   created_at             timestamptz NOT NULL DEFAULT now(),
@@ -101,6 +78,37 @@ DROP TRIGGER IF EXISTS shipment_tracking_updated_at ON public.shipment_tracking;
 CREATE TRIGGER shipment_tracking_updated_at
   BEFORE UPDATE ON public.shipment_tracking
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Trigger kalkulasi total_biaya & cost_ratio otomatis
+CREATE OR REPLACE FUNCTION public.calc_shipment_biaya()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  -- Hitung total_biaya
+  IF NEW.cost_model = 'Internal' OR NEW.cost_model IS NULL THEN
+    NEW.total_biaya :=
+      COALESCE(NEW.bbm_rupiah,0) + COALESCE(NEW.bongkar_muat_cost,0)
+      + COALESCE(NEW.hotel_cost,0) + COALESCE(NEW.uang_makan_driver,0)
+      + COALESCE(NEW.uang_makan_helper,0) + COALESCE(NEW.toll_cost,0)
+      + COALESCE(NEW.parkir_cost,0) + COALESCE(NEW.kirim_paket_cost,0);
+  ELSE
+    NEW.total_biaya := COALESCE(NEW.total_biaya_eksternal,0);
+  END IF;
+
+  -- Hitung cost_ratio
+  IF NEW.invoice_value IS NOT NULL AND NEW.invoice_value > 0 THEN
+    NEW.cost_ratio := ROUND(NEW.total_biaya / NEW.invoice_value * 100, 2);
+  ELSE
+    NEW.cost_ratio := NULL;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS shipment_tracking_calc_biaya ON public.shipment_tracking;
+CREATE TRIGGER shipment_tracking_calc_biaya
+  BEFORE INSERT OR UPDATE ON public.shipment_tracking
+  FOR EACH ROW EXECUTE FUNCTION public.calc_shipment_biaya();
 
 -- RLS
 ALTER TABLE public.shipment_tracking ENABLE ROW LEVEL SECURITY;
