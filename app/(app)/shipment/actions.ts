@@ -83,11 +83,13 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
 }
 
 export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> & { id?: number }) {
+  // Kolom joined (dari view) — jangan di-insert ke tabel
+  // is_on_time, total_biaya, cost_ratio — dihitung otomatis via trigger, boleh dilewat
   const {
     id,
     transporter_name, transporter_type, transporter_service_model,
     vehicle_no, driver_name, helper_name, route_code,
-    is_on_time, total_biaya, cost_ratio,   // GENERATED — jangan di-insert
+    is_on_time, total_biaya, cost_ratio,
     ...payload
   } = row
 
