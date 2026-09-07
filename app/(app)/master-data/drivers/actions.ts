@@ -6,6 +6,7 @@ export type DriverRow = {
   id: number
   driver_code: string
   driver_name: string
+  role: 'Driver' | 'Helper'
   sim_no: string | null
   phone: string | null
   is_active: boolean

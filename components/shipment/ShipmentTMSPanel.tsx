@@ -12,15 +12,20 @@ import {
 const STATUS_OPTS = ['Draft', 'Dispatched', 'In Transit', 'Delivered'] as const
 
 type Props = {
-  shipment: ShipmentTrackingRow | null  // null = tambah baru
+  shipment: ShipmentTrackingRow | null
   onClose: () => void
   onSaved: () => void
+}
+
+function fmtRp(v: number | null | undefined) {
+  if (v == null) return '-'
+  return 'Rp ' + v.toLocaleString('id-ID')
 }
 
 export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) {
   const [transporters, setTransporters] = useState<TransporterOption[]>([])
   const [vehicles,     setVehicles]     = useState<VehicleOption[]>([])
-  const [drivers,      setDrivers]      = useState<DriverOption[]>([])
+  const [allCrew,      setAllCrew]      = useState<DriverOption[]>([])
   const [routes,       setRoutes]       = useState<RouteOption[]>([])
   const [pssOptions,   setPssOptions]   = useState<any[]>([])
   const [optLoading,   setOptLoading]   = useState(true)
@@ -40,14 +45,18 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
     getShipmentTMSOptions().then(opts => {
       setTransporters(opts.transporters)
       setVehicles(opts.vehicles)
-      setDrivers(opts.drivers)
+      setAllCrew(opts.drivers)
       setRoutes(opts.routes)
       setPssOptions(opts.pssOptions)
       setOptLoading(false)
     }).catch(() => setOptLoading(false))
   }, [])
 
-  // Saat transporter berubah, auto-set cost_model
+  // Filter drivers & helpers by role
+  const drivers = allCrew.filter(d => d.role === 'Driver' || !d.role)
+  const helpers = allCrew.filter(d => d.role === 'Helper')
+
+  // Auto-set cost_model saat transporter berubah
   useEffect(() => {
     if (!form.transporter_id) return
     const t = transporters.find(t => t.id === form.transporter_id)
@@ -58,7 +67,6 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
 
   // Saat PSS dipilih, auto-fill fields dari outbound_header
   function onPssChange(pssNo: string) {
-    up('pss_no', pssNo)
     const pss = pssOptions.find((p: any) => p.pss_no === pssNo)
     if (pss) {
       setForm(f => ({
@@ -70,11 +78,25 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
         promised_delivery_date: pss.promised_delivery_date,
         document_date: pss.document_date,
       }))
+    } else {
+      up('pss_no', pssNo)
     }
   }
 
   const selectedTransporter = transporters.find(t => t.id === form.transporter_id)
   const isInternal = selectedTransporter?.type === 'Internal'
+
+  // Hitung total_biaya sementara untuk preview
+  const previewTotalBiaya = isInternal
+    ? [form.bbm_rupiah, form.bongkar_muat_cost, form.hotel_cost,
+       form.uang_makan_driver, form.uang_makan_helper,
+       form.toll_cost, form.parkir_cost, form.kirim_paket_cost]
+       .reduce((s, v) => (s ?? 0) + (v ?? 0), 0) ?? 0
+    : (form.total_biaya_eksternal ?? 0)
+
+  const previewCostRatio = previewTotalBiaya > 0 && (form.invoice_value ?? 0) > 0
+    ? ((previewTotalBiaya / (form.invoice_value as number)) * 100).toFixed(1)
+    : null
 
   function del() {
     if (!shipment) return
@@ -107,12 +129,11 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
 
-        <div className="p-4 space-y-4 overflow-y-auto">
+        <div className="p-4 space-y-5 overflow-y-auto">
           {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat opsi...</p>}
 
-          {/* ── Source type ── */}
-          <section>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Sumber Shipment</div>
+          {/* ── Source ── */}
+          <Section title="Sumber Shipment">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Tipe Sumber">
                 <select value={form.source_type ?? 'PSS'} onChange={e => up('source_type', e.target.value)} className="inp">
@@ -120,7 +141,7 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
                   <option value="Crossdocking">Crossdocking (manual)</option>
                 </select>
               </Field>
-              {form.source_type === 'PSS' && (
+              {form.source_type === 'PSS' ? (
                 <Field label="PSS No.">
                   <select value={form.pss_no ?? ''} onChange={e => onPssChange(e.target.value)} className="inp">
                     <option value="">-- Pilih PSS --</option>
@@ -131,18 +152,16 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
                     ))}
                   </select>
                 </Field>
-              )}
-              {form.source_type === 'Crossdocking' && (
+              ) : (
                 <Field label="Crossdocking ID">
                   <input type="number" value={form.crossdocking_id ?? ''} onChange={e => up('crossdocking_id', e.target.value ? Number(e.target.value) : null)} className="inp" />
                 </Field>
               )}
             </div>
-          </section>
+          </Section>
 
-          {/* ── Customer & tujuan ── */}
-          <section>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Customer & Tujuan</div>
+          {/* ── Customer & Tujuan ── */}
+          <Section title="Customer & Tujuan">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Customer Name">
                 <input value={form.customer_name ?? ''} onChange={e => up('customer_name', e.target.value)} className="inp" />
@@ -151,19 +170,25 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
                 <input value={form.destination_city ?? ''} onChange={e => up('destination_city', e.target.value)} className="inp" />
               </Field>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3 mt-3">
               <Field label="Document Date">
                 <input type="date" value={form.document_date?.slice(0,10) ?? ''} onChange={e => up('document_date', e.target.value || null)} className="inp" />
               </Field>
               <Field label="Promised Delivery Date">
                 <input type="date" value={form.promised_delivery_date?.slice(0,10) ?? ''} onChange={e => up('promised_delivery_date', e.target.value || null)} className="inp" />
               </Field>
+              <Field label="DK / LK">
+                <select value={form.dk_lk ?? ''} onChange={e => up('dk_lk', e.target.value || null)} className="inp">
+                  <option value="">-- auto dari customer --</option>
+                  <option value="DK">DK — Dalam Kota</option>
+                  <option value="LK">LK — Luar Kota</option>
+                </select>
+              </Field>
             </div>
-          </section>
+          </Section>
 
-          {/* ── Transporter & armada ── */}
-          <section>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Transporter & Armada</div>
+          {/* ── Transporter & Armada ── */}
+          <Section title="Transporter & Armada">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Transporter">
                 <select value={form.transporter_id ?? ''} onChange={e => up('transporter_id', e.target.value ? Number(e.target.value) : null)} className="inp">
@@ -177,7 +202,7 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
               </Field>
               <Field label="Rute">
                 <select value={form.route_id ?? ''} onChange={e => up('route_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                  <option value="">-- Pilih rute (opsional) --</option>
+                  <option value="">-- Opsional --</option>
                   {routes.map(r => (
                     <option key={r.id} value={r.id}>{r.route_code} — {r.origin} → {r.destination}</option>
                   ))}
@@ -185,19 +210,27 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
               </Field>
             </div>
             {isInternal && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <Field label="Kendaraan (Internal)">
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <Field label="Kendaraan">
                   <select value={form.vehicle_id ?? ''} onChange={e => up('vehicle_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                    <option value="">-- Pilih kendaraan --</option>
+                    <option value="">-- Pilih --</option>
                     {vehicles.map(v => (
-                      <option key={v.id} value={v.id}>{v.vehicle_no} {v.vehicle_type ? `(${v.vehicle_type})` : ''}</option>
+                      <option key={v.id} value={v.id}>{v.vehicle_no}{v.vehicle_type ? ` (${v.vehicle_type})` : ''}</option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Driver (Internal)">
+                <Field label="Driver">
                   <select value={form.driver_id ?? ''} onChange={e => up('driver_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                    <option value="">-- Pilih driver --</option>
+                    <option value="">-- Pilih Driver --</option>
                     {drivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.driver_name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Helper">
+                  <select value={form.helper_id ?? ''} onChange={e => up('helper_id', e.target.value ? Number(e.target.value) : null)} className="inp">
+                    <option value="">-- Pilih Helper --</option>
+                    {helpers.map(d => (
                       <option key={d.id} value={d.id}>{d.driver_name}</option>
                     ))}
                   </select>
@@ -209,11 +242,10 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
                 <input value={form.trip_id ?? ''} onChange={e => up('trip_id', e.target.value || null)} className="inp" placeholder="TRIP-20260904-01" />
               </Field>
             </div>
-          </section>
+          </Section>
 
-          {/* ── Status & timeline ── */}
-          <section>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Status & Timeline</div>
+          {/* ── Status & Timeline ── */}
+          <Section title="Status & Timeline">
             <div className="grid grid-cols-3 gap-3">
               <Field label="Status *">
                 <select value={form.status ?? 'Draft'} onChange={e => up('status', e.target.value)} className="inp">
@@ -227,11 +259,10 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
                 <input type="datetime-local" value={form.delivery_time?.slice(0,16) ?? ''} onChange={e => up('delivery_time', e.target.value ? new Date(e.target.value).toISOString() : null)} className="inp" />
               </Field>
             </div>
-          </section>
+          </Section>
 
           {/* ── Biaya ── */}
-          <section>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Biaya</div>
+          <Section title={`Biaya${form.cost_model ? ` — ${form.cost_model}` : ''}`}>
             <div className="grid grid-cols-3 gap-3">
               <Field label="Model Biaya">
                 <select value={form.cost_model ?? ''} onChange={e => up('cost_model', e.target.value || null)} className="inp" disabled={!!selectedTransporter}>
@@ -244,11 +275,93 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
               <Field label="Berat (kg)">
                 <input type="number" min={0} value={form.weight_kg ?? ''} onChange={e => up('weight_kg', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
               </Field>
-              <Field label="Biaya Trip (Rp)">
-                <input type="number" min={0} value={form.trip_cost ?? ''} onChange={e => up('trip_cost', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+              <Field label="Invoice Value (Rp)">
+                <input type="number" min={0} value={form.invoice_value ?? ''} onChange={e => up('invoice_value', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
               </Field>
             </div>
-          </section>
+
+            {/* No. Payment Voucher — semua model */}
+            <div className="mt-3">
+              <Field label="No. Payment Voucher">
+                <input value={form.payment_voucher_no ?? ''} onChange={e => up('payment_voucher_no', e.target.value || null)} className="inp font-mono" placeholder="K-MDN-B-2606-070" />
+              </Field>
+            </div>
+
+            {/* Biaya Internal */}
+            {(form.cost_model === 'Internal' || (!form.cost_model && isInternal)) && (
+              <div className="mt-3 space-y-3">
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Komponen Biaya Internal</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="BBM (Liter)">
+                    <input type="number" min={0} step={0.1} value={form.bbm_liter ?? ''} onChange={e => up('bbm_liter', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                  <Field label="BBM (Rp)">
+                    <input type="number" min={0} value={form.bbm_rupiah ?? ''} onChange={e => up('bbm_rupiah', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Bongkar Muat (Rp)">
+                    <input type="number" min={0} value={form.bongkar_muat_cost ?? ''} onChange={e => up('bongkar_muat_cost', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                  <Field label="Hotel (Rp)">
+                    <input type="number" min={0} value={form.hotel_cost ?? ''} onChange={e => up('hotel_cost', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0 — opsional LK" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Uang Makan Driver (Rp)">
+                    <input type="number" min={0} value={form.uang_makan_driver ?? ''} onChange={e => up('uang_makan_driver', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                  <Field label="Uang Makan Helper (Rp)">
+                    <input type="number" min={0} value={form.uang_makan_helper ?? ''} onChange={e => up('uang_makan_helper', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Tol (Rp)">
+                    <input type="number" min={0} value={form.toll_cost ?? ''} onChange={e => up('toll_cost', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                  <Field label="Parkir (Rp)">
+                    <input type="number" min={0} value={form.parkir_cost ?? ''} onChange={e => up('parkir_cost', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                  <Field label="Kirim Paket (Rp)">
+                    <input type="number" min={0} value={form.kirim_paket_cost ?? ''} onChange={e => up('kirim_paket_cost', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0 — opsional" />
+                  </Field>
+                </div>
+              </div>
+            )}
+
+            {/* Biaya Eksternal */}
+            {(form.cost_model === 'Retail' || form.cost_model === 'Trucking') && (
+              <div className="mt-3 space-y-3">
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Biaya Eksternal</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="No. Invoice Ekspedisi">
+                    <input value={form.invoice_no_eksternal ?? ''} onChange={e => up('invoice_no_eksternal', e.target.value || null)} className="inp font-mono" placeholder="INV/EKS/2026/..." />
+                  </Field>
+                  <Field label="Total Biaya Eksternal (Rp)">
+                    <input type="number" min={0} value={form.total_biaya_eksternal ?? ''} onChange={e => up('total_biaya_eksternal', e.target.value ? Number(e.target.value) : null)} className="inp" placeholder="0" />
+                  </Field>
+                </div>
+              </div>
+            )}
+
+            {/* Preview total */}
+            {previewTotalBiaya > 0 && (
+              <div className="mt-3 rounded-lg bg-gray-50 border p-3 flex items-center justify-between text-sm">
+                <div>
+                  <span className="text-xs text-gray-500">Estimasi Total Biaya</span>
+                  <div className="font-bold text-gray-800">{fmtRp(previewTotalBiaya)}</div>
+                </div>
+                {previewCostRatio && (
+                  <div className="text-right">
+                    <span className="text-xs text-gray-500">Cost Ratio</span>
+                    <div className={`font-bold ${Number(previewCostRatio) > 10 ? 'text-red-600' : 'text-green-600'}`}>
+                      {previewCostRatio}%
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </Section>
 
           <Field label="Catatan">
             <textarea value={form.notes ?? ''} onChange={e => up('notes', e.target.value || null)} className="inp" rows={2} />
@@ -279,6 +392,15 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
         <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}.inp:disabled{background:#f9fafb;color:#9ca3af}`}</style>
       </div>
     </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 border-b pb-1">{title}</div>
+      {children}
+    </section>
   )
 }
 

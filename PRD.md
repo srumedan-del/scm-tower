@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 ## SCM Control Tower
 
-**Versi:** 1.3  
+**Versi:** 1.5  
 **Tanggal:** September 2026  
 **Status:** In Development  
 
@@ -9,7 +9,7 @@
 
 ## 1. Latar Belakang
 
-SCM Control Tower adalah aplikasi web internal untuk memantau dan mengelola rantai pasok (supply chain) — mulai dari penerimaan barang (inbound/receiving), pengeluaran barang (outbound/shipment), hingga pengelolaan master data. Aplikasi ini menggantikan proses manual berbasis spreadsheet yang tidak terintegrasi dan rentan kesalahan.
+SCM Control Tower adalah aplikasi web internal untuk memantau dan mengelola rantai pasok (supply chain) — mulai dari penerimaan barang (inbound/receiving), pengeluaran barang (outbound/shipment), hingga pengelolaan master data. Aplikasi ini menggantikan proses pencatatan manual dan berbasis spreadsheet yang tidak terintegrasi dan rentan kesalahan.
 
 **Gap sistem saat ini:** ERP yang digunakan adalah **Microsoft Dynamics NAV Vision**, yang hanya mencatat sisi dokumen penjualan/pengiriman (Posted Sales Shipment/PSS beserta Item Ledger Entries) — yaitu *apa* yang dikirim dan ke pelanggan mana. NAV Vision **tidak memiliki modul Transport Management System (TMS)**, sehingga tidak ada pencatatan sistematis untuk *bagaimana* barang tersebut sampai ke pelanggan: tidak ada penugasan kendaraan/driver, tidak ada rute, tidak ada waktu dispatch aktual, dan tidak ada bukti serah terima (POD) yang terstruktur. Data yang tersedia dari NAV pada level header PSS hanya sebatas `Promised Delivery Date` (janji tanggal kirim) dan `Cust. Receipt Date` (tanggal terima yang diinput manual di NAV, sering kali hanya diisi sama dengan document date, bukan waktu aktual di lapangan).
 
@@ -29,11 +29,13 @@ Karena itu, salah satu tujuan utama SCM Control Tower adalah menjadi **TMS pelen
 
 ## 3. Pengguna
 
+Saat ini aplikasi digunakan oleh **1 user tunggal** (Kepala Gudang cabang), yang memegang akses penuh atas seluruh modul — upload data, kelola master data, monitoring KPI, shipment tracking/TMS, hingga issue log. Tidak ada pemisahan role pada tahap ini.
+
 | Peran | Deskripsi |
 |---|---|
-| **Admin / SCM Manager** | Akses penuh: upload data, kelola master data, lihat semua laporan |
-| **Operator Gudang** | Melihat data receiving dan outbound, verifikasi penerimaan barang |
-| **Supervisor Logistik** | Monitor KPI, shipment tracking, issue log |
+| **Admin (Kepala Gudang)** | Akses penuh: upload data, kelola master data, kelola TMS (assign trip, update status, POD), monitor KPI, issue log, seluruh laporan |
+
+**Catatan:** Pemisahan role (Admin / Operator Gudang / Supervisor Logistik) sebelumnya direncanakan untuk skenario multi-user di masa depan — lihat backlog "Autentikasi dan role-based access control" (9). Jika tim bertambah, role ini bisa diaktifkan kembali sesuai kebutuhan pembagian akses.
 
 ---
 
@@ -54,7 +56,8 @@ Karena itu, salah satu tujuan utama SCM Control Tower adalah menjadi **TMS pelen
 | **On-Time In-Full (OTIF)** | (Jumlah order tepat waktu DAN lengkap / Total order) x 100% | Surat jalan/POD + sistem order (qty/item) | ≥90–95% | Harian |
 | **Delivery Lead Time** | Rata-rata (Waktu barang diterima customer − Waktu order dikonfirmasi) | Timestamp sistem (order → dispatch → delivered) | Sesuai SLA cabang | Mingguan |
 | **Vehicle/Transporter Utilization Rate** | (Kapasitas/kuota terpakai / Total kapasitas) x 100% — khusus armada Internal (volume/berat/drop point) | Data muatan per trip (`shipment_tracking`, `master_vehicle`) | 75–85% (Internal) | Mingguan |
-| **Cost per Delivery** | Total biaya distribusi periode / Total jumlah pengiriman periode — formula berbeda per model transporter (lihat 4.5.4) | Rekap biaya aktual (`shipment_tracking.trip_cost`) vs `master_rate_card` | Sesuai budget cabang, dipantau per model (Internal/Retail/Trucking) | Bulanan |
+| **Cost per Delivery** | Total biaya distribusi periode / Total jumlah pengiriman periode — dipantau terpisah per model (Internal/Eksternal) dan per DK/LK | Rekap biaya aktual per shipment (`shipment_tracking.total_biaya`) | Sesuai budget cabang | Bulanan |
+| **Cost Ratio** *(baru)* | `total_biaya / invoice_value` x 100% | `shipment_tracking` (total_biaya vs invoice_value dari PSS/PSI) | Dipantau tren-nya, terutama untuk shipment LK bernilai kecil | Bulanan |
 | **Delivery Issue Rate** *(pengganti Failure Rate)* | (Jumlah shipment dengan catatan kendala / Total pengiriman) x 100% | Issue Log (4.8) — dicatat sebagai catatan operasional, bukan status shipment | Serendah mungkin, breakdown per jenis kendala | Harian |
 
 **Catatan definisi:**
@@ -64,19 +67,23 @@ Karena itu, salah satu tujuan utama SCM Control Tower adalah menjadi **TMS pelen
   - *Order-to-dispatch time*: dari order confirm sampai barang keluar gudang
   - *Dispatch-to-delivery time*: dari keluar gudang sampai sampai ke customer
 - Tidak ada proses retur/gagal kirim di alur shipment — kendala operasional (barang rusak, keterlambatan signifikan, dll.) dicatat sebagai entri terpisah di modul **Issues / Issue Log** (4.8), tidak mengubah status shipment yang tetap berakhir di Delivered.
-- Cost per Delivery dihitung dengan formula berbeda menurut model transporter: biaya operasional aktual untuk Internal, per-kg-per-tujuan untuk Eksternal-Retail, dan per-trip/FTL untuk Eksternal-Trucking (lihat 4.5.4) — sehingga sebaiknya dilaporkan terpisah per model, bukan digabung rata-rata mentah.
+- Cost per Delivery dan Cost Ratio dipantau terpisah menurut **model transporter** (Internal/Eksternal) dan **DK/LK** (lihat 4.5.4) — jangan digabung rata-rata mentah karena karakteristik biaya sangat berbeda (LK jauh lebih tinggi dari DK).
+- Modul **Pengajuan Dana & Realisasi Biaya** (4.5.5) menggunakan agregasi Cost per Delivery/Total Biaya bulanan (khusus Internal) sebagai basis pengajuan anggaran bulan berikutnya.
 
-**Komponen biaya Cost per Delivery:**
-- BBM/bahan bakar
-- Gaji/upah driver & kenek (termasuk lembur)
-- Maintenance kendaraan (rutin + insidental)
-- Depresiasi kendaraan (jika milik sendiri)
-- Toll & parkir
-- Biaya pihak ketiga (jika menggunakan jasa ekspedisi/kurir eksternal)
+**Komponen biaya Cost per Delivery (Internal):**
+- BBM (liter & rupiah)
+- Bongkar muat
+- Hotel (untuk trip luar kota yang menginap)
+- Uang makan driver & helper
+- Tol & parkir
+- Kirim paket (opsional, titipan kurir kecil di luar muatan utama)
+
+**Komponen biaya Cost per Delivery (Eksternal — Retail & Trucking):**
+- Total biaya kirim eksternal per invoice dari transporter (tidak dirinci per komponen, mengikuti tagihan ekspedisi)
 
 Metrik biaya dapat dipecah lebih detail menjadi:
-- Cost per km
-- Cost per unit/pallet terkirim
+- Cost per delivery per DK vs per LK
+- Cost Ratio (biaya kirim / nilai invoice) per shipment atau per bulan
 - Cost per drop point (untuk trip multi-drop)
 
 **Implikasi data & modul terkait:**
@@ -141,6 +148,41 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 - Tampilan stok per SKU per lokasi gudang
 - Customer Stock Map: visualisasi peta distribusi stok ke pelanggan
 
+#### 4.4.1 HD Machine Utilization & Replenishment Support (Dukungan Customer & Marketing)
+
+**Tujuan:** Membantu SCM memberikan dukungan proaktif ke **pelanggan (RS/klinik HD)** dan **tim marketing** terkait kebutuhan & pemakaian consumable HD Set, berdasarkan jumlah mesin HD yang terpasang di tiap customer — sehingga follow-up PO ke customer bisa dilakukan tepat waktu sebelum stok mereka habis. Modul ini mendigitalkan dashboard monitoring manual yang sudah berjalan (`DASHBOARD INVENTORY CONTROL STOK HD SET DI RS`).
+
+**Konteks bisnis:** Setiap customer HD (RS/klinik dengan mesin dialisis) punya kebutuhan consumable HD Set yang proporsional terhadap jumlah mesin dan frekuensi tindakan (default asumsi: 2x tindakan/hari/mesin, 25 hari kerja/bulan). SCM tidak memiliki visibilitas stok fisik di gudang customer — perkiraan stok saat ini dihitung dari kombinasi jumlah mesin, asumsi pemakaian, dan riwayat pengiriman terakhir ke customer tersebut.
+
+**Fitur:**
+- **Dashboard per customer HD** dengan kolom: Jumlah Mesin HD, Estimasi Pemakaian Harian, Kebutuhan Bulanan, Safety Stock, ROP, Stok Akhir (tgl+qty), Pengiriman Terakhir (tgl+qty), Estimasi Stok Saat Ini, DOI (Days of Inventory), Estimasi Tanggal Habis, Available Stock/Hari, Tanggal FU-PO (Follow-Up Purchase Order)
+- **Badge status** per customer: Aman (hijau), Mendekati FU-PO (kuning), Lewat FU-PO / stok negatif / data pengiriman kosong (merah — prioritas tinggi)
+- **Alert/notifikasi** untuk tim marketing & sales saat customer mendekati atau melewati tanggal FU-PO, supaya follow-up PO ke customer dilakukan sebelum stok benar-benar habis
+- **Input/update manual**: jumlah mesin HD per customer, tanggal & qty pengiriman terakhir, info stok on-hand dari customer (jika ada)
+- **Filter per kota/wilayah** — membantu perencanaan rute pengiriman consumable HD Set berikutnya (bisa terhubung ke modul TMS di 4.5 jika pengirimannya memakai transportasi cabang)
+- **Export laporan** (format mirip dashboard existing, dengan tanggal snapshot) untuk dibagikan ke tim marketing sebagai bahan follow-up ke customer
+
+**Formula (mengikuti logika dashboard yang sudah berjalan):**
+
+| Field | Formula |
+|---|---|
+| Estimasi Pemakaian Harian | `jumlah_mesin_hd x tindakan_per_hari_per_mesin` (default 2) |
+| Kebutuhan Bulanan | `estimasi_harian x hari_kerja_per_bulan` (default 25) |
+| Safety Stock | `estimasi_harian x safety_stock_days` (default 6 hari) |
+| ROP (Reorder Point) | `estimasi_harian x rop_days` (default 8 hari) |
+| Estimasi Stok Saat Ini | `stok_akhir_qty + pengiriman_terakhir_qty` |
+| DOI (Days of Inventory) | `estimasi_stok / estimasi_harian` |
+| Estimasi Tanggal Habis | `tanggal_pengiriman_terakhir + DOI` |
+| Available Stock | `estimasi_stok - rop_qty` (buffer di atas titik reorder) |
+| Available Hari | `available_stock / estimasi_harian` |
+| Tanggal FU-PO | `estimasi_tanggal_habis - lead_time_reorder` (lead time dikonfigurasi per customer, historis bervariasi ~8–11 hari) |
+
+**Aturan bisnis:**
+- Berlaku khusus untuk customer berkategori **HD** (`customers.is_hd_customer = true`)
+- Jika belum pernah ada data pengiriman ke suatu customer, sistem menampilkan status prioritas tinggi ("Data tidak lengkap/stok berpotensi negatif") alih-alih menghitung tanggal FU-PO
+- "Stok Akhir" saat ini pada praktiknya sering bernilai 0 karena SCM tidak punya visibilitas stok fisik di gudang customer — ini keterbatasan yang perlu didokumentasikan; peningkatan akurasi ke depan bisa datang dari pelaporan stok on-hand berkala oleh customer/marketing
+- Snapshot dashboard dibuat berkala (mengikuti praktik saat ini yang manual per tanggal "Dibuat: [tanggal]") — bisa dijadwalkan mingguan di aplikasi
+
 ### 4.5 Shipment Tracking & TMS (Transport Management System)
 
 **Tujuan:** Mengisi gap yang tidak dicover NAV Vision — mencatat proses fisik pengiriman dari PSS terbit sampai barang diterima pelanggan, karena NAV Vision hanya mencatat dokumen (PSS) tanpa proses transportasinya.
@@ -150,19 +192,22 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 | Data | Tersedia di NAV (PSS Header) | Status | Catatan |
 |---|---|---|---|
 | No. PSS, Order No., Customer | ✅ (`No.`, `Order No.`, `Sell-to Customer No/Name`) | Ada | Sudah tercakup di `outbound_header` |
+| Nomor PSI (Posted Sales Invoice) | ✅ (ada di laporan biaya kirim eksisting) | Ada, belum di-capture di app | Perlu ditambahkan sebagai field baru di `outbound_header` (`psi_no`) — dipakai untuk mengambil **Invoice Value** basis Cost Ratio |
 | Document Date | ✅ (`Document Date`) | Ada | Tanggal dokumen diterbitkan, bukan tanggal kirim aktual |
 | Promised Delivery Date | ✅ (`Promised Delivery Date`) | Ada | Janji ke pelanggan — basis perhitungan keterlambatan |
 | Cust. Receipt Date | ✅ (`Cust. Receipt Date`) | Ada, tapi tidak reliable | Sering diisi sama dengan document date di NAV, bukan waktu real diterima customer |
 | Location Code (gudang asal) | ✅ (`Location Code`) | Ada | Contoh: `MDN-PAR` |
 | Package Tracking No. | ✅ (kolom ada, sering kosong) | Parsial | Field disediakan NAV tapi tidak konsisten diisi |
+| **Klasifikasi DK/LK (Dalam Kota/Luar Kota) per pelanggan** | ❌ | **Gap** | Saat ini dikelola manual di spreadsheet terpisah (~94 pelanggan sudah dipetakan) — perlu jadi field master (`customers.region_type`) |
 | **Kendaraan/armada yang mengirim** | ❌ | **Gap** | Perlu dicatat manual di app (assign dari `master_vehicle`) |
-| **Driver** | ❌ | **Gap** | Belum ada master data driver — perlu ditambahkan |
+| **Driver & Helper** | ❌ | **Gap** | Belum ada master data driver/helper — perlu ditambahkan |
 | **Rute pengiriman** | ❌ | **Gap** | Perlu di-assign dari `master_route`, atau dicatat sebagai multi-drop trip |
 | **Waktu dispatch aktual (keluar gudang)** | ❌ | **Gap** | Basis perhitungan *dispatch-to-delivery time* |
 | **Waktu delivery aktual (sampai ke pelanggan)** | ❌ | **Gap** | Basis perhitungan OTD/OTIF real, bukan tanggal NAV yang tidak akurat |
 | **Bukti serah terima (POD)** | ❌ | **Gap** | Belum ada — bisa berupa foto/tanda tangan digital |
 | **Transporter (Internal/Eksternal) & model layanan** | ❌ | **Gap** | Perlu dicatat manual — assign dari `master_transporter` (lihat 4.5.4) |
-| **Biaya aktual per trip** | ❌ | **Gap** | Basis perhitungan Cost per Delivery, formula berbeda per model transporter |
+| **Rincian biaya aktual per trip (BBM, bongkar muat, hotel, uang makan, tol, parkir, kirim paket / invoice eksternal)** | Sebagian sudah dicatat manual di spreadsheet bulanan | **Gap di app** | Saat ini direkap manual per bulan di Excel (`Realisasi Biaya Kirim`) — perlu masuk ke `shipment_tracking` per shipment (lihat 4.5.4) |
+| **Pengajuan Dana & Realisasi Biaya bulanan (khusus Internal)** | Proses manual via dokumen teks + approval berjenjang | **Gap di app** | Perlu modul tersendiri — lihat 4.5.5 |
 | **Data crossdocking dari Kantor Pusat** | ❌ (tidak ada di NAV cabang) | **Gap** | Perlu input manual — lihat modul Crossdocking (4.3.1) |
 
 #### 4.5.2 Alur Status Pengiriman (Delivery Workflow)
@@ -203,19 +248,57 @@ PSS diupload (dari NAV)
 
 #### 4.5.4 Model Transporter & Skema Biaya
 
-Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-masing dengan skema biaya berbeda:
+Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-masing dengan skema biaya berbeda. Selain itu, setiap pengiriman diklasifikasikan berdasarkan **DK/LK** (Dalam Kota/Luar Kota) — dimensi terpisah dari model transporter, ditentukan dari lokasi pelanggan tujuan (`customers.region_type`), bukan dari jenis transporter yang dipakai.
 
 | Model | Jumlah | Deskripsi | Skema Biaya | Multi-drop |
 |---|---|---|---|---|
-| **Internal** | 2 unit truck (milik SRU) | Kendaraan operasional milik cabang sendiri, dengan driver internal | Biaya operasional aktual: BBM, gaji/lembur driver, maintenance, depresiasi (lihat komponen di 4.1.1) | Bisa |
-| **Eksternal — Retail** | 3 transporter eksternal (jasa retail) | Pengiriman partai kecil, cocok untuk pengiriman ke banyak tujuan dengan volume kecil per tujuan | **Per kg per tujuan** — dihitung dari berat kiriman x rate per kg sesuai tujuan (`master_rate_card`) | Tidak (satu tujuan per pengiriman) |
-| **Eksternal — Trucking** | 3 transporter eksternal (jasa trucking) | Pengiriman partai besar / Full Truck Load (FTL) | **Per trip/FTL** — tarif tetap per trip sesuai rute (`master_rate_card`), terlepas dari jumlah drop | Bisa (multi-drop dalam satu trip) |
+| **Internal** | 2 unit truck (milik SRU) | Kendaraan operasional milik cabang sendiri, dengan driver + helper internal | Rincian komponen biaya aktual per trip (lihat di bawah) | Bisa |
+| **Eksternal — Retail** | 3 transporter eksternal (jasa retail) | Pengiriman partai kecil, cocok untuk pengiriman ke banyak tujuan dengan volume kecil per tujuan | Berdasarkan **No. Invoice** dari ekspedisi + **Total Biaya Kirim Eksternal** per invoice | Tidak (satu tujuan per pengiriman) |
+| **Eksternal — Trucking** | 3 transporter eksternal (jasa trucking) | Pengiriman partai besar / Full Truck Load (FTL) | Berdasarkan **No. Invoice** dari ekspedisi + **Total Biaya Kirim Eksternal** per invoice, dialokasikan per shipment jika multi-drop | Bisa (multi-drop dalam satu trip) |
+
+**Rincian komponen biaya aktual per shipment (mengikuti format rekap bulanan yang sudah berjalan):**
+
+| Field | Berlaku untuk | Keterangan |
+|---|---|---|
+| `dk_lk` | Semua | Dalam Kota / Luar Kota — diturunkan otomatis dari `customers.region_type` pelanggan tujuan |
+| `payment_voucher_no` (No. Payment) | Semua | Nomor voucher reimbursement/kasbon dari finance, format mis. `K-MDN-B-2606-070` |
+| `bbm_liter`, `bbm_rupiah` | Internal | Konsumsi BBM per trip |
+| `bongkar_muat_cost` | Internal | Biaya bongkar muat |
+| `hotel_cost` | Internal | Untuk trip luar kota yang menginap |
+| `uang_makan_driver`, `uang_makan_helper` | Internal | Uang makan per trip |
+| `toll_cost`, `parkir_cost` | Internal | Tol & parkir |
+| `kirim_paket_cost` | Internal (opsional) | Biaya titip kirim paket kecil di luar muatan utama |
+| `invoice_no_eksternal` | Eksternal | No. Invoice dari perusahaan ekspedisi |
+| `total_biaya_eksternal` | Eksternal | Total tagihan dari ekspedisi per invoice |
+| `total_biaya` | Semua | GENERATED — jumlah seluruh komponen (Internal) atau `total_biaya_eksternal` (Eksternal) |
+| `invoice_value` | Semua | Nilai invoice/PSS dari NAV (basis Cost Ratio) |
+| `cost_ratio` | Semua | GENERATED — `total_biaya / invoice_value` — indikator efisiensi biaya kirim relatif terhadap nilai barang, terutama penting untuk shipment LK bernilai kecil ke lokasi jauh |
 
 **Catatan:**
 - 3 transporter eksternal yang sama bisa melayani baik model Retail maupun Trucking tergantung kebutuhan pengiriman — model (Retail/Trucking) ditentukan per shipment/trip, bukan melekat permanen ke transporter.
-- Untuk model Retail, `trip_cost` dihitung dari total berat (kg) seluruh item pada shipment dikalikan rate per kg sesuai kota/kode tujuan.
-- Untuk model Trucking, `trip_cost` mengacu ke tarif FTL per rute pada `master_rate_card`, dibagi rata atau dialokasikan per shipment jika multi-drop (untuk kebutuhan Cost per Delivery per shipment).
-- Untuk model Internal, tidak ada "rate card" per pengiriman — biaya dihitung dari akumulasi biaya operasional aktual (lihat 4.1.1) dan bisa dialokasikan per trip.
+- Struktur di atas mengadopsi format kolom yang sudah dipakai cabang di rekap Excel bulanan "Realisasi Biaya Kirim Crossdocking", supaya transisi dari spreadsheet ke aplikasi tidak mengubah cara kerja tim finance/approval.
+- `master_rate_card` tetap berguna sebagai referensi estimasi/proyeksi biaya (misalnya untuk modul Pengajuan Dana di 4.5.5), meskipun biaya aktual per shipment dicatat langsung di `shipment_tracking`.
+
+#### 4.5.5 Pengajuan Dana & Realisasi Biaya Kirim (Budget Request & Cost Realization)
+
+**Tujuan:** Mendigitalkan proses bulanan pengajuan dana biaya kirim (khusus transporter Internal) yang saat ini dikerjakan manual via dokumen teks + lampiran Excel, lengkap dengan breakdown DK/LK dan riwayat approval.
+
+**Fitur:**
+- **Realisasi Biaya (otomatis)**: agregasi bulanan dari `shipment_tracking` (transporter = Internal) — total biaya per DK, per LK, dan gabungan — menggantikan rekap manual "Realisasi Biaya Kirim SCM Medan Periode [Bulan]"
+- **Proyeksi Biaya (input/estimasi)**: input proyeksi biaya bulan berjalan per DK/LK, bisa mengacu ke realisasi bulan sebelumnya + `master_rate_card` sebagai basis estimasi
+- **Form Pengajuan Dana**: kalkulasi otomatis mengikuti format yang sudah berjalan:
+  - `LK` + `DK` = **Total SRU Medan DK + LK**
+  - `+ Buffer biaya SCM` = **Subtotal Pengajuan Biaya**
+  - Pembulatan ke nilai pengajuan final (mis. dibulatkan ke kelipatan tertentu)
+- **Lampiran otomatis**: referensi ke 3 dokumen yang biasa dilampirkan — PA (Proyeksi Anggaran) bulan berjalan, Proyeksi Biaya bulan berjalan, dan Realisasi Biaya bulan sebelumnya — semuanya bisa digenerate dari data yang sama di app
+- **Info rekening bank** (master data, tidak berubah tiap bulan): nama bank, no. rekening, atas nama
+- **Document Tracking / Approval Log**: daftar pihak yang perlu approve secara berurutan (nama + status/tanggal approve) — sebagai checklist sederhana, bukan workflow engine otomatis
+- **Export**: hasil akhir bisa diexport ke format teks/PDF yang sama seperti dokumen pengajuan saat ini, supaya tetap kompatibel dengan proses submit ke finance pusat
+
+**Aturan bisnis:**
+- Modul ini hanya berlaku untuk transporter **Internal** — biaya Eksternal tidak melalui proses pengajuan dana ini karena dibayar berdasarkan invoice ekspedisi (proses AP/hutang biasa)
+- Buffer biaya SCM adalah nilai tetap/manual yang bisa disesuaikan tiap bulan oleh Kepala Gudang saat submit pengajuan
+- Realisasi bulan berjalan otomatis tersedia setelah seluruh shipment bulan tersebut berstatus Delivered dan biayanya sudah diinput lengkap
 
 ### 4.6 Workflow
 - Analitik receiving: lead time trend, keterlambatan per shipping agent
@@ -225,13 +308,13 @@ Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-m
 
 | Sub-modul | Deskripsi |
 |---|---|
-| **Customers** | Data pelanggan: kode, nama, alamat, kota, koordinat, lead time |
+| **Customers** | Data pelanggan: kode, nama, alamat, kota, koordinat, lead time, region_type (DK/LK), **is_hd_customer & jumlah_mesin_hd** *(baru — lihat 4.4.1)* |
 | **SKU** | Kode produk, nama, kategori, UOM, safety stock, grup |
 | **Vehicles** | Data armada kendaraan internal (2 unit): nopol, tipe, kapasitas (volume/berat), status |
-| **Drivers** *(baru)* | Data driver/pengemudi internal: nama, no. SIM, no. HP, status aktif |
+| **Drivers & Helpers** *(baru)* | Data kru internal: nama, role (Driver/Helper), no. SIM (untuk driver), no. HP, status aktif |
 | **Transporters** *(baru)* | Data transporter: Internal (SRU) atau Eksternal (3 perusahaan) — nama, jenis layanan (Retail/Trucking), kontak PIC |
 | **Routes** | Rute pengiriman: origin, destination, estimasi waktu |
-| **Rate Card** | Tarif pengiriman: per kg per tujuan (Eksternal-Retail), per trip/FTL per rute (Eksternal-Trucking) |
+| **Rate Card** | Referensi tarif untuk estimasi/proyeksi biaya (biaya aktual dicatat langsung per shipment — lihat 4.5.4) |
 | **Warehouses** | Data gudang: kode lokasi, alamat |
 
 ### 4.8 Issues / Issue Log
@@ -292,21 +375,36 @@ Dalam ILE, baris dengan `Document No.` prefix `PAO` (Purchase Adjustment Order) 
 ## 7. Struktur Database (Tabel Utama)
 
 ```
-outbound_header     — PSS header (shipment_no UNIQUE)
+outbound_header     — PSS header (shipment_no UNIQUE, + psi_no BARU)
 outbound_detail     — ILE outbound (entry_no NOT NULL, is_sale GENERATED)
 receiving_header    — PTR header (ptr_no UNIQUE)
 receiving_detail    — ILE inbound
 crossdocking_header — Header crossdocking dari Kantor Pusat, input manual (BARU)
 crossdocking_detail — Detail item crossdocking (BARU)
-customers           — Master pelanggan (customer_code)
+customers           — Master pelanggan (customer_code, + region_type BARU: DK/LK)
 master_sku          — Master produk (sku_code)
 master_vehicle      — Master kendaraan internal (2 unit)
-master_driver       — Master driver internal (BARU — untuk TMS)
+master_driver       — Master driver & helper internal (BARU — untuk TMS, + field role)
 master_transporter  — Master transporter Internal/Eksternal (BARU — untuk TMS)
 master_route        — Master rute
-master_rate_card    — Tarif pengiriman (per kg / per trip, tergantung transporter)
+master_rate_card    — Referensi tarif untuk estimasi/proyeksi biaya
 shipment_tracking   — Tracking & TMS pengiriman aktif (DIPERLUAS — lihat detail di bawah)
 delivery_pod        — Bukti serah terima / Proof of Delivery (BARU)
+budget_request       — Pengajuan dana biaya kirim bulanan, khusus Internal (BARU)
+budget_approval_log   — Riwayat/checklist approval pengajuan dana (BARU)
+hd_stock_monitoring    — Monitoring stok consumable HD Set per customer HD (BARU — lihat 4.4.1)
+```
+
+**Field tambahan pada `customers`:**
+```
+region_type       — DK | LK — klasifikasi Dalam Kota/Luar Kota, dipakai untuk breakdown Cost per Delivery & Pengajuan Dana
+is_hd_customer      — boolean — penanda customer kategori HD (rumah sakit/klinik dialisis)
+hd_machine_count       — jumlah mesin HD terpasang di customer (khusus is_hd_customer = true)
+```
+
+**Field tambahan pada `outbound_header`:**
+```
+psi_no    — Nomor Posted Sales Invoice dari NAV, dipakai untuk mengambil invoice_value (basis Cost Ratio)
 ```
 
 **Tabel baru `crossdocking_header` & `crossdocking_detail`:**
@@ -338,22 +436,42 @@ pic_name, pic_contact
 is_active
 ```
 
-**Field pada `shipment_tracking` (untuk mendukung TMS):**
+**Field tambahan pada `master_driver` (kru internal):**
 ```
-shipment_id          — ID internal shipment
-source_type           — PSS | Crossdocking
-source_id               — FK ke outbound_header ATAU crossdocking_header (tergantung source_type)
-trip_id                   — grouping untuk multi-drop trip
-transporter_id             — FK ke master_transporter
-vehicle_id                  — FK ke master_vehicle (diisi jika transporter_id = Internal)
-driver_id                     — FK ke master_driver (diisi jika transporter_id = Internal)
-route_id                       — FK ke master_route (nullable)
-status                          — Draft | Dispatched | In Transit | Delivered
-dispatch_time                    — timestamp aktual keluar gudang
-delivery_time                      — timestamp aktual sampai ke pelanggan
-is_on_time                          — GENERATED: delivery_time <= promised_delivery_date
-weight_kg                             — berat kiriman (basis biaya untuk model Eksternal-Retail)
-trip_cost                              — biaya aktual (formula tergantung service_model — lihat 4.5.4)
+role    — Driver | Helper
+```
+
+**Field pada `shipment_tracking` (untuk mendukung TMS & pencatatan biaya riil):**
+```
+shipment_id             — ID internal shipment
+source_type              — PSS | Crossdocking
+source_id                  — FK ke outbound_header ATAU crossdocking_header (tergantung source_type)
+trip_id                      — grouping untuk multi-drop trip
+transporter_id                — FK ke master_transporter
+vehicle_id                      — FK ke master_vehicle (diisi jika transporter_id = Internal)
+driver_id                         — FK ke master_driver, role=Driver (diisi jika transporter_id = Internal)
+helper_id                           — FK ke master_driver, role=Helper (diisi jika transporter_id = Internal)
+route_id                              — FK ke master_route (nullable)
+status                                  — Draft | Dispatched | In Transit | Delivered
+dispatch_time                            — timestamp aktual keluar gudang
+delivery_time                              — timestamp aktual sampai ke pelanggan
+is_on_time                                  — GENERATED: delivery_time <= promised_delivery_date
+
+-- klasifikasi & biaya
+dk_lk                — GENERATED/copy dari customers.region_type pelanggan tujuan
+payment_voucher_no     — No. Payment / voucher reimbursement dari finance
+bbm_liter, bbm_rupiah    — khusus Internal
+bongkar_muat_cost          — khusus Internal
+hotel_cost                   — khusus Internal
+uang_makan_driver              — khusus Internal
+uang_makan_helper                — khusus Internal
+toll_cost, parkir_cost             — khusus Internal
+kirim_paket_cost                     — khusus Internal, opsional
+invoice_no_eksternal                    — khusus Eksternal
+total_biaya_eksternal                     — khusus Eksternal
+total_biaya                                  — GENERATED: jumlah komponen Internal, atau total_biaya_eksternal
+invoice_value                                  — nilai invoice/PSS dari NAV (basis Cost Ratio)
+cost_ratio                                        — GENERATED: total_biaya / invoice_value
 ```
 
 **Tabel baru `delivery_pod`:**
@@ -364,6 +482,62 @@ receiver_name      — nama penerima
 received_at         — timestamp penerimaan
 photo_url             — bukti foto (upload ke Supabase Storage)
 notes                  — catatan tambahan
+```
+
+**Tabel baru `budget_request` (Pengajuan Dana bulanan — khusus Internal):**
+```
+budget_request_id       — PK
+period                     — mis. "2026-09"
+lk_amount_projected          — proyeksi biaya LK
+dk_amount_projected            — proyeksi biaya DK
+total_projected                  — GENERATED: lk_amount_projected + dk_amount_projected
+buffer_amount                      — buffer biaya SCM (input manual per bulan)
+subtotal                              — GENERATED: total_projected + buffer_amount
+rounded_request_amount                  — nilai pengajuan final (dibulatkan)
+bank_name, bank_account_no, bank_account_holder
+previous_realization_ref                    — referensi ke rekap realisasi bulan sebelumnya (agregat shipment_tracking)
+notes
+created_at
+```
+
+**Tabel baru `budget_approval_log`:**
+```
+log_id             — PK
+budget_request_id    — FK ke budget_request
+approver_name           — nama pihak yang harus approve
+sequence_no               — urutan approval
+status                       — Pending | Approved (opsional, sederhana)
+approved_at
+```
+
+**Tabel baru `hd_stock_monitoring` (per customer HD, per snapshot):**
+```
+monitoring_id           — PK
+customer_id               — FK ke customers (is_hd_customer = true)
+snapshot_date               — tanggal snapshot dashboard dibuat
+treatment_per_day_per_machine — default 2 (bisa dikustomisasi per customer)
+working_days_per_month          — default 25
+safety_stock_days                 — default 6
+rop_days                            — default 8
+lead_time_reorder_days                — default ~8-11, dikonfigurasi per customer
+
+-- input manual
+last_known_stock_date, last_known_stock_qty   — Stok Akhir
+last_shipment_date, last_shipment_qty           — Pengiriman terakhir
+
+-- GENERATED
+daily_usage           — hd_machine_count x treatment_per_day_per_machine
+monthly_need            — daily_usage x working_days_per_month
+safety_stock_qty           — daily_usage x safety_stock_days
+rop_qty                       — daily_usage x rop_days
+estimated_stock                 — last_known_stock_qty + last_shipment_qty
+doi_days                           — estimated_stock / daily_usage
+estimated_stockout_date              — last_shipment_date + doi_days
+available_stock                        — estimated_stock - rop_qty
+available_days                           — available_stock / daily_usage
+fu_po_date                                 — estimated_stockout_date - lead_time_reorder_days
+
+notes
 ```
 
 ---
@@ -400,6 +574,21 @@ notes                  — catatan tambahan
 - [ ] Setup `master_rate_card` dengan struktur per kg per tujuan (Retail) dan per rute (Trucking)
 - [ ] Notifikasi/alert saat shipment melewati Promised Delivery Date tapi status masih Draft/Dispatched
 - [ ] (Jangka panjang) Integrasi GPS tracking kendaraan real-time, jika budget/hardware tersedia
+
+**Cost Tracking & Budget Request:**
+- [ ] Tambahkan `psi_no` ke `outbound_header` dan `region_type` (DK/LK) ke `customers` — termasuk import awal ~94 pelanggan yang sudah dipetakan DK/LK dari spreadsheet eksisting
+- [ ] Form input biaya shipment sesuai rincian komponen riil (BBM, bongkar muat, hotel, uang makan driver/helper, tol, parkir, kirim paket) untuk Internal; No. Invoice + Total Biaya untuk Eksternal
+- [ ] Master data Driver & Helper dengan field `role`
+- [ ] Modul Pengajuan Dana & Realisasi Biaya (4.5.5): form proyeksi, kalkulasi otomatis subtotal, export ke format dokumen yang sesuai dengan proses submit ke finance saat ini
+- [ ] Dashboard/laporan Cost Ratio (biaya kirim vs invoice value) per shipment, per bulan, per DK/LK
+
+**HD Machine Utilization & Replenishment Support:**
+- [ ] Tambahkan `is_hd_customer` dan `hd_machine_count` ke `customers`, termasuk import data ~26 customer HD yang sudah ada di dashboard existing
+- [ ] Modul `hd_stock_monitoring` (4.4.1): CRUD snapshot per customer, kalkulasi otomatis daily usage/DOI/estimasi habis/FU-PO
+- [ ] Dashboard dengan badge status (Aman/Mendekati FU-PO/Lewat FU-PO) dan filter per kota/wilayah
+- [ ] Notifikasi ke tim marketing/sales saat customer mendekati atau melewati tanggal FU-PO
+- [ ] Export laporan snapshot untuk dibagikan ke tim marketing
+- [ ] (Catatan: field terkait Nomor PSI/Invoice Value untuk Cost Ratio — lihat 4.5.4 — ditunda ke update berikutnya)
 
 ---
 

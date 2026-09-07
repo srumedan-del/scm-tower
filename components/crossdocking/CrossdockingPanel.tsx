@@ -142,7 +142,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
           // Upsert setiap detail
           for (const d of validDetails) {
             const { _key, item_name, ...rest } = d
-            await upsertCrossdockingDetail({ ...rest, crossdocking_id: crossdockingId! })
+            await upsertCrossdockingDetail({ ...rest, id: rest.id ?? 0, crossdocking_id: crossdockingId! })
           }
         }
         onSaved(); onClose()

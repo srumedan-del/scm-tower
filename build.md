@@ -125,9 +125,16 @@ Action:
 
 ---
 
-## 4. Inbound / Receiving Control
+## 4. Inbound / Receiving 
 
-Setelah melihat stok, kita perlu tahu pasokan yang sedang masuk.
+Ini adalah proses upload data dari system NAV ke SCM Tower.
+Dimana data dibagi 3 bagian :
+
+1. Upload PTR Header
+    - Siapkan file CSV / Excel dari ERP
+    - Klik tombol "Upload PTR Header"
+    - Sistem menyimpan data induk per PTR
+    - PTR duplikat otomatis dilewati
 
 Tujuannya: memantau barang masuk yang bisa menutup risiko kekurangan stok.
 

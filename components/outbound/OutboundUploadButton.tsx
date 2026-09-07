@@ -199,6 +199,7 @@ function normalizePaoToPss(docNos: string[]): { normalized: string[]; remappedCo
 const HEADER_ALLOWED_FIELDS = [
   'pss_no',
   'shipment_no',
+  'psi_no',
   'posting_date',
   'document_date',
   'document_type',
@@ -230,6 +231,7 @@ const mapHeaderRow = (raw: Record<string, any>, fileName: string) => {
   const record: Record<string, any> = {
     pss_no: pickValue(row, ['pss_no', 'pss', 'no', 'document_no', 'doc_no', 'shipment_no']) ?? null,
     shipment_no: pickValue(row, ['shipment_no', 'pss_no', 'pss', 'no', 'document_no']) ?? null,
+    psi_no: pickValue(row, ['psi_no', 'psi', 'posted_sales_invoice_no', 'invoice_no', 'sales_invoice_no']) ?? null,
     posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date', 'posting_dt'])),
     document_date: toISODate(pickValue(row, ['document_date', 'doc_date', 'order_date'])),
     document_type: pickValue(row, ['document_type', 'doc_type', 'type']) ?? null,

@@ -14,13 +14,14 @@ type Customer = {
   latitude: number | null
   longitude: number | null
   machine_count: number | null
+  is_hd_customer: boolean | null
   is_active: boolean | null
   lead_time_days: number | null
   safety_buffer_days: number | null
 }
 
 const empty: Omit<Customer, 'id'> = {
-  customer_code: '', customer_name: '', city: '', province: '', address: '', dk_lk: 'DK', latitude: null, longitude: null, machine_count: null, is_active: true, lead_time_days: 3, safety_buffer_days: 2,
+  customer_code: '', customer_name: '', city: '', province: '', address: '', dk_lk: 'DK', latitude: null, longitude: null, machine_count: null, is_hd_customer: false, is_active: true, lead_time_days: 3, safety_buffer_days: 2,
 }
 
 function parseCoord(input: string): { lat: number; lng: number } | null {
@@ -53,6 +54,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
         latitude: customer.latitude,
         longitude: customer.longitude,
         machine_count: customer.machine_count ?? null,
+        is_hd_customer: customer.is_hd_customer ?? false,
         is_active: customer.is_active ?? true,
         lead_time_days: customer.lead_time_days ?? 3,
         safety_buffer_days: customer.safety_buffer_days ?? 2,
@@ -119,6 +121,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
         latitude: form.latitude === null || Number.isNaN(Number(form.latitude)) ? null : Number(form.latitude),
         longitude: form.longitude === null || Number.isNaN(Number(form.longitude)) ? null : Number(form.longitude),
         machine_count: form.machine_count == null || Number.isNaN(Number(form.machine_count)) ? null : Number(form.machine_count),
+        is_hd_customer: form.is_hd_customer ?? false,
         is_active: form.is_active,
         lead_time_days: form.lead_time_days == null ? null : Number(form.lead_time_days),
         safety_buffer_days: form.safety_buffer_days == null ? null : Number(form.safety_buffer_days),
@@ -166,6 +169,26 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
             <Field label="ACTIVE"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
           </div>
           <Field label="JUMLAH MESIN HD"><input type="number" min={0} value={form.machine_count ?? ''} onChange={e=>up('machine_count', e.target.value === '' ? null : Number(e.target.value))} className="inp" placeholder="CONTOH: 12" /></Field>
+          <Field label="KATEGORI HD">
+            <label className="flex items-center gap-2 mt-1">
+              <input
+                type="checkbox"
+                checked={!!form.is_hd_customer}
+                onChange={e => {
+                  up('is_hd_customer', e.target.checked)
+                  // Auto-set jika centang HD dan belum ada machine_count
+                  if (e.target.checked && !form.machine_count) up('machine_count', null)
+                }}
+              />
+              <span className="text-sm">
+                <span className="font-bold text-indigo-700">Customer HD</span>
+                <span className="text-gray-500 ml-1">— RS/klinik dengan mesin dialisis (untuk monitoring FU-PO)</span>
+              </span>
+            </label>
+            {form.is_hd_customer && !form.machine_count && (
+              <div className="mt-1 text-xs text-amber-600">⚠ Isi jumlah mesin HD di atas untuk kalkulasi monitoring yang akurat</div>
+            )}
+          </Field>
 
           <div className="border-t border-border pt-3">
             <div className="text-xs font-bold text-gray-700 mb-1">LOKASI — KOORDINAT GOOGLE MAPS</div>

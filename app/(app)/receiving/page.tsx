@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { PtrHeaderUploadButton, PtrDetailUploadButton } from '@/components/receiving/ReceivingUploadButton'
+import { ReceivingExportButton } from '@/components/receiving/ReceivingExportButton'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
 import ReceivingVerifyButton from '@/components/receiving/ReceivingVerifyButton'
@@ -85,6 +86,7 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
           <Suspense>
             <ReceivingFilter months={availableMonths} />
           </Suspense>
+          <ReceivingExportButton months={months} />
           <PtrHeaderUploadButton />
           <PtrDetailUploadButton />
           <ReceivingVerifyButton />

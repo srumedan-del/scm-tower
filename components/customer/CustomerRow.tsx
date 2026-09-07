@@ -14,6 +14,7 @@ type Customer = {
   latitude: number | null
   longitude: number | null
   machine_count: number | null
+  is_hd_customer: boolean | null
   is_active: boolean | null
   lead_time_days: number | null
   safety_buffer_days: number | null
@@ -35,7 +36,26 @@ export function CustomerRow({ customer }: { customer: Customer }) {
         <td className="px-4 py-2.5 font-medium">{String(customer.customer_name ?? '').toUpperCase()}</td>
         <td className="px-4 py-2.5">{String(customer.city ?? '-').toUpperCase()}</td>
         <td className="px-4 py-2.5 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${customer.dk_lk==='DK' ? 'bg-blue-100 text-blue-700' : customer.dk_lk==='LK' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>{customer.dk_lk ?? '-'}</span></td>
-        <td className="px-4 py-2.5 text-center font-bold">{customer.machine_count ?? <span className="text-gray-400 font-normal">—</span>}</td>
+        <td className="px-4 py-2.5 text-center">
+          {customer.is_hd_customer
+            ? <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-700">HD</span>
+            : <span className="text-gray-300 text-xs">—</span>
+          }
+        </td>
+        <td className="px-4 py-2.5 text-center font-bold">
+          {customer.machine_count != null && customer.machine_count > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              {customer.is_hd_customer && (
+                <span className="inline-block w-2 h-2 rounded-full bg-indigo-500" title="HD Customer" />
+              )}
+              {customer.machine_count}
+            </span>
+          ) : customer.is_hd_customer ? (
+            <span className="text-xs text-indigo-500 font-medium">HD</span>
+          ) : (
+            <span className="text-gray-400 font-normal">—</span>
+          )}
+        </td>
         <td className="px-4 py-2.5 max-w-[320px] truncate text-xs text-gray-600" title={customer.address ?? ''}>{String(customer.address ?? '-').toUpperCase()}</td>
         <td className="px-4 py-2.5 text-center font-mono text-xs">
           {hasLoc ? (

@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react'
 import { upsertDriver, deleteDriver, type DriverRow } from '@/app/(app)/master-data/drivers/actions'
 
 const empty: Omit<DriverRow, 'id'> = {
-  driver_code: '', driver_name: '', sim_no: null,
-  phone: null, is_active: true, notes: null,
+  driver_code: '', driver_name: '', role: 'Driver',
+  sim_no: null, phone: null, is_active: true, notes: null,
 }
 
 export default function DriverEditPanel({
@@ -19,6 +19,7 @@ export default function DriverEditPanel({
     driver ? {
       driver_code: driver.driver_code,
       driver_name: driver.driver_name,
+      role:        driver.role ?? 'Driver',
       sim_no:      driver.sim_no ?? '',
       phone:       driver.phone  ?? '',
       is_active:   driver.is_active,
@@ -32,7 +33,7 @@ export default function DriverEditPanel({
 
   function del() {
     if (!driver) return
-    if (!confirm(`HAPUS DRIVER ${driver.driver_name}?`)) return
+    if (!confirm(`HAPUS ${driver.role ?? 'KRU'} ${driver.driver_name}?`)) return
     startDeleting(async () => {
       try { await deleteDriver(driver.id); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
@@ -42,13 +43,14 @@ export default function DriverEditPanel({
   function save() {
     startSaving(async () => {
       setErr(null)
-      if (!form.driver_code.trim()) { setErr('Kode driver wajib diisi'); return }
-      if (!form.driver_name.trim()) { setErr('Nama driver wajib diisi'); return }
+      if (!form.driver_code.trim()) { setErr('Kode wajib diisi'); return }
+      if (!form.driver_name.trim()) { setErr('Nama wajib diisi'); return }
       try {
         await upsertDriver({
           id:          driver?.id,
           driver_code: form.driver_code.trim().toUpperCase(),
           driver_name: form.driver_name.trim().toUpperCase(),
+          role:        form.role,
           sim_no:      (form.sim_no as string)?.trim() || null,
           phone:       (form.phone  as string)?.trim() || null,
           is_active:   form.is_active,
@@ -63,23 +65,43 @@ export default function DriverEditPanel({
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between border-b p-4">
-          <h3 className="font-bold text-lg uppercase">{driver ? 'Edit Driver' : 'Tambah Driver'}</h3>
+          <h3 className="font-bold text-lg uppercase">
+            {driver ? `Edit ${driver.role ?? 'Kru'}` : 'Tambah Driver / Helper'}
+          </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
 
         <div className="p-4 space-y-3 overflow-y-auto">
-          <Field label="KODE DRIVER *">
-            <input value={form.driver_code} onChange={e => up('driver_code', e.target.value)}
-              className="inp font-mono" placeholder="DRV-001" disabled={!!driver} />
+          {/* Role selector */}
+          <Field label="ROLE *">
+            <div className="flex gap-2 mt-1">
+              {(['Driver', 'Helper'] as const).map(r => (
+                <label key={r} className={`flex-1 flex items-center justify-center gap-2 rounded-lg border-2 py-2 cursor-pointer transition-colors ${
+                  form.role === r
+                    ? r === 'Driver' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-bold'
+                                     : 'border-purple-500 bg-purple-50 text-purple-700 font-bold'
+                    : 'border-gray-200 text-gray-500'
+                }`}>
+                  <input type="radio" name="role" value={r} checked={form.role === r}
+                    onChange={() => up('role', r)} className="sr-only" />
+                  <span className="text-sm">{r}</span>
+                </label>
+              ))}
+            </div>
           </Field>
-          <Field label="NAMA DRIVER *">
+
+          <Field label="KODE *">
+            <input value={form.driver_code} onChange={e => up('driver_code', e.target.value)}
+              className="inp font-mono" placeholder={form.role === 'Driver' ? 'DRV-001' : 'HLP-001'} disabled={!!driver} />
+          </Field>
+          <Field label="NAMA *">
             <input value={form.driver_name} onChange={e => up('driver_name', e.target.value)}
               className="inp" placeholder="Nama lengkap" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="NO. SIM">
+            <Field label={form.role === 'Driver' ? 'NO. SIM' : 'NO. SIM (opsional)'}>
               <input value={(form.sim_no as string) ?? ''} onChange={e => up('sim_no', e.target.value)}
-                className="inp" placeholder="SIM A/B" />
+                className="inp" placeholder={form.role === 'Driver' ? 'SIM A/B' : '-'} />
             </Field>
             <Field label="NO. HP">
               <input value={(form.phone as string) ?? ''} onChange={e => up('phone', e.target.value)}

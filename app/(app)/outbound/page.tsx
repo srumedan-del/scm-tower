@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { OutboundHeaderUploadButton, OutboundDetailUploadButton } from '@/components/outbound/OutboundUploadButton'
+import { OutboundExportButton } from '@/components/outbound/OutboundExportButton'
 import OutboundDeleteButton from '@/components/outbound/OutboundDeleteButton'
 import PssDetailModal from '@/components/outbound/PssDetailModal'
 import OutboundFilter from '@/components/outbound/OutboundFilter'
@@ -46,7 +47,7 @@ async function getOutboundHeaders(months: string[]) {
   let query = supabase
     .from('outbound_header')
     .select(
-      'id, pss_no, shipment_no, document_date, order_no, ' +
+      'id, pss_no, psi_no, shipment_no, document_date, order_no, ' +
       'customer_no, customer_name, cust_receipt_date, ' +
       'delivery_delay_days, is_late'
     )
@@ -88,6 +89,7 @@ export default async function OutboundPage({
           <Suspense>
             <OutboundFilter months={availableMonths} />
           </Suspense>
+          <OutboundExportButton months={months} />
           <OutboundHeaderUploadButton />
           <OutboundDetailUploadButton />
         </div>
@@ -108,6 +110,9 @@ export default async function OutboundPage({
               </th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
                 PSS NO
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
+                PSI NO
               </th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
                 ORDER NO
@@ -139,6 +144,9 @@ export default async function OutboundPage({
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
                     <PssDetailModal pssNo={pssNo} />
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-gray-500">
+                    {r.psi_no ?? <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
                     {String(r.order_no ?? '-').toUpperCase()}
@@ -179,7 +187,7 @@ export default async function OutboundPage({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
                   {months.length > 0
                     ? 'TIDAK ADA DATA UNTUK BULAN YANG DIPILIH'
                     : 'BELUM ADA DATA OUTBOUND'}
