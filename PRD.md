@@ -554,7 +554,6 @@ notes
 ## 9. Backlog / Planned Features
 
 - [ ] Autentikasi dan role-based access control (admin, operator, viewer)
-- [ ] Export data ke Excel dari setiap halaman
 - [ ] Dashboard KPI real-time dengan refresh otomatis
 - [ ] Notifikasi email/WhatsApp untuk keterlambatan delivery
 - [ ] Integrasi langsung dengan NAV API (menggantikan upload manual)
@@ -594,7 +593,320 @@ notes
 
 ## 10. Catatan Implementasi
 
-- Semua perubahan file harus di-deploy di path `d:\SCM APP\scm-tower\scm-tower\` (bukan subfolder `scm-tower` di dalamnya)
+- Project dipindahkan ke `d:\project\scm-tower\` — path lama tidak berlaku
 - Dev server berjalan dengan `npm run dev` dari direktori tersebut
 - Cache Next.js (`.next`) perlu dihapus dan server di-restart setelah perubahan `next.config.ts`
 - Kolom `is_sale` dan `delivery_delay_days` adalah generated columns di Supabase — tidak boleh di-insert manual
+- Next.js versi yang digunakan: **16.3.3** (Turbopack) — ada breaking changes dari versi sebelumnya
+- File `middleware.ts` deprecated di Next.js 16, perlu diganti `proxy.ts` (migration: `npx @next/codemod@canary middleware-to-proxy .`)
+
+---
+
+## 12. Changelog Implementasi (September 2026)
+
+### 12.1 Issue Log
+
+**Status: ✅ Diimplementasikan**
+
+- Halaman `/issues` dengan tabel dan summary badge (Open / In Progress / Closed / Total)
+- Form tambah/edit/hapus issue via modal (`IssueEditPanel`)
+- Field: Kategori, Judul, Deskripsi, Rencana Mitigasi, Status, Probability, Impact, PIC (Pelapor), Tanggal Issue, Due Date, Tanggal Closed
+- **Penomoran otomatis** format `ISS-YYMM-0001` (4 digit, per bulan) — contoh `ISS-2609-0001`
+- Kolom **UMUR** issue di tabel (badge warna: hijau <3h, kuning 3-6h, orange 7-13h, merah ≥14h, abu = Closed)
+- Kolom **PIC** di tabel dan form
+- Semua operasi tulis pakai **Server Action** (`supabaseAdmin`) — bypass RLS
+- Kolom di `issue_log`: `id, issue_no, issue_date, category, title, description, impact, probability, status, due_date, closed_at, mitigation_plan, pic_name, created_at, updated_at, owner_id`
+- SQL untuk tambah kolom PIC: `ALTER TABLE public.issue_log ADD COLUMN IF NOT EXISTS pic_name text;`
+
+### 12.2 Shipment Tracking — Tab "Belum Dibuat"
+
+**Status: ✅ Diimplementasikan**
+
+- Halaman Shipment dipecah jadi 2 tab: **Belum Dibuat** (orange) dan **Tracking** (indigo)
+- Tab "Belum Dibuat" membaca dari view `vw_pss_untracked` yang berisi:
+  - PSS dari `outbound_header` yang belum punya `shipment_tracking` (via `pss_no`)
+  - Crossdocking dari `crossdocking_header` yang belum `Delivered/Cancelled` dan belum punya tracking (via `crossdocking_id`)
+- Badge counter di tab menampilkan jumlah pending
+- Kolom tabel: PSS No, Tipe (PSS/Crossdocking), Customer, Kota Tujuan, Doc Date, Promised Date, Delay
+- **Kota Tujuan** di-lookup dari `customers.city` via `customer_no` (COALESCE dengan `ship_to_city`)
+- Checkbox multi-select + floating bar "Buat Shipment →" saat ada yang dipilih
+- Klik baris atau floating bar membuka `BulkShipmentPanel`
+- Data cutoff: hanya PSS `document_date >= '2026-09-01'`
+
+SQL view (Supabase):
+```sql
+DROP VIEW IF EXISTS public.vw_pss_untracked;
+CREATE VIEW public.vw_pss_untracked AS
+SELECT h.id, 'PSS'::text AS source_type, h.pss_no, h.customer_no, h.customer_name,
+  COALESCE(c.city, h.ship_to_city) AS destination_city,
+  h.document_date, h.promised_delivery_date, h.is_late, h.delivery_delay_days, h.psi_no
+FROM public.outbound_header h
+LEFT JOIN public.customers c ON c.customer_code = h.customer_no
+WHERE h.document_date >= '2026-09-01'
+  AND NOT EXISTS (SELECT 1 FROM public.shipment_tracking st WHERE st.pss_no = h.pss_no)
+UNION ALL
+SELECT cd.id, 'Crossdocking'::text AS source_type, 'CD-' || cd.id::text AS pss_no,
+  cd.customer_code AS customer_no, cd.customer_name,
+  COALESCE(c.city, cd.destination_address) AS destination_city,
+  cd.received_from_hq_date AS document_date, cd.promised_delivery_date,
+  CASE WHEN cd.promised_delivery_date < CURRENT_DATE THEN true ELSE false END AS is_late,
+  CASE WHEN cd.promised_delivery_date < CURRENT_DATE THEN (CURRENT_DATE - cd.promised_delivery_date) ELSE 0 END AS delivery_delay_days,
+  NULL::text AS psi_no
+FROM public.crossdocking_header cd
+LEFT JOIN public.customers c ON c.customer_code = cd.customer_code
+WHERE cd.received_from_hq_date >= '2026-09-01'
+  AND cd.status NOT IN ('Delivered', 'Cancelled')
+  AND NOT EXISTS (SELECT 1 FROM public.shipment_tracking st WHERE st.crossdocking_id = cd.id)
+ORDER BY document_date DESC;
+```
+
+### 12.3 Bulk Create Shipment
+
+**Status: ✅ Diimplementasikan**
+
+- `BulkShipmentPanel` — modal untuk membuat beberapa shipment sekaligus dari PSS/CD yang dipilih
+- Field: Trip ID (auto-generate, read-only), Vendor (dari tabel `vendors`), No. Polisi Kendaraan (wajib), Tipe Kendaraan (dropdown), Nama Driver (wajib), Rute (opsional), Status Awal
+- **Trip ID format**: `TRIP-YYMM-0001` (4 digit, per bulan) — contoh `TRIP-2609-0001`
+- Trip ID di-generate via Server Action `generateTripId()` yang query `shipment_tracking` secara numerik (bukan lexicographic) untuk menghindari duplikasi
+- Info vendor, nopol, tipe kendaraan, nama driver disimpan di kolom `notes` format: `Vendor: X | Nopol: Y | Tipe: Z | Driver: W`
+- Untuk PSS: set `source_type='PSS'`, `pss_no`, `outbound_header_id`
+- Untuk Crossdocking: set `source_type='Crossdocking'`, `crossdocking_id`
+
+### 12.4 Shipment Tracking — Tab "Tracking"
+
+**Status: ✅ Diimplementasikan (update)**
+
+- Kolom **OTD** dihapus dari tabel tracking (tetap tersedia di halaman Shipment Cost)
+- Kolom **Biaya (Rp)** dihapus dari tabel tracking (dipindah ke halaman Shipment Cost)
+- Klik baris mana saja (termasuk Draft/Dispatched) membuka panel edit — sebelumnya Draft/Dispatched hanya toggle checkbox
+- Checkbox tetap berfungsi untuk assign trip multi-drop (dengan `stopPropagation`)
+- Hapus shipment otomatis hapus POD terkait terlebih dahulu (menghindari FK constraint)
+- Dropdown PSS di form tambah shipment hanya menampilkan PSS yang **belum** punya tracking
+
+### 12.5 Halaman Shipment Cost (`/shipment-cost`)
+
+**Status: ✅ Baru diimplementasikan**
+
+- Menu baru di sidebar: **Shipment Cost** (icon DollarSign) — posisi antara Shipment dan Receiving
+- **4 KPI cards**: Total Shipment, Total Biaya, Total Invoice Value, Avg Cost Ratio
+- **Breakdown** per Model Transporter (Internal/Retail/Trucking) dan per DK/LK
+- **Tabel detail** per shipment:
+  - Trip ID, PSS/CD No, Customer, DK/LK, Transporter (dari master atau `notes`), Model
+  - No. Voucher (Internal) / No. Invoice Eksternal
+  - Komponen biaya Internal: BBM, Bongkar Muat, Hotel, Uang Makan, Tol, Parkir, Kirim Paket
+  - Total Biaya, Invoice Value, Cost Ratio badge (hijau/kuning/merah), OTD, Status
+- Warning bar jika ada shipment belum diisi biaya
+- Baris highlight kuning untuk shipment tanpa biaya
+
+### 12.6 Master Routes
+
+**Status: ✅ Diimplementasikan (update)**
+
+- Kolom **Risk Level** dihapus dari form dan tabel (tidak relevan operasional)
+- Kolom **City** dihapus dari form (redundant dengan Destination) — nilai `city` otomatis diisi sama dengan `destination` untuk kompatibilitas DB
+- Field **Route Code** read-only saat edit (tidak bisa diubah setelah dibuat)
+- Placeholder Route Code: `MDN-L-0001` (format target: `MDN-L/D-XXXX`)
+- Semua operasi tulis/hapus via Server Action (`supabaseAdmin`) — sebelumnya pakai client `supabase`
+- Hapus route otomatis null-kan FK di `shipment_tracking.route_id`
+
+### 12.7 Perubahan Sidebar & Navigasi
+
+**Status: ✅ Diimplementasikan**
+
+- **Warehouse Checklist** dihapus dari sidebar dan halaman (tidak diperlukan saat ini)
+- **Shipment Cost** ditambahkan antara Shipment dan Receiving
+- Sidebar saat ini: Dashboard → Workflow → Shipment → Shipment Cost → Receiving → Outbound → Crossdocking → Inventory → Issue Log → Master → Settings
+
+### 12.8 Receiving / Inbound Upload Fix
+
+**Status: ✅ Diimplementasikan**
+
+- File Excel dari NAV memiliki 1-2 baris judul (e.g. "Posted Transfer Receipts" / "Sheet1") sebelum baris header kolom
+- Ditambahkan fungsi `parseNavExcel()` yang otomatis mendeteksi posisi baris header aktual dengan mencari kata kunci: `no.`, `posting date`, `document no.`, `entry no.`, dst.
+- `toNumber()` diperbaiki untuk handle angka dengan koma ribuan (e.g. `3,120` → `3120`)
+- Alias kolom diperluas untuk `Entry No.` (NAV style dengan titik → `entry_no_` setelah normalisasi)
+- Fix berlaku untuk PTR Header upload, PTR Detail upload, dan default ReceivingUploadButton
+
+### 12.9 Dashboard Open Issues Fix
+
+**Status: ✅ Diimplementasikan**
+
+- KPI card "Open Issues" sekarang hanya menghitung status `Open` dan `In Progress` (bukan semua issue)
+- Label berubah dari "Masalah operasional" → "Open & In Progress"
+- Query `openIssues` diperbaiki dari `'open'/'in_progress'` (huruf kecil) ke `'Open'/'In Progress'` (kapital sesuai data aktual)
+- Badge status di panel bawah: Open = biru, In Progress = kuning
+
+### 12.10 Data Dummy
+
+- Semua data dummy di `shipment_tracking` dihapus (tabel bersih untuk data live)
+- SQL hapus data dummy issue:
+  ```sql
+  DELETE FROM issue_log WHERE issue_no LIKE 'ISS-DUMMY-%';
+  -- Insert ulang dengan format baru ISS-2609-XXXX jika diperlukan
+  ```
+
+### 12.11 File Dokumentasi Dihapus
+
+File berikut dihapus dan kontennya diarsipkan ke **PRD section 11**:
+- `top.md` → PRD 11.1 (Customer Stock Map setup notes)
+- `WORKFLOW-SCM-MAP.md` → PRD 11.2 (Workflow customer map log)
+- `DUMMY_DATA_LOG.md` → PRD 11.3 (Log data dummy + SQL hapus)
+- `build.md` → dihapus tanpa backup (brainstorming obsolete)
+
+
+---
+
+## 11. Archived Documentation
+
+### 11.1 Customer Stock Map — Setup Notes (dari top.md)
+
+## 1. Install dependency
+```bash
+npm install leaflet react-leaflet
+npm install -D @types/leaflet
+```
+
+## 2. Taruh file
+- `CustomerStockMap.tsx` → `components/customer-stock-map/CustomerStockMap.tsx`
+- `page-example.tsx` → contoh saja, sesuaikan dengan struktur routing kamu (lihat isinya untuk cara import yang benar)
+
+## 3. Kenapa harus `dynamic(..., { ssr: false })`
+Leaflet mengakses objek `window` saat di-load. Next.js me-render Server Component/Client Component pertama kali di server, jadi kalau `CustomerStockMap` diimpor langsung, build akan error `window is not defined`. Solusinya: import lewat `next/dynamic` dengan `ssr: false` seperti di `page-example.tsx`.
+
+## 4. Struktur data
+Komponen menerima prop opsional `customers: Customer[]`. Kalau tidak diisi, dia pakai 20 data contoh (kota/kabupaten di Aceh & Sumatera Utara). Ganti dengan data asli:
+
+```ts
+interface Customer {
+  id: string
+  name: string
+  city: string
+  province: 'Aceh' | 'Sumatera Utara'
+  lat: number
+  lng: number
+  machineCount: number
+  lastOrderDate: string   // format ISO: '2026-07-12'
+  isPareto: boolean       // true kalau termasuk customer pareto (kontribusi tinggi)
+}
+```
+
+## 5. Logika status (bisa disesuaikan)
+Di dalam file, fungsi `expectedCycleDays()` menentukan ambang batas "wajar" hari sejak order terakhir berdasarkan jumlah mesin:
+- ≥ 40 mesin → siklus order diharapkan tiap 21 hari
+- ≥ 20 mesin → 30 hari
+- < 20 mesin → 45 hari
+
+Kalau lewat ambang batas ini, customer ditandai "Butuh Perhatian". Kombinasi dengan `isPareto` menghasilkan 4 status:
+- **Pareto Kritis** (merah) — customer pareto yang overdue → prioritas tertinggi
+- **Butuh Perhatian** (oranye) — bukan pareto tapi overdue
+- **Pareto Sehat** (hijau) — pareto, order masih dalam siklus wajar
+- **Normal** (biru) — bukan pareto, order masih wajar
+
+Angka-angka ini contoh awal — sesuaikan dengan cycle time riil produk (bisa dari histori order rata-rata per customer, bukan angka tetap).
+
+## 6. Kenapa pakai `CircleMarker`, bukan pin/marker biasa
+Radius lingkaran mengikuti `sqrt(machineCount)`, jadi ukuran titik di peta langsung merepresentasikan besar-kecilnya customer tanpa perlu buka popup. Ini juga menghindari isu klasik Leaflet di Next/Webpack di mana ikon marker default sering tidak muncul (path asset-nya patah saat bundling).
+
+## 7. Warna & style
+Semua warna diambil langsung dari token yang sudah ada di `tailwind.config.ts` (`canvas`, `surface`, `border`, `text`, `muted`, `blue`, `green`, `orange`, `red`), jadi tampilannya otomatis konsisten dengan bagian lain aplikasi.
+
+---
+
+### 11.2 Workflow SCM Control Tower - Customer Map (dari WORKFLOW-SCM-MAP.md)
+
+Dokumen ini adalah catatan kerja bertahap untuk fitur peta customer rumah sakit dan keputusan replenishment.
+
+**Status saat diarsipkan:**
+- Tahap aktif: 2 - Customer master dan peta awal
+- Status: map publik dan maintain tersembunyi sudah diimplementasikan; pembatasan admin ditunda
+- Tanggal pencatatan: 2026-08-29
+- Halaman target: `app/(app)/dashboard/page.tsx`
+- Referensi struktur data: `data/Monitoring Stock HD Rumah Sakit.xlsx`
+- Source of truth aplikasi: Supabase
+
+#### Tahap 1 - Validasi sumber data (Selesai)
+
+- Workbook memiliki satu sheet: `Dashboard`.
+- Terdapat 26 baris customer pada contoh Excel; batas aplikasi ditetapkan maksimal 27 customer unik dari Supabase.
+- Semua 26 customer memiliki nama, lokasi kabupaten/kota, jumlah mesin HD, dan nilai stok.
+- 23 customer memiliki nilai pada kolom `FU-PO`.
+- Kolom yang terbaca dari header Excel: `NAMA CUSTOMER/ RUMAH SAKIT`, `KABUPATEN/KOTA`, `Jumlah Mesin HD`, `Estimasi`, `Kebutuhan`, `Safety Stok`, `ROP`, `Stok Akhir`, `Pengiriman`, `Estimasi Stok`, `DOI`, `HABIS`, `Available`, `FU-PO`
+- Lokasi mencakup Sumatera Utara dan Aceh: Medan, Rantau Prapat, Pematang Siantar, Banda Aceh, Takengon, Aceh Tamiang, Pidi - Aceh, Langsa - Aceh.
+
+**Keputusan:**
+- Peta diintegrasikan ke dashboard Pareto customer stock, bukan landing page.
+- Implementasi menggunakan Leaflet + tile provider OpenStreetMap.
+- Excel hanya digunakan untuk memahami struktur field; aplikasi tidak membaca Excel saat runtime.
+- Data operasional dipelihara di tabel Supabase `customers`.
+- Dashboard memakai subscription Supabase Realtime (INSERT, UPDATE, DELETE).
+- Policy Supabase sementara membuka CRUD untuk `anon` dan `authenticated` — perlu diperketat pada tahap hardening.
+- Tombol maintain tersembunyi dengan kombinasi `Ctrl + Shift + M`.
+
+#### Schema Supabase
+Schema awal tersedia di `supabase/customer-map.sql`, termasuk validasi koordinat, trigger `updated_at`, RLS, dan publication Realtime.
+
+#### Checklist yang belum selesai saat diarsipkan
+- [ ] Tambahkan koordinat yang sudah tervalidasi untuk semua customer
+- [ ] Tambahkan konfigurasi lead time per customer
+- [ ] Implementasikan perhitungan DOI, tanggal stockout, dan status replenishment
+- [ ] Kembalikan policy CRUD menjadi admin-only setelah sistem operasional stabil
+- [ ] Hubungkan halaman login ke Supabase Auth untuk tahap hardening akses
+
+---
+
+### 11.3 Log Data Dummy — SCM Control Tower (dari DUMMY_DATA_LOG.md)
+
+**Tanggal dibuat:** 30 Agustus 2026 — **Update terakhir:** 31 Agustus 2026 01:45 WIB  
+**Status:** ACTIVE — DUMMY APPROVED OLEH ERWIN (31 Agu 2026) — tetap digunakan sampai go-live  
+**Supabase project:** `elwzpofgxgauyssatga` | **Repo:** `srumedan-del/scm-tower`
+
+> ⚠️ Data di bawah ini **BUKAN data produksi.** Semua entry bertanda `DUMMY APPROVED` adalah dummy yang di-generate atas izin Erwin.
+
+#### Ringkasan Counts (31 Agu 2026)
+
+| Tabel Supabase | Total | Dummy | Real | Keterangan |
+|---|---|---|---|---|
+| `vendors` | 3 | 1 (`VOTH_INDAH`) | 2 (VOTH001801 RSA, VOTH000095 ASSA) | VOTH_ASSA/RSA sudah tidak dipakai |
+| `customers` | 74 | 0 | 74 | 42 DK + 32 LK, 5 lokasi terisi |
+| `master_sku` | 90 | 0 | 90 | Sheet3 ERP (NHD 66 HD 22) |
+| `transport_fleet` | 8 | 8 | 0 | BK 1234 AA–BK 1122 HH |
+| `transport_rate_card` | 236 | 15 (`BIA-DUMMY-0001..0015`) | 221 (`BIA-EKS-2137..`) | |
+| `shipments` | 8 | 8 | 0 | SHP-2026-08-001..008 |
+| `shipment_status_logs` | 9 | 9 | 0 | Auto-log tiap ganti status |
+| `issue_log` | 8 | 8 | 0 | ISS-DUMMY-2026-001..008 |
+| `warehouse_checklist` | 7 | 7 | 0 | SRU-MDN 25–29 Agu + MDN-PAR9C/PAR9F 30 Agu |
+| `receiving_header` | 104 | 4 | 100 | PTR-2026-08-25..29 dummy + 100 ERP |
+| `outbound_detail` | 4693 | 0 | 4693 | Real ERP PSS-2601..2608 |
+| `routes` | 12 | 0 | 12 | MDN-BDA-STD dst |
+| `warehouses` | 2 | 0 | 2 | MDN-PAR9C/9F |
+
+#### SQL untuk Hapus Data Dummy
+
+```sql
+-- Rate card dummy
+DELETE FROM transport_rate_card WHERE rate_code LIKE 'BIA-DUMMY-%';
+-- Shipments dummy
+DELETE FROM shipments WHERE shipment_no LIKE 'SHP-2026-08-%';
+-- Logs dummy
+DELETE FROM shipment_status_logs WHERE notes LIKE 'DUMMY%';
+-- Fleet dummy
+DELETE FROM transport_fleet WHERE vehicle_no IN ('BK 1234 AA','BK 5678 BB','BK 9012 CC','BK 3456 DD','BK 7890 EE','BK 2345 FF','BK 6789 GG','BK 1122 HH');
+-- Issue dummy
+DELETE FROM issue_log WHERE issue_no LIKE 'ISS-DUMMY-%';
+-- Checklist dummy
+DELETE FROM warehouse_checklist WHERE checklist_date BETWEEN '2026-08-25' AND '2026-08-30';
+-- Vendor dummy
+DELETE FROM vendors WHERE vendor_code = 'VOTH_INDAH';
+-- Receiving dummy
+DELETE FROM receiving_header WHERE ptr_no LIKE 'PTR-2026-08-%';
+```
+
+#### File Script
+- `scripts/seed_dummy_approved.py` — FINAL (shipments valid enum, fleet, issue, checklist, logs) — approved run 30–31 Agu
+- `scripts/seed_dummy.py`, `seed_v2.py`, `seed_v3.py`, `test_*.py`, `brute_pod.py` — eksperimen constraint (history)
+- `scripts/add_group_to_master_sku.sql` — manual ALTER GROUP
+
+#### Sign-off
+- Erwin approve: "kamu buatkan saja data dummy, saya approve" (31 Agu 2026)
+- Semua string UPPERCASE sesuai konvensi scm-tower.
+- Phone dummy 081234567801..08 — bukan nomor asli, jangan dipakai operasional.

@@ -13,6 +13,7 @@ const STATUS_OPTS = ['Draft', 'Dispatched', 'In Transit', 'Delivered'] as const
 
 type Props = {
   shipment: ShipmentTrackingRow | null
+  prefillPss?: import('@/app/(app)/shipment/actions').UntrackedPssRow | null
   onClose: () => void
   onSaved: () => void
 }
@@ -22,7 +23,7 @@ function fmtRp(v: number | null | undefined) {
   return 'Rp ' + v.toLocaleString('id-ID')
 }
 
-export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) {
+export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSaved }: Props) {
   const [transporters, setTransporters] = useState<TransporterOption[]>([])
   const [vehicles,     setVehicles]     = useState<VehicleOption[]>([])
   const [allCrew,      setAllCrew]      = useState<DriverOption[]>([])
@@ -30,8 +31,21 @@ export default function ShipmentTMSPanel({ shipment, onClose, onSaved }: Props) 
   const [pssOptions,   setPssOptions]   = useState<any[]>([])
   const [optLoading,   setOptLoading]   = useState(true)
 
-  const [form, setForm] = useState<Partial<ShipmentTrackingRow>>(() => shipment ?? {
-    source_type: 'PSS', status: 'Draft', cost_model: null,
+  const [form, setForm] = useState<Partial<ShipmentTrackingRow>>(() => {
+    if (shipment) return shipment
+    // Pre-fill dari PSS untracked
+    if (prefillPss) return {
+      source_type:            'PSS',
+      status:                 'Draft',
+      cost_model:             null,
+      pss_no:                 prefillPss.pss_no,
+      outbound_header_id:     prefillPss.id,
+      customer_name:          prefillPss.customer_name ?? undefined,
+      destination_city:       prefillPss.destination_city ?? undefined,
+      promised_delivery_date: prefillPss.promised_delivery_date ?? undefined,
+      document_date:          prefillPss.document_date ?? undefined,
+    }
+    return { source_type: 'PSS', status: 'Draft', cost_model: null }
   })
 
   const [saving,   startSaving]   = useTransition()

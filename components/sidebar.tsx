@@ -4,20 +4,20 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import {
-  LayoutDashboard, Truck, Package, ClipboardCheck,
-  AlertTriangle, Settings, Users, Warehouse, Activity,
-  Database, LogOut, ArrowLeftRight,
+  LayoutDashboard, Truck, Package,
+  AlertTriangle, Settings, Warehouse, Activity,
+  Database, LogOut, ArrowLeftRight, DollarSign,
 } from 'lucide-react'
 
 const items = [
   ['Dashboard',         '/dashboard',           LayoutDashboard],
   ['Workflow',          '/workflow',             Activity],
   ['Shipment',          '/shipment',             Truck],
+  ['Shipment Cost',     '/shipment-cost',        DollarSign],
   ['Receiving',         '/receiving',            Package],
   ['Outbound',          '/outbound',             Truck],
   ['Crossdocking',      '/crossdocking',         ArrowLeftRight],
   ['Inventory',         '/inventory',            Warehouse],
-  ['Checklist',         '/warehouse-checklist',  ClipboardCheck],
   ['Issue Log',         '/issues',               AlertTriangle],
   ['Master',            '/master-data',          Database],
   ['Settings',          '/settings',             Settings],

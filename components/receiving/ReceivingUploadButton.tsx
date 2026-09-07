@@ -13,6 +13,31 @@ const normalizeKey = (value: string) =>
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 
+/**
+ * Parse file Excel dari NAV yang mungkin punya 1-2 baris judul
+ * sebelum baris header kolom yang sebenarnya.
+ * Cari baris yang mengandung "No." atau "PTR" sebagai header aktual.
+ */
+function parseNavExcel(firstSheet: XLSX.WorkSheet): Record<string, any>[] {
+  const rawAll = XLSX.utils.sheet_to_json(firstSheet, { defval: null, header: 1 }) as any[][]
+  let headerRowIndex = 0
+  for (let i = 0; i < Math.min(rawAll.length, 10); i++) {
+    const cells = (rawAll[i] ?? []).map((c: any) => String(c ?? '').trim().toLowerCase())
+    // Header row biasanya mengandung kolom kunci ini
+    const isHeaderRow = cells.some(c =>
+      c === 'no.' || c === 'no' || c === 'ptr_no' ||
+      c === 'posting date' || c === 'document no.' || c === 'document no' ||
+      c === 'entry no.' || c === 'entry no' ||
+      (c.length > 0 && c.startsWith('ptr'))
+    )
+    if (isHeaderRow) {
+      headerRowIndex = i
+      break
+    }
+  }
+  return XLSX.utils.sheet_to_json(firstSheet, { defval: null, range: headerRowIndex }) as Record<string, any>[]
+}
+
 const RECEIVING_HEADER_FIELDS = [
   'ptr_no',
   'transfer_order_no',
@@ -89,7 +114,9 @@ const toISODate = (value: unknown) => {
 
 const toNumber = (value: unknown) => {
   if (value === null || value === undefined || value === '') return null
-  const n = Number(value)
+  // Handle angka dengan koma ribuan seperti "3,120" atau "7,600"
+  const cleaned = typeof value === 'string' ? value.replace(/,/g, '') : value
+  const n = Number(cleaned)
   return Number.isFinite(n) ? n : null
 }
 
@@ -263,7 +290,7 @@ export function PtrHeaderUploadButton() {
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null }) as Record<string, any>[]
+      const rows = parseNavExcel(firstSheet)
 
       if (!rows.length) throw new Error('File kosong.')
 
@@ -362,9 +389,9 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
     posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date'])),
     entry_type: pickValue(row, ['entry_type']) ?? null,
     document_type: pickValue(row, ['document_type']) ?? null,
-    document_no: pickValue(row, ['document_no', 'doc_no', 'ptr_no', 'no', 'document_no_1']) ?? null,
-    document_line_no: toNumber(pickValue(row, ['document_line_no', 'line_no', 'doc_line_no'])),
-    item_no: pickValue(row, ['item_no', 'sku', 'item_no_1', 'item_no_no']) ?? null,
+    document_no: pickValue(row, ['document_no', 'document_no_', 'doc_no', 'ptr_no', 'no', 'document_no_1']) ?? null,
+    document_line_no: toNumber(pickValue(row, ['document_line_no', 'document_line_no_', 'line_no', 'doc_line_no'])),
+    item_no: pickValue(row, ['item_no', 'item_no_', 'sku', 'item_no_1', 'item_no_no']) ?? null,
     variant_code: pickValue(row, ['variant_code']) ?? null,
     description: pickValue(row, ['description', 'item_name', 'desc']) ?? null,
     document_created_at: toISODate(pickValue(row, ['document_created_datetime', 'document_created_date_time', 'created_date'])),
@@ -382,7 +409,7 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
     reserved_quantity: toNumber(pickValue(row, ['reserved_quantity', 'reserved_qty'])),
     open: pickValue(row, ['open']) ?? null,
     order_type: pickValue(row, ['order_type']) ?? null,
-    entry_no: toNumber(pickValue(row, ['entry_no'])),
+    entry_no: toNumber(pickValue(row, ['entry_no', 'entry_no_'])),
     source_file: fileName,
     import_period: now.slice(0, 7),
     created_at: now,
@@ -416,7 +443,7 @@ export function PtrDetailUploadButton() {
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null }) as Record<string, any>[]
+      const rows = parseNavExcel(firstSheet)
 
       if (!rows.length) throw new Error('File kosong.')
 
@@ -519,7 +546,7 @@ export default function ReceivingUploadButton() {
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null }) as Record<string, any>[]
+      const rows = parseNavExcel(firstSheet)
 
       if (!rows.length) throw new Error('File kosong.')
 

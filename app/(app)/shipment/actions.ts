@@ -66,10 +66,14 @@ export type VehicleOption     = { id: number; vehicle_no: string; vehicle_type: 
 export type DriverOption      = { id: number; driver_name: string; phone: string | null; role: string }
 export type RouteOption       = { id: number; route_code: string; origin: string; destination: string }
 
+// Cut-off: hanya tampilkan shipment dari PSS/dokumen tanggal 01 Sep 2026 ke atas
+const CUTOFF_DATE = '2026-09-01'
+
 export async function getShipmentTrackings(filters?: { status?: string }) {
   let q = supabaseAdmin
     .from('vw_shipment_tms')
     .select('*')
+    .gte('document_date', CUTOFF_DATE)
     .order('promised_delivery_date', { ascending: false })
     .limit(200)
 
@@ -103,28 +107,66 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
 }
 
 export async function deleteShipmentTracking(id: number) {
+  // Hapus POD dulu jika ada (FK ON DELETE CASCADE harusnya handle ini,
+  // tapi kalau constraint belum benar, hapus manual)
+  await supabaseAdmin.from('delivery_pod').delete().eq('tracking_id', id)
   const { error } = await supabaseAdmin.from('shipment_tracking').delete().eq('id', id)
   if (error) throw error
 }
 
+export type UntrackedPssRow = {
+  id: number
+  source_type: 'PSS' | 'Crossdocking'
+  pss_no: string
+  customer_no: string | null
+  customer_name: string | null
+  destination_city: string | null
+  document_date: string | null
+  promised_delivery_date: string | null
+  is_late: boolean | null
+  delivery_delay_days: number | null
+  psi_no: string | null
+}
+
+/** PSS yang belum punya shipment_tracking (dari vw_pss_untracked) */
+export async function getUntrackedPss(): Promise<UntrackedPssRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from('vw_pss_untracked')
+    .select('*')
+    .order('document_date', { ascending: false })
+    .limit(300)
+  if (error) throw error
+  return (data ?? []) as UntrackedPssRow[]
+}
+
 export async function getShipmentTMSOptions() {
-  const [tr, veh, drv, rt, pss] = await Promise.all([
+  const [tr, veh, drv, rt, pss, tracked] = await Promise.all([
     supabaseAdmin.from('master_transporter').select('id, name, type, service_model').eq('is_active', true).order('type').order('name'),
     supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').order('vehicle_no'),
     supabaseAdmin.from('master_driver').select('id, driver_name, phone, role').eq('is_active', true).order('role').order('driver_name'),
     supabaseAdmin.from('routes').select('id, route_code, origin, destination').order('route_code'),
-    // PSS yang belum punya shipment_tracking
+    // Semua PSS mulai cut-off
     supabaseAdmin.from('outbound_header')
       .select('id, pss_no, customer_name, destination_city: ship_to_city, promised_delivery_date, document_date')
+      .gte('document_date', CUTOFF_DATE)
       .order('document_date', { ascending: false })
       .limit(500),
+    // PSS yang sudah punya tracking — untuk filter dropdown agar tidak duplikat
+    supabaseAdmin.from('shipment_tracking')
+      .select('pss_no')
+      .not('pss_no', 'is', null),
   ])
+
+  // Exclude PSS yang sudah punya tracking dari dropdown
+  const trackedSet = new Set((tracked.data ?? []).map((r: any) => r.pss_no as string))
+  const pssOptions = (pss.data ?? []).filter((r: any) => !trackedSet.has(r.pss_no))
+
   return {
     transporters: (tr.data ?? []) as TransporterOption[],
     vehicles:     (veh.data ?? []) as VehicleOption[],
     drivers:      (drv.data ?? []) as DriverOption[],
     routes:       (rt.data ?? []) as RouteOption[],
-    pssOptions:   (pss.data ?? []) as any[],
+    pssOptions:   pssOptions as any[],
   }
 }
 
@@ -215,4 +257,84 @@ export async function assignTrip(shipmentIds: number[], assignment: TripAssignme
     .in('id', shipmentIds)
   if (error) throw error
   return shipmentIds.length
+}
+
+// ─── Bulk Create Shipment dari PSS Untracked ──────────────────────────────────
+
+export type BulkShipmentPayload = {
+  pssRows: UntrackedPssRow[]
+  vendor_id:      number | null
+  vendor_name:    string | null
+  // Kendaraan (input manual untuk eksternal)
+  vehicle_nopol:  string | null
+  vehicle_type:   string | null
+  // Driver (input manual untuk eksternal, atau dari master_driver untuk internal)
+  driver_name_ext: string | null
+  // Internal master refs (opsional)
+  vehicle_id:     number | null
+  driver_id:      number | null
+  helper_id:      number | null
+  route_id:       number | null
+  trip_id:        string | null
+  cost_model:     'Internal' | 'Retail' | 'Trucking' | null
+  status:         'Draft' | 'Dispatched'
+  dispatch_time:  string | null
+}
+
+export async function generateTripId(): Promise<string> {
+  const now = new Date()
+  const yy  = String(now.getFullYear()).slice(2)
+  const mm  = String(now.getMonth() + 1).padStart(2, '0')
+  const prefix = `TRIP-${yy}${mm}-`
+
+  // Ambil semua trip_id bulan ini dan cari nomor urut tertinggi secara numerik
+  const { data } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('trip_id')
+    .like('trip_id', `${prefix}%`)
+    .not('trip_id', 'is', null)
+
+  let maxNum = 0
+  for (const row of data ?? []) {
+    const parts = (row.trip_id as string).split('-')
+    const n = parseInt(parts.at(-1) ?? '0', 10)
+    if (!isNaN(n) && n > maxNum) maxNum = n
+  }
+  return `${prefix}${String(maxNum + 1).padStart(4, '0')}`
+}
+
+export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise<number> {
+  if (!payload.pssRows.length) throw new Error('Pilih minimal 1 PSS')
+
+  const rows = payload.pssRows.map(pss => ({
+    source_type:            pss.source_type,
+    pss_no:                 pss.source_type === 'PSS' ? pss.pss_no : null,
+    crossdocking_id:        pss.source_type === 'Crossdocking' ? pss.id : null,
+    outbound_header_id:     pss.source_type === 'PSS' ? pss.id : null,
+    customer_name:          pss.customer_name,
+    destination_city:       pss.destination_city,
+    document_date:          pss.document_date,
+    promised_delivery_date: pss.promised_delivery_date,
+    status:                 payload.status,
+    // vendor info (disimpan ke notes sementara, atau kolom baru)
+    transporter_id:         null,           // pakai vendor tabel berbeda
+    vehicle_id:             payload.vehicle_id,
+    driver_id:              payload.driver_id,
+    helper_id:              payload.helper_id,
+    route_id:               payload.route_id,
+    trip_id:                payload.trip_id,
+    cost_model:             payload.cost_model,
+    dispatch_time:          payload.status === 'Dispatched' ? payload.dispatch_time : null,
+    // Simpan info vendor & kendaraan eksternal di notes
+    notes: [
+      payload.vendor_name   ? `Vendor: ${payload.vendor_name}`      : null,
+      payload.vehicle_nopol ? `Nopol: ${payload.vehicle_nopol}`     : null,
+      payload.vehicle_type  ? `Tipe: ${payload.vehicle_type}`       : null,
+      payload.driver_name_ext ? `Driver: ${payload.driver_name_ext}` : null,
+    ].filter(Boolean).join(' | ') || null,
+  }))
+
+  const { error } = await supabaseAdmin.from('shipment_tracking').insert(rows)
+  if (error) throw new Error(error.message)
+  return rows.length
 }

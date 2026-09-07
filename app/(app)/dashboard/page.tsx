@@ -35,9 +35,9 @@ async function getDashboardData() {
   ] = await Promise.all([
     supabase.from('vendors').select('*', { count: 'exact', head: true }),
     supabase.from('receiving_header').select('*', { count: 'exact', head: true }),
-    supabase.from('issue_log').select('*', { count: 'exact', head: true }),
+    supabase.from('issue_log').select('*', { count: 'exact', head: true }).in('status', ['Open', 'In Progress']),
     supabase.from('customers').select('id, customer_name, city, is_active, machine_count, latitude, longitude').eq('is_active', true).limit(200),
-    supabase.from('issue_log').select('issue_no, title, status, category, due_date').in('status', ['open', 'in_progress']).order('due_date', { ascending: true }).limit(5),
+    supabase.from('issue_log').select('issue_no, title, status, category, due_date').in('status', ['Open', 'In Progress']).order('due_date', { ascending: true }).limit(5),
     // Shipment aktif dari shipment_tracking (bukan tabel shipments lama)
     supabase.from('shipment_tracking')
       .select('id, pss_no, status, customer_name, destination_city, promised_delivery_date, transporter_id, dispatch_time')
@@ -214,9 +214,7 @@ export default async function DashboardPage() {
           <div className={`mt-2 text-3xl font-bold ${counts.issues > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
             {counts.issues}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {counts.deliveredToday > 0 ? `${counts.deliveredToday} delivered hari ini` : 'Masalah operasional'}
-          </div>
+          <div className="text-xs text-gray-500 mt-1">Open &amp; In Progress</div>
         </Link>
       </div>
 
@@ -504,7 +502,9 @@ export default async function DashboardPage() {
             <ul className="divide-y divide-border">
               {openIssues.map((iss: any) => (
                 <li key={iss.issue_no} className="flex items-start gap-3 p-3 text-sm">
-                  <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 whitespace-nowrap">{iss.status}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded whitespace-nowrap font-medium ${
+                    iss.status === 'In Progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                  }`}>{iss.status}</span>
                   <div className="flex-1">
                     <div className="font-medium">{iss.title}</div>
                     <div className="text-xs text-gray-500 mt-0.5">

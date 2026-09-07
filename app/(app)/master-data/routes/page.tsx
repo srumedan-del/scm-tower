@@ -23,15 +23,13 @@ export default async function RoutesPage() {
               <tr>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ROUTE CODE</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ORIGIN → DESTINATION</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CITY</th>
                 <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LEAD TIME</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">RISK</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">NOTES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {routes.map((r:any) => <RouteRow key={r.id} route={r} />)}
-              {routes.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">BELUM ADA RUTE.</td></tr>}
+              {routes.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500">BELUM ADA RUTE.</td></tr>}
             </tbody>
           </table>
         </div>
