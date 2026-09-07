@@ -111,3 +111,49 @@ export async function deleteHdMonitoring(id: number) {
   const { error } = await supabaseAdmin.from('hd_stock_monitoring').delete().eq('id', id)
   if (error) throw error
 }
+
+export type LastShipmentInfo = {
+  last_shipment_date: string
+  last_shipment_qty: number
+  pss_no: string | null
+}
+
+/**
+ * Ambil pengiriman terakhir dari outbound_header ke customer tertentu.
+ * Pakai customer_no dari tabel customers untuk match ke outbound_header.customer_no.
+ */
+export async function getLastShipmentForCustomer(customerId: number): Promise<LastShipmentInfo | null> {
+  // Ambil customer_code dulu
+  const { data: cust } = await supabaseAdmin
+    .from('customers')
+    .select('customer_code')
+    .eq('id', customerId)
+    .single()
+
+  if (!cust?.customer_code) return null
+
+  // Cari PSS terakhir ke customer ini
+  const { data } = await supabaseAdmin
+    .from('outbound_header')
+    .select('pss_no, document_date')
+    .eq('customer_no', cust.customer_code)
+    .order('document_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!data?.pss_no) return null
+
+  // Hitung total qty dari outbound_detail untuk PSS tersebut
+  const { data: details } = await supabaseAdmin
+    .from('outbound_detail')
+    .select('quantity')
+    .eq('document_no', data.pss_no)
+
+  const totalQty = (details ?? []).reduce((s: number, r: any) => s + (Number(r.quantity) || 0), 0)
+
+  return {
+    last_shipment_date: data.document_date,
+    last_shipment_qty:  totalQty,
+    pss_no:             data.pss_no,
+  }
+}

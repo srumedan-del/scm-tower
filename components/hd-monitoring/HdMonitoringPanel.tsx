@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertHdMonitoring, deleteHdMonitoring,
-  getHdCustomers,
+  getHdCustomers, getLastShipmentForCustomer,
   type HdMonitoringRow, type HdCustomerOption,
 } from '@/app/(app)/inventory/hd-monitoring/actions'
 
@@ -91,6 +91,8 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
   const [saving,   startSaving]   = useTransition()
   const [deleting, startDeleting] = useTransition()
   const [err, setErr] = useState<string | null>(null)
+  const [autoFilling, setAutoFilling] = useState(false)
+  const [autoFillInfo, setAutoFillInfo] = useState<string | null>(null)
 
   const up = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
@@ -100,6 +102,30 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
       setCustLoading(false)
     }).catch(() => setCustLoading(false))
   }, [])
+
+  // Auto-fill pengiriman terakhir saat customer dipilih (hanya untuk form tambah baru)
+  async function handleCustomerChange(val: string) {
+    up('customer_id', val)
+    if (!val || row) return  // tidak auto-fill saat edit
+    const custId = Number(val)
+    if (!custId) return
+    setAutoFilling(true)
+    setAutoFillInfo(null)
+    try {
+      const info = await getLastShipmentForCustomer(custId)
+      if (info) {
+        up('last_shipment_date', info.last_shipment_date)
+        up('last_shipment_qty',  info.last_shipment_qty)
+        setAutoFillInfo(`Auto-filled dari ${info.pss_no} · ${info.last_shipment_date} · ${info.last_shipment_qty.toLocaleString('id-ID')} pcs`)
+      } else {
+        setAutoFillInfo('Belum ada data pengiriman untuk customer ini.')
+      }
+    } catch {
+      setAutoFillInfo(null)
+    } finally {
+      setAutoFilling(false)
+    }
+  }
 
   const selectedCust = customers.find(c => c.id === Number(form.customer_id))
   const preview = calcPreview(form, selectedCust?.machine_count ?? row?.hd_machine_count ?? null)
@@ -129,9 +155,9 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
           rop_days:                      Number(form.rop_days),
           lead_time_reorder_days:        Number(form.lead_time_reorder_days),
           last_known_stock_date:         (form.last_known_stock_date as string) || null,
-          last_known_stock_qty:          form.last_known_stock_qty !== '' ? Number(form.last_known_stock_qty) : null,
+          last_known_stock_qty:          form.last_known_stock_qty !== '' ? Number(form.last_known_stock_qty) : 0,
           last_shipment_date:            (form.last_shipment_date as string) || null,
-          last_shipment_qty:             form.last_shipment_qty !== '' ? Number(form.last_shipment_qty) : null,
+          last_shipment_qty:             form.last_shipment_qty !== '' ? Number(form.last_shipment_qty) : 0,
           notes:                         (form.notes as string) || null,
         } as any)
         onSaved(); onClose()
@@ -167,7 +193,7 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
                 ) : (
                   <select
                     value={form.customer_id}
-                    onChange={e => up('customer_id', e.target.value)}
+                    onChange={e => handleCustomerChange(e.target.value)}
                     className="inp"
                     disabled={custLoading}
                   >
@@ -188,6 +214,20 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
               <div className="mt-2 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2 text-xs text-indigo-700">
                 <strong>{selectedCust.customer_name}</strong> · {selectedCust.city} ·{' '}
                 <strong>{selectedCust.machine_count ?? 0}</strong> mesin HD
+              </div>
+            )}
+            {autoFilling && (
+              <div className="mt-2 rounded-lg bg-gray-50 border px-3 py-2 text-xs text-gray-500 animate-pulse">
+                Mengambil data pengiriman terakhir dari Outbound...
+              </div>
+            )}
+            {autoFillInfo && !autoFilling && (
+              <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                autoFillInfo.startsWith('Belum')
+                  ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                  : 'bg-green-50 border-green-200 text-green-700'
+              }`}>
+                {autoFillInfo.startsWith('Belum') ? '⚠ ' : '✓ Auto-fill: '}{autoFillInfo}
               </div>
             )}
           </Sec>
