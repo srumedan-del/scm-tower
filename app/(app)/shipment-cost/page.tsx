@@ -1,4 +1,5 @@
-import { getShipmentCosts, computeCostSummary, type ShipmentCostRow } from './actions'
+import { getShipmentCosts, type ShipmentCostRow } from './actions'
+import { computeCostSummary, type CostSummary } from './utils'
 import Link from 'next/link'
 import { DollarSign, TrendingUp } from 'lucide-react'
 

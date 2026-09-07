@@ -61,7 +61,7 @@ export type ShipmentTrackingRow = {
   route_code?: string | null
 }
 
-export type TransporterOption = { id: number; name: string; type: string; service_model: string | null }
+export type TransporterOption = { id: number; name: string; type: string; service_model: string | null; vendor_type: string | null }
 export type VehicleOption     = { id: number; vehicle_no: string; vehicle_type: string | null }
 export type DriverOption      = { id: number; driver_name: string; phone: string | null; role: string }
 export type RouteOption       = { id: number; route_code: string; origin: string; destination: string }
@@ -140,8 +140,9 @@ export async function getUntrackedPss(): Promise<UntrackedPssRow[]> {
 }
 
 export async function getShipmentTMSOptions() {
-  const [tr, veh, drv, rt, pss, tracked] = await Promise.all([
-    supabaseAdmin.from('master_transporter').select('id, name, type, service_model').eq('is_active', true).order('type').order('name'),
+  const [vend, veh, drv, rt, pss, tracked] = await Promise.all([
+    // Ganti master_transporter → vendors
+    supabaseAdmin.from('vendors').select('id, vendor_name, vendor_type, is_active').eq('is_active', true).order('vendor_name'),
     supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').order('vehicle_no'),
     supabaseAdmin.from('master_driver').select('id, driver_name, phone, role').eq('is_active', true).order('role').order('driver_name'),
     supabaseAdmin.from('routes').select('id, route_code, origin, destination').order('route_code'),
@@ -157,16 +158,28 @@ export async function getShipmentTMSOptions() {
       .not('pss_no', 'is', null),
   ])
 
+  // Map vendors ke TransporterOption — vendor_type 'TRUCKING'/'INTERNAL'/dll
+  const transporters: TransporterOption[] = (vend.data ?? []).map((v: any) => ({
+    id:            v.id,
+    name:          v.vendor_name,
+    vendor_type:   v.vendor_type,
+    // Internal jika vendor_type mengandung 'INTERNAL' atau 'SRU'
+    type:          (v.vendor_type ?? '').toUpperCase().includes('INTERNAL') ? 'Internal' : 'Eksternal',
+    service_model: (v.vendor_type ?? '').toUpperCase().includes('TRUCKING') ? 'Trucking'
+                 : (v.vendor_type ?? '').toUpperCase().includes('RETAIL')   ? 'Retail'
+                 : null,
+  }))
+
   // Exclude PSS yang sudah punya tracking dari dropdown
   const trackedSet = new Set((tracked.data ?? []).map((r: any) => r.pss_no as string))
   const pssOptions = (pss.data ?? []).filter((r: any) => !trackedSet.has(r.pss_no))
 
   return {
-    transporters: (tr.data ?? []) as TransporterOption[],
-    vehicles:     (veh.data ?? []) as VehicleOption[],
-    drivers:      (drv.data ?? []) as DriverOption[],
-    routes:       (rt.data ?? []) as RouteOption[],
-    pssOptions:   pssOptions as any[],
+    transporters,
+    vehicles:   (veh.data ?? []) as VehicleOption[],
+    drivers:    (drv.data ?? []) as DriverOption[],
+    routes:     (rt.data ?? []) as RouteOption[],
+    pssOptions: pssOptions as any[],
   }
 }
 

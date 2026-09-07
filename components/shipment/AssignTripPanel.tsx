@@ -176,7 +176,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
               <option value="">-- Pilih transporter --</option>
               {transporters.map(t => (
                 <option key={t.id} value={t.id}>
-                  {t.name} [{t.type}{t.service_model ? ` · ${t.service_model}` : ''}]
+                  {t.name}{t.service_model ? ` · ${t.service_model}` : ''}
                 </option>
               ))}
             </select>
