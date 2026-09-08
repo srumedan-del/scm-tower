@@ -7,6 +7,7 @@ type Vendor = {
   vendor_code: string
   vendor_name: string
   vendor_type: string | null
+  vendor_category: 'Internal' | 'Eksternal' | null
   pic_name: string | null
   phone: string | null
   email: string | null
@@ -19,7 +20,8 @@ type Vendor = {
 async function getVendors() {
   const { data, error } = await supabase
     .from('vendors')
-    .select('id, vendor_code, vendor_name, vendor_type, pic_name, phone, email, coverage_area, default_sla, is_active, created_at')
+    .select('id, vendor_code, vendor_name, vendor_type, vendor_category, pic_name, phone, email, coverage_area, default_sla, is_active, created_at')
+    .order('vendor_category')
     .order('vendor_name')
     .limit(200)
   if (error) console.error('vendors fetch error:', error.message)
@@ -43,6 +45,7 @@ export default async function VendorPage() {
               <tr>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">KODE</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">NAMA</th>
+                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">KATEGORI</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">TIPE</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">PIC</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">PHONE</th>
@@ -55,7 +58,7 @@ export default async function VendorPage() {
               {vendors.map((v) => (
                 <VendorRow key={v.id} vendor={v} />
               ))}
-              {vendors.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">Belum ada vendor.</td></tr>}
+              {vendors.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">Belum ada vendor.</td></tr>}
             </tbody>
           </table>
         </div>

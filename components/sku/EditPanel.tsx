@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { supabase } from '@/lib/supabase'
+import { upsertSku, deleteSku } from '@/app/(app)/master-data/sku/actions'
 
 type Sku = {
   id: number
@@ -57,9 +57,10 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
     if (!sku) return
     if (!confirm(`HAPUS SKU ${sku.sku_code} — ${sku.item_name}?`)) return
     startDeleting(async () => {
-      const { error } = await supabase.from('master_sku').delete().eq('id', sku.id)
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try {
+        await deleteSku(sku.id)
+        onSaved(); onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 
@@ -75,31 +76,28 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
         safety_stock: form.safety_stock === null || Number.isNaN(Number(form.safety_stock)) ? null : Number(form.safety_stock),
         is_active: form.is_active,
       }
-      let error
-      if (sku) {
-        const r = await supabase.from('master_sku').update(payload).eq('id', sku.id)
-        error = r.error
-      } else {
-        const r = await supabase.from('master_sku').insert(payload)
-        error = r.error
-      }
 
-      // Fallback: kalau error karena kolom 'group' belum ada, retry tanpa field group
-      if (error && /column.*group.*does not exist/i.test(error.message)) {
-        const payloadNoGroup = { ...payload }
-        delete (payloadNoGroup as any).group
-        const r2 = sku
-          ? await supabase.from('master_sku').update(payloadNoGroup).eq('id', sku.id)
-          : await supabase.from('master_sku').insert(payloadNoGroup)
-        if (!r2.error) {
-          setErr('Note: kolom "group" belum ada di tabel. Field ini sementara di-skip. Jalankan scripts/add_group_to_master_sku.sql di Supabase SQL Editor.')
-          onSaved()
-          return
+      try {
+        await upsertSku(payload, sku?.id)
+      } catch (e: any) {
+        // Fallback: kalau error karena kolom 'group' belum ada, retry tanpa field group
+        if (/column.*group.*does not exist/i.test(e.message)) {
+          const payloadNoGroup = { ...payload }
+          delete (payloadNoGroup as any).group
+          try {
+            await upsertSku(payloadNoGroup, sku?.id)
+            setErr('Note: kolom "group" belum ada di tabel. Field ini sementara di-skip. Jalankan scripts/add_group_to_master_sku.sql di Supabase SQL Editor.')
+            onSaved()
+            return
+          } catch (e2: any) {
+            setErr(e2.message)
+            return
+          }
         }
-        error = r2.error
+        setErr(e.message)
+        return
       }
 
-      if (error) { setErr(error.message); return }
       onSaved()
       onClose()
     })

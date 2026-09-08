@@ -1,6 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
-import { supabase } from '@/lib/supabase'
+import { upsertFleet, deleteFleet } from '@/app/(app)/master-data/vehicles/actions'
 
 type Fleet = {
   id: number
@@ -45,9 +45,8 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
     if (!fleet) return
     if (!confirm(`HAPUS ARMADA ${getNo(fleet)}?`)) return
     startDeleting(async () => {
-      const { error } = await supabase.from('transport_fleet').delete().eq('id', fleet.id)
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try { await deleteFleet(fleet.id); onSaved(); onClose() }
+      catch (e: any) { setErr(e.message) }
     })
   }
 
@@ -60,20 +59,12 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
         vehicle_type: (form.vehicle_type as string).trim().toUpperCase() || null,
         driver_name: (form.driver_name as string).trim().toUpperCase() || null,
         driver_phone: (form.driver_phone as string).trim() || null,
-        status: form.is_active ? 'aktif' : 'aktif',
+        status: form.is_active ? 'aktif' : 'nonaktif',
         notes: (form.brand as string).trim().toUpperCase() || null,
       }
       if (!payload.vehicle_no) { setErr('NOPOL wajib diisi'); return }
-      let error
-      if (fleet) {
-        const r = await supabase.from('transport_fleet').update(payload).eq('id', fleet.id)
-        error = r.error
-      } else {
-        const r = await supabase.from('transport_fleet').insert(payload)
-        error = r.error
-      }
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try { await upsertFleet(payload, fleet?.id); onSaved(); onClose() }
+      catch (e: any) { setErr(e.message) }
     })
   }
 

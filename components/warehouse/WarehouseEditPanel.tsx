@@ -1,6 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
-import { supabase } from '@/lib/supabase'
+import { upsertWarehouse, deleteWarehouse } from '@/app/(app)/master-data/warehouses/actions'
 
 type Wh = {
   id: number
@@ -34,9 +34,10 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
     if (!wh) return
     if (!confirm(`HAPUS GUDANG ${wh.warehouse_code}?`)) return
     startDeleting(async () => {
-      const { error } = await supabase.from('warehouses').delete().eq('id', wh.id)
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try {
+        await deleteWarehouse(wh.id)
+        onSaved(); onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 
@@ -51,16 +52,10 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
         is_active: !!form.is_active,
       }
       if (!payload.warehouse_code) { setErr('CODE wajib diisi'); return }
-      let error
-      if (wh) {
-        const r = await supabase.from('warehouses').update(payload).eq('id', wh.id)
-        error = r.error
-      } else {
-        const r = await supabase.from('warehouses').insert(payload)
-        error = r.error
-      }
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try {
+        await upsertWarehouse(payload, wh?.id)
+        onSaved(); onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 

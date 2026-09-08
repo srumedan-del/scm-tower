@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { supabase } from '@/lib/supabase'
+import { upsertCustomer, deleteCustomer } from '@/app/(app)/master-data/customers/actions'
 
 type Customer = {
   id: number
@@ -100,9 +100,10 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
     if (!customer) return
     if (!confirm(`HAPUS CUSTOMER ${customer.customer_code}?`)) return
     startDeleting(async () => {
-      const { error } = await supabase.from('customers').delete().eq('id', customer.id)
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try {
+        await deleteCustomer(customer.id)
+        onSaved(); onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 
@@ -126,17 +127,11 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
         lead_time_days: form.lead_time_days == null ? null : Number(form.lead_time_days),
         safety_buffer_days: form.safety_buffer_days == null ? null : Number(form.safety_buffer_days),
       }
-      let error
-      if (customer) {
-        const r = await supabase.from('customers').update(payload).eq('id', customer.id)
-        error = r.error
-      } else {
-        const r = await supabase.from('customers').insert(payload)
-        error = r.error
-      }
-      if (error) { setErr(error.message); return }
-      onSaved()
-      onClose()
+      try {
+        await upsertCustomer(payload, customer?.id)
+        onSaved()
+        onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 

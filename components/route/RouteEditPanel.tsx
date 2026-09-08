@@ -39,7 +39,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
   const [err, setErr] = useState<string | null>(null)
   const up = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
-  // Saat DK/LK dipilih (hanya form baru), auto-generate route code
+  // Saat DK/LK dipilih — generate route code hanya untuk form baru
   async function handleDkLkChange(val: 'D' | 'L' | '') {
     up('dk_lk', val)
     if (!val || route) return   // tidak generate ulang saat edit
@@ -93,21 +93,20 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
 
         <div className="p-4 space-y-3 overflow-y-auto">
 
-          {/* DK / LK — pilih dulu karena menentukan route code */}
+          {/* DK / LK */}
           <Field label="TIPE RUTE (DK/LK) *">
             <div className="grid grid-cols-2 gap-2">
               {(['D', 'L'] as const).map(v => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => !route && handleDkLkChange(v)}
-                  disabled={!!route}
+                  onClick={() => handleDkLkChange(v)}
                   className={`py-2.5 rounded-lg border text-sm font-bold transition-colors ${
                     form.dk_lk === v
                       ? v === 'D'
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-amber-500 text-white border-amber-500'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {v === 'D' ? '🏙 D — Dalam Kota' : '🛣 L — Luar Kota'}

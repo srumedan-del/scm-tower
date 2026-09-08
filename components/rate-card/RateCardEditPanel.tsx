@@ -1,6 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
-import { supabase } from '@/lib/supabase'
+import { upsertRateCard, deleteRateCard } from '@/app/(app)/master-data/rate-card/actions'
 
 type Rate = {
   id: number
@@ -47,9 +47,10 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
     if (!rate) return
     if (!confirm(`HAPUS RATE ${rate.rate_code}?`)) return
     startDeleting(async () => {
-      const { error } = await supabase.from('transport_rate_card').delete().eq('id', rate.id)
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try {
+        await deleteRateCard(rate.id)
+        onSaved(); onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 
@@ -72,16 +73,10 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
       if (!payload.rate_code) { setErr('RATE CODE wajib diisi'); return }
       if (!payload.origin) { setErr('ORIGIN wajib diisi'); return }
       if (!payload.destination) { setErr('DESTINATION wajib diisi'); return }
-      let error
-      if (rate) {
-        const r = await supabase.from('transport_rate_card').update(payload).eq('id', rate.id)
-        error = r.error
-      } else {
-        const r = await supabase.from('transport_rate_card').insert(payload)
-        error = r.error
-      }
-      if (error) { setErr(error.message); return }
-      onSaved(); onClose()
+      try {
+        await upsertRateCard(payload, rate?.id)
+        onSaved(); onClose()
+      } catch (e: any) { setErr(e.message) }
     })
   }
 
