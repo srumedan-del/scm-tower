@@ -24,6 +24,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
   const [allCrew,    setAllCrew]    = useState<DriverOption[]>([])
   const [routes,     setRoutes]     = useState<RouteOption[]>([])
   const [optLoading, setOptLoading] = useState(true)
+	const [routeQuery, setRouteQuery] = useState('')
 
   const [form, setForm] = useState({
     // Vendor
@@ -46,6 +47,16 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
   const [saving, startSaving] = useTransition()
   const [err, setErr]         = useState<string | null>(null)
   const up = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
+  const dispatchDate = form.dispatch_time.slice(0, 10)
+  const dispatchClock = form.dispatch_time.slice(11, 16)
+
+  function updateDispatchDate(date: string) {
+    up('dispatch_time', `${date}T${dispatchClock}`)
+  }
+
+  function updateDispatchClock(clock: string) {
+    up('dispatch_time', `${dispatchDate}T${clock}`)
+  }
 
   useEffect(() => {
     Promise.all([
@@ -69,12 +80,26 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
     up('vendor_name', v?.vendor_name ?? '')
   }
 
+	function routeLabel(route: RouteOption) {
+		return `${route.route_code} · ${route.origin} → ${route.destination}`
+	}
+
+	function onRouteQueryChange(value: string) {
+		setRouteQuery(value)
+		const selectedRoute = routes.find(route => routeLabel(route).toLocaleLowerCase('id-ID') === value.toLocaleLowerCase('id-ID'))
+		up('route_id', selectedRoute?.id ?? null)
+	}
+
   function save() {
     startSaving(async () => {
       setErr(null)
       if (!form.vendor_id) { setErr('Vendor wajib dipilih'); return }
       if (!form.vehicle_nopol.trim()) { setErr('Nomor Polisi kendaraan wajib diisi'); return }
       if (!form.driver_name_ext.trim()) { setErr('Nama Driver wajib diisi'); return }
+      if (form.status === 'Dispatched' && !/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(form.dispatch_time)) {
+        setErr('Tanggal dan jam dispatch harus diisi dengan format yang benar')
+        return
+      }
       try {
         await bulkCreateShipments({
           pssRows:         selectedPss,
@@ -190,7 +215,18 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           {/* ── Rute ── */}
           <Section icon={<Route className="h-4 w-4" />} title="Rute (opsional)">
             <Field label="RUTE">
-              <select value={form.route_id ?? ''} onChange={e => up('route_id', e.target.value ? Number(e.target.value) : null)} className="inp">
+				<input
+					list="bulk-shipment-routes"
+					value={routeQuery}
+					onChange={event => onRouteQueryChange(event.target.value)}
+					placeholder="Ketik kota atau kode rute, mis. LANGSA"
+					className="inp"
+					disabled={optLoading}
+				/>
+				<datalist id="bulk-shipment-routes">
+					{routes.map(route => <option key={route.id} value={routeLabel(route)} />)}
+				</datalist>
+				<select value={form.route_id ?? ''} onChange={e => up('route_id', e.target.value ? Number(e.target.value) : null)} className="hidden" tabIndex={-1} aria-hidden="true">
                 <option value="">— Pilih Rute —</option>
                 {routes.map(r => (
                   <option key={r.id} value={r.id}>{r.route_code} · {r.origin} → {r.destination}</option>
@@ -210,7 +246,27 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
               </Field>
               {form.status === 'Dispatched' && (
                 <Field label="WAKTU DISPATCH">
-                  <input type="datetime-local" value={form.dispatch_time} onChange={e => up('dispatch_time', e.target.value)} className="inp" />
+                  <div className="grid grid-cols-[1fr_110px] gap-2">
+                    <input
+                      type="date"
+                      value={dispatchDate}
+                      onChange={e => updateDispatchDate(e.target.value)}
+                      className="inp"
+                      aria-label="Tanggal dispatch"
+                    />
+                    <input
+                      type="text"
+                      value={dispatchClock}
+                      onChange={e => updateDispatchClock(e.target.value)}
+                      placeholder="HH:MM"
+                      inputMode="numeric"
+                      maxLength={5}
+                      className="inp"
+                      aria-label="Jam dispatch, dapat diketik manual"
+                      title="Ketik jam secara manual, contoh 15:25"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Jam dapat diketik manual, contoh: 15:25</p>
                 </Field>
               )}
             </div>

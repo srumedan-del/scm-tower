@@ -457,7 +457,7 @@ export default async function DashboardPage() {
             {withLokasi}/{customerActive} LOKASI ({lokasiCoverage}%)
           </div>
         </div>
-        <CustomerStockMapClient />
+        <CustomerStockMapClient showMaintainBelow />
       </section>
 
       {/* ── Shipments Aktif (TMS) + Open Issues ──────────── */}

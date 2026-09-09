@@ -81,7 +81,8 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
     .from('vw_shipment_tms')
     .select('*')
     .gte('document_date', CUTOFF_DATE)
-    .order('promised_delivery_date', { ascending: false })
+    .order('trip_id', { ascending: true, nullsFirst: false })
+    .order('pss_no', { ascending: true, nullsFirst: false })
     .limit(200)
 
   if (filters?.status && filters.status !== 'all') {
@@ -91,6 +92,26 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
   const { data, error } = await q
   if (error) throw error
   return (data ?? []) as ShipmentTrackingRow[]
+}
+
+export type ServiceLevelShipmentRow = Pick<
+  ShipmentTrackingRow,
+  'id' | 'pss_no' | 'customer_name' | 'document_date' | 'promised_delivery_date' |
+  'status' | 'delivery_time' | 'notes' | 'transporter_name'
+>
+
+/** Data ringkas untuk laporan service level pada periode document date tertentu. */
+export async function getServiceLevelShipments(startDate: string, endDate: string): Promise<ServiceLevelShipmentRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from('vw_shipment_tms')
+    .select('id, pss_no, customer_name, document_date, promised_delivery_date, status, delivery_time, notes, transporter_name')
+    .gte('document_date', startDate)
+    .lte('document_date', endDate)
+    .order('document_date', { ascending: false })
+    .limit(1000)
+
+  if (error) throw error
+  return (data ?? []) as ServiceLevelShipmentRow[]
 }
 
 export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> & { id?: number }) {

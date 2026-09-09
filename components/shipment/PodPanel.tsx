@@ -34,6 +34,16 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
   const [err, setErr] = useState<string | null>(null)
 
   const up = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const receivedDate = form.received_at.slice(0, 10)
+  const receivedClock = form.received_at.slice(11, 16)
+
+  function updateReceivedDate(date: string) {
+    up('received_at', `${date}T${receivedClock}`)
+  }
+
+  function updateReceivedClock(clock: string) {
+    up('received_at', `${receivedDate}T${clock}`)
+  }
 
   useEffect(() => {
     getPodByTrackingId(shipment.id).then(p => {
@@ -63,6 +73,10 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
       setErr(null)
       if (!form.receiver_name.trim()) { setErr('Nama penerima wajib diisi'); return }
       if (!form.received_at)         { setErr('Waktu terima wajib diisi'); return }
+      if (!/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(form.received_at)) {
+        setErr('Tanggal dan jam terima harus diisi dengan format yang benar')
+        return
+      }
       try {
         const receivedAtISO = new Date(form.received_at).toISOString()
 
@@ -179,12 +193,27 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Waktu Diterima *">
-              <input
-                type="datetime-local"
-                value={form.received_at}
-                onChange={e => up('received_at', e.target.value)}
-                className="inp"
-              />
+              <div className="grid grid-cols-[1fr_110px] gap-2">
+                <input
+                  type="date"
+                  value={receivedDate}
+                  onChange={e => updateReceivedDate(e.target.value)}
+                  className="inp"
+                  aria-label="Tanggal diterima"
+                />
+                <input
+                  type="text"
+                  value={receivedClock}
+                  onChange={e => updateReceivedClock(e.target.value)}
+                  placeholder="HH:MM"
+                  inputMode="numeric"
+                  maxLength={5}
+                  className="inp"
+                  aria-label="Jam diterima, dapat diketik manual"
+                  title="Ketik jam secara manual, contoh 15:25"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Jam dapat diketik manual, contoh: 15:25</p>
             </Field>
 
             <Field label="Catatan (opsional)">

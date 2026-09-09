@@ -51,6 +51,10 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
     setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
+    if (shipment) {
+      setOptLoading(false)
+      return
+    }
     getShipmentTMSOptions().then(opts => {
       setTransporters(opts.transporters)
       setVehicles(opts.vehicles)
@@ -228,10 +232,11 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
             </div>
           </Section>
 
-          {/* ── Transporter & Armada ── */}
-          <Section title="Transporter & Armada">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Transporter">
+          {/* Data vendor, armada, dan driver ditetapkan saat buat shipment. */}
+          {!shipment && (
+            <Section title="Transporter & Armada">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Transporter">
                 <select value={form.transporter_id ?? ''} onChange={e => up('transporter_id', e.target.value ? Number(e.target.value) : null)} className="inp">
                   <option value="">-- Pilih transporter --</option>
                   {transporters.map(t => (
@@ -240,66 +245,64 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
                     </option>
                   ))}
                 </select>
-              </Field>
-              <Field label="Rute">
+                </Field>
+                <Field label="Rute">
                 <select value={form.route_id ?? ''} onChange={e => up('route_id', e.target.value ? Number(e.target.value) : null)} className="inp">
                   <option value="">-- Opsional --</option>
                   {routes.map(r => (
                     <option key={r.id} value={r.id}>{r.route_code} — {r.origin} → {r.destination}</option>
                   ))}
                 </select>
-              </Field>
-            </div>
-            {isInternal && (
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                <Field label="Kendaraan">
+                </Field>
+              </div>
+              {isInternal && (
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  <Field label="Kendaraan">
                   <select value={form.vehicle_id ?? ''} onChange={e => up('vehicle_id', e.target.value ? Number(e.target.value) : null)} className="inp">
                     <option value="">-- Pilih --</option>
                     {vehicles.map(v => (
                       <option key={v.id} value={v.id}>{v.vehicle_no}{v.vehicle_type ? ` (${v.vehicle_type})` : ''}</option>
                     ))}
                   </select>
-                </Field>
-                <Field label="Driver">
+                  </Field>
+                  <Field label="Driver">
                   <select value={form.driver_id ?? ''} onChange={e => up('driver_id', e.target.value ? Number(e.target.value) : null)} className="inp">
                     <option value="">-- Pilih Driver --</option>
                     {drivers.map(d => (
                       <option key={d.id} value={d.id}>{d.driver_name}</option>
                     ))}
                   </select>
-                </Field>
-                <Field label="Helper">
+                  </Field>
+                  <Field label="Helper">
                   <select value={form.helper_id ?? ''} onChange={e => up('helper_id', e.target.value ? Number(e.target.value) : null)} className="inp">
                     <option value="">-- Pilih Helper --</option>
                     {helpers.map(d => (
                       <option key={d.id} value={d.id}>{d.driver_name}</option>
                     ))}
                   </select>
+                  </Field>
+                </div>
+              )}
+              <div className="mt-3">
+                <Field label="Trip ID">
+                  <div className="inp bg-gray-50 text-gray-600 font-mono">
+                    {form.trip_id ?? '-'}
+                  </div>
                 </Field>
               </div>
-            )}
-            <div className="mt-3">
-              <Field label="Trip ID">
-                <div className="inp bg-gray-50 text-gray-600 font-mono">
-                  {form.trip_id ?? '-'}
-                </div>
-              </Field>
-            </div>
-          </Section>
+            </Section>
+          )}
 
           {/* ── Status & Timeline ── */}
           <Section title="Status & Timeline">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Field label="Status *">
                 <select value={form.status ?? 'Draft'} onChange={e => up('status', e.target.value)} className="inp">
                   {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </Field>
               <Field label="Waktu Dispatch">
-                <input type="datetime-local" value={form.dispatch_time?.slice(0,16) ?? ''} onChange={e => up('dispatch_time', e.target.value ? new Date(e.target.value).toISOString() : null)} className="inp" />
-              </Field>
-              <Field label="Waktu Delivered">
-                <input type="datetime-local" value={form.delivery_time?.slice(0,16) ?? ''} onChange={e => up('delivery_time', e.target.value ? new Date(e.target.value).toISOString() : null)} className="inp" />
+				<DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
               </Field>
             </div>
           </Section>
@@ -361,4 +364,42 @@ function InfoField({ label, children }: { label: string; children: React.ReactNo
       <div className="py-1.5">{children}</div>
     </div>
   )
+}
+
+function DateTimeInput({ value, onChange }: { value: string | null; onChange: (value: string | null) => void }) {
+	const [time, setTime] = useState(value?.slice(11, 16) ?? '')
+	const date = value?.slice(0, 10) ?? ''
+
+	useEffect(() => {
+		setTime(value?.slice(11, 16) ?? '')
+	}, [value])
+
+	function save(dateValue: string, timeValue: string) {
+		if (!dateValue && !timeValue) {
+			onChange(null)
+			return
+		}
+		if (!dateValue || !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) return
+		onChange(new Date(`${dateValue}T${timeValue}:00`).toISOString())
+	}
+
+	return (
+		<div className="grid grid-cols-[1fr_4.5rem] gap-1.5">
+			<input type="date" value={date} onChange={event => save(event.target.value, time)} className="inp" />
+			<input
+				type="text"
+				inputMode="numeric"
+				value={time}
+				onChange={event => {
+					const nextTime = event.target.value
+					setTime(nextTime)
+					save(date, nextTime)
+				}}
+				placeholder="23:54"
+				maxLength={5}
+				className="inp"
+				aria-label="Jam (HH:MM)"
+			/>
+		</div>
+	)
 }

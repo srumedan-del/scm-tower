@@ -7,13 +7,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Truck, Package,
   AlertTriangle, Settings, Warehouse, Activity,
-  Database, LogOut, ArrowLeftRight, DollarSign,
+  Database, LogOut, ArrowLeftRight, DollarSign, ChartNoAxesCombined,
 } from 'lucide-react'
 
 const items = [
   ['Dashboard',     '/dashboard',     LayoutDashboard],
   ['Workflow',      '/workflow',      Activity],
   ['Shipment',      '/shipment',      Truck],
+  ['Service Level', '/service-level', ChartNoAxesCombined],
   ['Shipment Cost', '/shipment-cost', DollarSign],
   ['Receiving',     '/receiving',     Package],
   ['Outbound',      '/outbound',      Truck],

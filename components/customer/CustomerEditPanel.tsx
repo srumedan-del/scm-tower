@@ -164,22 +164,16 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
             <Field label="ACTIVE"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
           </div>
           <Field label="JUMLAH MESIN HD"><input type="number" min={0} value={form.machine_count ?? ''} onChange={e=>up('machine_count', e.target.value === '' ? null : Number(e.target.value))} className="inp" placeholder="CONTOH: 12" /></Field>
-          <Field label="KATEGORI HD">
-            <label className="flex items-center gap-2 mt-1">
-              <input
-                type="checkbox"
-                checked={!!form.is_hd_customer}
-                onChange={e => {
-                  up('is_hd_customer', e.target.checked)
-                  // Auto-set jika centang HD dan belum ada machine_count
-                  if (e.target.checked && !form.machine_count) up('machine_count', null)
-                }}
-              />
-              <span className="text-sm">
-                <span className="font-bold text-indigo-700">Customer HD</span>
-                <span className="text-gray-500 ml-1">— RS/klinik dengan mesin dialisis (untuk monitoring FU-PO)</span>
-              </span>
-            </label>
+          <Field label="JENIS CUSTOMER">
+            <select
+              value={form.is_hd_customer ? 'HD' : 'NHD'}
+              onChange={e => up('is_hd_customer', e.target.value === 'HD')}
+              className="inp"
+            >
+              <option value="HD">HD</option>
+              <option value="NHD">NHD</option>
+            </select>
+            <div className="mt-1 text-xs text-gray-500">Pilih HD untuk customer dengan mesin dialisis; selain itu adalah customer NHD.</div>
             {form.is_hd_customer && !form.machine_count && (
               <div className="mt-1 text-xs text-amber-600">⚠ Isi jumlah mesin HD di atas untuk kalkulasi monitoring yang akurat</div>
             )}

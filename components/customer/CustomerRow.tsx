@@ -43,7 +43,7 @@ export function CustomerRow({ customer }: { customer: Customer }) {
         <td className="px-4 py-2.5 text-center">
           {customer.is_hd_customer
             ? <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-700">HD</span>
-            : <span className="text-gray-300 text-xs">—</span>
+            : <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">NHD</span>
           }
         </td>
         <td className="px-4 py-2.5 text-center font-bold">

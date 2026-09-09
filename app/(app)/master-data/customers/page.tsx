@@ -26,7 +26,7 @@ export default async function CustomersPage() {
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CUSTOMER NAME</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CITY</th>
                 <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">DK/LK</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">HD</th>
+                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">JENIS CUSTOMER</th>
                 <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">MESIN HD</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ADDRESS</th>
                 <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LOKASI</th>

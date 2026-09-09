@@ -44,6 +44,7 @@ export default function ShipmentPage() {
   const [rows, setRows]                 = useState<ShipmentTrackingRow[]>([])
   const [loading, startLoad]            = useTransition()
   const [tmsAvail, setTmsAvail]         = useState<boolean | null>(null)
+  const [showAllStatuses, setShowAllStatuses] = useState(false)
 
   // Panels
   const [selected, setSelected]         = useState<ShipmentTrackingRow | null>(null)
@@ -64,10 +65,10 @@ export default function ShipmentPage() {
     setCheckedUt(new Set())
   }
 
-  function loadTracking() {
+  function loadTracking(includeAllStatuses = showAllStatuses) {
     startLoad(async () => {
       try {
-        const data = await getShipmentTrackings()
+        const data = await getShipmentTrackings({ status: includeAllStatuses ? 'all' : 'Dispatched' })
         setRows(data)
         setTmsAvail(true)
       } catch (e: any) {
@@ -178,22 +179,20 @@ export default function ShipmentPage() {
                     )}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">PSS No.</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Tipe</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Customer</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Kota Tujuan</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Doc Date</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Promised Date</th>
                   <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Delay</th>
-                  <th className="w-8"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loadingUT && (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
                 )}
                 {!loadingUT && untracked.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-green-400 mb-2" />
                       Semua PSS sudah dibuatkan Shipment Tracking.
                     </td>
@@ -212,13 +211,6 @@ export default function ShipmentPage() {
                           className="rounded border-gray-300" />
                       </td>
                       <td className="px-4 py-2.5 font-mono text-xs font-bold text-indigo-600 whitespace-nowrap">{r.pss_no}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${
-                          r.source_type === 'PSS'
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-purple-100 text-purple-700'
-                        }`}>{r.source_type}</span>
-                      </td>
                       <td className="px-4 py-2.5 text-xs max-w-[160px] truncate">{r.customer_name ?? '-'}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
@@ -261,9 +253,24 @@ export default function ShipmentPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       {mainTab === 'tracking' && (
         <>
-          <p className="text-sm text-gray-500">
-            Daftar <strong>Shipment</strong> Pengiriman.
-          </p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-gray-500">
+              Daftar <strong>Shipment</strong> Pengiriman.
+            </p>
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showAllStatuses}
+                onChange={e => {
+                  const checked = e.target.checked
+                  setShowAllStatuses(checked)
+                  loadTracking(checked)
+                }}
+                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Tampilkan semua status
+            </label>
+          </div>
 
           {tmsAvail === false && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -277,12 +284,12 @@ export default function ShipmentPage() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-gray-50 border-b">
                 <tr>
+								<th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Trip ID</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">PSS / CD No.</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Document Date</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Transporter</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Driver</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Trip ID</th>
                   <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
                   <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">POD</th>
                 </tr>
@@ -304,6 +311,7 @@ export default function ShipmentPage() {
                     onClick={() => setSelected(r)}
                     className="cursor-pointer transition-colors hover:bg-blue-50"
                   >
+									<td className="px-4 py-2.5 font-mono text-xs text-gray-500 whitespace-nowrap">{r.trip_id ?? '-'}</td>
                     <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
                       {r.pss_no ?? (r.crossdocking_id != null ? `CD-${r.crossdocking_id}` : '-')}
                     </td>
@@ -323,7 +331,6 @@ export default function ShipmentPage() {
                         <div className="text-gray-400">{r.notes.match(/Tipe: ([^|]+)/)?.[1]?.trim()}</div>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-gray-500 whitespace-nowrap">{r.trip_id ?? '-'}</td>
                     <td className="px-4 py-2.5 text-center">
                       <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusBadge(r.status)}`}>
                         {r.status}
