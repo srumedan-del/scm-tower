@@ -46,22 +46,6 @@ export default function DriversPage() {
         </button>
       </header>
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border bg-white p-3">
-          <div className="text-2xl font-bold">{rows.length}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Total Kru</div>
-        </div>
-        <div className="rounded-xl border bg-indigo-50 p-3">
-          <div className="text-2xl font-bold text-indigo-700">{driverCount}</div>
-          <div className="text-xs text-indigo-600 mt-0.5 flex items-center gap-1"><Truck className="h-3 w-3" /> Driver</div>
-        </div>
-        <div className="rounded-xl border bg-purple-50 p-3">
-          <div className="text-2xl font-bold text-purple-700">{helperCount}</div>
-          <div className="text-xs text-purple-600 mt-0.5 flex items-center gap-1"><Users className="h-3 w-3" /> Helper</div>
-        </div>
-      </div>
-
       {/* Filter tabs */}
       <div className="flex gap-1">
         {(['all', 'Driver', 'Helper'] as const).map(f => (

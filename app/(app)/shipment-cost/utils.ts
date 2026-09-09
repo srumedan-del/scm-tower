@@ -20,10 +20,11 @@ export function computeCostSummary(rows: ShipmentCostRow[]): CostSummary {
   for (const r of rows) {
     const biaya = r.total_biaya ?? 0
     totalBiaya += biaya
-    if (r.invoice_value) totalInvoiceValue += r.invoice_value
+    if (r.cost_model !== 'Internal' && r.invoice_value) totalInvoiceValue += r.invoice_value
     if (r.cost_ratio != null) { ratioSum += r.cost_ratio; ratioCount++ }
 
-    const model = r.cost_model ?? 'Belum diisi'
+    // Legacy rows with no model use the database's Internal cost formula.
+    const model = r.cost_model ?? 'Internal'
     if (!byModel[model]) byModel[model] = { count: 0, total: 0 }
     byModel[model].count++
     byModel[model].total += biaya

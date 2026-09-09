@@ -1,6 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { OutboundHeaderUploadButton, OutboundDetailUploadButton } from '@/components/outbound/OutboundUploadButton'
-import { OutboundExportButton } from '@/components/outbound/OutboundExportButton'
 import OutboundDeleteButton from '@/components/outbound/OutboundDeleteButton'
 import PssDetailModal from '@/components/outbound/PssDetailModal'
 import OutboundFilter from '@/components/outbound/OutboundFilter'
@@ -89,13 +88,12 @@ export default async function OutboundPage({
           <Suspense>
             <OutboundFilter months={availableMonths} />
           </Suspense>
-          <OutboundExportButton months={months} />
           <OutboundHeaderUploadButton />
           <OutboundDetailUploadButton />
         </div>
       </header>
 
-      <div className="bg-white border border-border rounded-xl overflow-hidden">
+      <div className="max-h-[calc(100vh-190px)] overflow-auto bg-white border border-border rounded-xl">
         <div className="border-b px-4 py-3 flex items-center justify-between">
           <span className="text-xs text-gray-500 font-medium">
             {rows.length} DOKUMEN
@@ -103,7 +101,7 @@ export default async function OutboundPage({
           </span>
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 bg-gray-50 border-b">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
                 DOCUMENT DATE

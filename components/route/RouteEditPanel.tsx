@@ -39,10 +39,10 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
   const [err, setErr] = useState<string | null>(null)
   const up = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
-  // Saat DK/LK dipilih — generate route code hanya untuk form baru
+  // Saat DK/LK dipilih — generate route code untuk form baru, update untuk edit
   async function handleDkLkChange(val: 'D' | 'L' | '') {
     up('dk_lk', val)
-    if (!val || route) return   // tidak generate ulang saat edit
+    if (!val) return
     setGenerating(true)
     try {
       const code = await generateRouteCode(val)
@@ -109,7 +109,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  {v === 'D' ? '🏙 D — Dalam Kota' : '🛣 L — Luar Kota'}
+                  {v === 'D' ? '🏙 D — DALAM KOTA' : '🛣 L — LUAR KOTA'}
                 </button>
               ))}
             </div>
@@ -118,7 +118,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
             )}
           </Field>
 
-          {/* Route Code — read-only, auto-generated */}
+          {/* Route Code — auto-generated, read-only saat tambah baru; update saat ganti DK/LK */}
           <Field label="ROUTE CODE *">
             <div className="relative">
               <input

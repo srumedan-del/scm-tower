@@ -3,16 +3,18 @@
 import { FormEvent, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Mail, Lock, LogIn, AlertCircle, Loader2 } from 'lucide-react'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard'
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,10 +26,7 @@ function LoginForm() {
     setLoading(true)
     setError('')
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
       setError(signInError.message)
@@ -40,56 +39,129 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-      <form
+    <div className="flex min-h-screen items-center justify-center bg-surface p-6 relative overflow-hidden">
+      {/* Background decorative blobs */}
+      <div className="absolute top-[-80px] left-[-80px] w-80 h-80 rounded-full bg-blue/10 blur-3xl pointer-events-none animate-drift" />
+      <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 rounded-full bg-green/10 blur-3xl pointer-events-none animate-drift" style={{ animationDelay: '3s' }} />
+
+      <motion.form
         onSubmit={signIn}
-        className="w-full max-w-md rounded-xl border border-border bg-white p-8 shadow-sm"
+        className="w-full max-w-md rounded-2xl border border-border bg-white p-8 shadow-xl shadow-black/5 relative z-10"
+        initial={{ opacity: 0, y: 32, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">SCM Control Tower</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Masuk dengan akun Supabase Auth Anda
-          </p>
-        </div>
+        {/* Logo & Heading */}
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.35 }}
+        >
+          <div className="flex items-center gap-3 mb-5">
+            <motion.div
+              className="grid h-11 w-11 place-items-center rounded-xl bg-blue text-sm font-bold text-white shadow-md shadow-blue/30"
+              whileHover={{ scale: 1.08, rotate: 3 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
+              SC
+            </motion.div>
+            <div>
+              <p className="font-bold text-text text-base leading-tight">SCM Tower</p>
+              <p className="text-xs text-muted">Control Center</p>
+            </div>
+          </div>
+          <h1 className="text-xl font-bold text-text">Selamat datang kembali</h1>
+          <p className="mt-1 text-sm text-muted">Masuk untuk melanjutkan ke dashboard</p>
+        </motion.div>
 
-        <label className="mb-3 block text-sm font-medium text-gray-700">
-          Email
-          <input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="nama@email.com"
-          />
-        </label>
+        {/* Email field */}
+        <motion.div
+          className="mb-4"
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.22, duration: 0.3 }}
+        >
+          <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+            Email
+          </label>
+          <div className="relative">
+            <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface pl-10 pr-4 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue
+                transition-all duration-200 placeholder:text-gray-300"
+              placeholder="nama@email.com"
+            />
+          </div>
+        </motion.div>
 
-        <label className="mb-5 block text-sm font-medium text-gray-700">
-          Password
-          <input
-            required
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="••••••••"
-          />
-        </label>
+        {/* Password field */}
+        <motion.div
+          className="mb-5"
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.28, duration: 0.3 }}
+        >
+          <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+            Password
+          </label>
+          <div className="relative">
+            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              required
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface pl-10 pr-4 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue
+                transition-all duration-200 placeholder:text-gray-300"
+              placeholder="••••••••"
+            />
+          </div>
+        </motion.div>
 
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+        {/* Error message */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              className="mb-4 flex items-start gap-2.5 rounded-lg bg-red/8 border border-red/20 px-3.5 py-2.5"
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AlertCircle size={15} className="text-red mt-0.5 shrink-0" />
+              <p className="text-sm text-red">{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <button
+        {/* Submit button */}
+        <motion.button
           disabled={loading}
           type="submit"
-          className="w-full rounded-lg bg-indigo-600 p-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue py-2.5 text-sm
+            font-semibold text-white shadow-md shadow-blue/25
+            hover:bg-blue/90 active:scale-[0.98]
+            disabled:opacity-60 disabled:cursor-not-allowed
+            transition-all duration-200"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.3 }}
+          whileHover={{ y: -1, boxShadow: '0 8px 24px rgba(39,131,222,0.3)' }}
+          whileTap={{ scale: 0.98 }}
         >
-          {loading ? 'Memeriksa...' : 'Masuk'}
-        </button>
-      </form>
+          {loading
+            ? <><Loader2 size={15} className="animate-spin" /> Memeriksa...</>
+            : <><LogIn size={15} /> Masuk</>
+          }
+        </motion.button>
+      </motion.form>
     </div>
   )
 }

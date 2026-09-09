@@ -29,9 +29,16 @@ export type ShipmentCostRow = {
   toll_cost: number | null
   parkir_cost: number | null
   kirim_paket_cost: number | null
-  // Eksternal
+  // Retail (Indah Logistik)
+  no_resi: string | null
   invoice_no_eksternal: string | null
   total_biaya_eksternal: number | null
+  // Trucking (ASSA)
+  biaya_trucking: number | null
+  biaya_tkbm: number | null
+  // Internal — tambahan
+  misc_cost: number | null
+  misc_cost_notes: string | null
   // Summary
   invoice_value: number | null
   total_biaya: number | null
@@ -58,7 +65,9 @@ export async function getShipmentCosts(filters?: {
       cost_model, payment_voucher_no,
       bbm_liter, bbm_rupiah, bongkar_muat_cost, hotel_cost,
       uang_makan_driver, uang_makan_helper, toll_cost, parkir_cost, kirim_paket_cost,
-      invoice_no_eksternal, total_biaya_eksternal,
+      misc_cost, misc_cost_notes,
+      no_resi, invoice_no_eksternal, total_biaya_eksternal,
+      biaya_trucking, biaya_tkbm,
       invoice_value, total_biaya, cost_ratio,
       transporter_name, notes
     `)
@@ -75,4 +84,51 @@ export async function getShipmentCosts(filters?: {
   const { data, error } = await q
   if (error) throw error
   return (data ?? []) as ShipmentCostRow[]
+}
+
+export type UpsertCostPayload = {
+  id: number
+  cost_model: string | null
+  // Internal
+  payment_voucher_no?: string | null
+  bbm_liter?: number | null
+  bbm_rupiah?: number | null
+  bongkar_muat_cost?: number | null
+  hotel_cost?: number | null
+  uang_makan_driver?: number | null
+  uang_makan_helper?: number | null
+  toll_cost?: number | null
+  parkir_cost?: number | null
+  kirim_paket_cost?: number | null
+  misc_cost?: number | null
+  misc_cost_notes?: string | null
+  // Retail — Indah Logistik
+  no_resi?: string | null
+  invoice_no_eksternal?: string | null
+  total_biaya_eksternal?: number | null
+  // Trucking — ASSA
+  biaya_trucking?: number | null
+  biaya_tkbm?: number | null
+  // Common
+  invoice_value?: number | null
+}
+
+export async function upsertShipmentCost(payload: UpsertCostPayload) {
+  const { id, ...data } = payload
+  const normalizedData = (!payload.cost_model || payload.cost_model === 'Internal')
+    ? {
+        ...data,
+        invoice_value: null,
+        no_resi: null,
+        invoice_no_eksternal: null,
+        total_biaya_eksternal: null,
+        biaya_trucking: null,
+        biaya_tkbm: null,
+      }
+    : data
+  const { error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .update(normalizedData)
+    .eq('id', id)
+  if (error) throw new Error(error.message)
 }

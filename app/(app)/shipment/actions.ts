@@ -38,9 +38,16 @@ export type ShipmentTrackingRow = {
   toll_cost: number | null
   parkir_cost: number | null
   kirim_paket_cost: number | null
-  // Biaya Eksternal
+  // Biaya Eksternal — Retail (Indah Logistik)
+  no_resi: string | null
   invoice_no_eksternal: string | null
   total_biaya_eksternal: number | null
+  // Biaya Eksternal — Trucking (ASSA)
+  biaya_trucking: number | null
+  biaya_tkbm: number | null
+  // Biaya Internal — tambahan
+  misc_cost: number | null
+  misc_cost_notes: string | null
   // GENERATED (read-only)
   total_biaya: number | null
   invoice_value: number | null
@@ -87,22 +94,30 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
 }
 
 export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> & { id?: number }) {
-  // Kolom joined (dari view) — jangan di-insert ke tabel
-  // is_on_time, total_biaya, cost_ratio — dihitung otomatis via trigger, boleh dilewat
+  // Strip semua kolom joined dari view — tidak boleh masuk ke tabel
   const {
     id,
     transporter_name, transporter_type, transporter_service_model,
-    vehicle_no, driver_name, helper_name, route_code,
+    vehicle_no, vehicle_type, driver_name, helper_name, route_code,
     is_on_time, total_biaya, cost_ratio,
+    payment_voucher_no, bbm_liter, bbm_rupiah, bongkar_muat_cost,
+    hotel_cost, uang_makan_driver, uang_makan_helper, toll_cost,
+    parkir_cost, kirim_paket_cost, misc_cost, misc_cost_notes,
+    no_resi, invoice_no_eksternal, total_biaya_eksternal,
+    biaya_trucking, biaya_tkbm, invoice_value,
+    // Kolom legacy/tidak ada di tabel baru
+    trip_cost,
+    // timestamps read-only
+    created_at, updated_at,
     ...payload
-  } = row
+  } = row as any
 
   if (id) {
     const { error } = await supabaseAdmin.from('shipment_tracking').update(payload).eq('id', id)
-    if (error) throw error
+    if (error) throw new Error(error.message)
   } else {
     const { error } = await supabaseAdmin.from('shipment_tracking').insert(payload)
-    if (error) throw error
+    if (error) throw new Error(error.message)
   }
 }
 
@@ -146,9 +161,9 @@ export async function getShipmentTMSOptions() {
     supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').order('vehicle_no'),
     supabaseAdmin.from('master_driver').select('id, driver_name, phone, role').eq('is_active', true).order('role').order('driver_name'),
     supabaseAdmin.from('routes').select('id, route_code, origin, destination').order('route_code'),
-    // Semua PSS mulai cut-off
+    // Semua PSS mulai cut-off — join dk_lk dari customers via customer_no
     supabaseAdmin.from('outbound_header')
-      .select('id, pss_no, customer_name, destination_city: ship_to_city, promised_delivery_date, document_date')
+      .select('id, pss_no, customer_name, customer_no, destination_city: ship_to_city, promised_delivery_date, document_date')
       .gte('document_date', CUTOFF_DATE)
       .order('document_date', { ascending: false })
       .limit(500),
@@ -158,21 +173,35 @@ export async function getShipmentTMSOptions() {
       .not('pss_no', 'is', null),
   ])
 
-  // Map vendors ke TransporterOption — vendor_type 'TRUCKING'/'INTERNAL'/dll
+  // Map vendors ke TransporterOption
   const transporters: TransporterOption[] = (vend.data ?? []).map((v: any) => ({
     id:            v.id,
     name:          v.vendor_name,
     vendor_type:   v.vendor_type,
-    // Internal jika vendor_type mengandung 'INTERNAL' atau 'SRU'
     type:          (v.vendor_type ?? '').toUpperCase().includes('INTERNAL') ? 'Internal' : 'Eksternal',
     service_model: (v.vendor_type ?? '').toUpperCase().includes('TRUCKING') ? 'Trucking'
                  : (v.vendor_type ?? '').toUpperCase().includes('RETAIL')   ? 'Retail'
                  : null,
   }))
 
-  // Exclude PSS yang sudah punya tracking dari dropdown
+  // Lookup dk_lk dari customers untuk PSS options
+  const customerNos = [...new Set((pss.data ?? []).map((r: any) => r.customer_no).filter(Boolean))]
+  let customerDkLkMap: Record<string, string> = {}
+  if (customerNos.length > 0) {
+    const { data: custData } = await supabaseAdmin
+      .from('customers')
+      .select('customer_code, dk_lk')
+      .in('customer_code', customerNos)
+    for (const c of custData ?? []) {
+      if (c.customer_code && c.dk_lk) customerDkLkMap[c.customer_code] = c.dk_lk
+    }
+  }
+
+  // Exclude PSS yang sudah punya tracking dari dropdown, inject dk_lk
   const trackedSet = new Set((tracked.data ?? []).map((r: any) => r.pss_no as string))
-  const pssOptions = (pss.data ?? []).filter((r: any) => !trackedSet.has(r.pss_no))
+  const pssOptions = (pss.data ?? [])
+    .filter((r: any) => !trackedSet.has(r.pss_no))
+    .map((r: any) => ({ ...r, dk_lk: customerDkLkMap[r.customer_no] ?? null }))
 
   return {
     transporters,
@@ -292,6 +321,18 @@ export type BulkShipmentPayload = {
   cost_model:     'Internal' | 'Retail' | 'Trucking' | null
   status:         'Draft' | 'Dispatched'
   dispatch_time:  string | null
+}
+
+export async function lookupCustomerDkLk(customerName: string): Promise<string | null> {
+  if (!customerName) return null
+  const { data } = await supabaseAdmin
+    .from('customers')
+    .select('dk_lk')
+    .ilike('customer_name', customerName.trim())
+    .not('dk_lk', 'is', null)
+    .limit(1)
+    .maybeSingle()
+  return (data as any)?.dk_lk ?? null
 }
 
 export async function generateTripId(): Promise<string> {

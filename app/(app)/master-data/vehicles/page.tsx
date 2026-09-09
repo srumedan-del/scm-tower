@@ -23,15 +23,14 @@ export default async function VehiclesPage() {
               <tr>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">NOPOL / VEHICLE NO</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">JENIS</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">BRAND</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">KAPASITAS</th>
+                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">TONASE / VOLUME</th>
                 <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">DRIVER</th>
                 <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">STATUS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {fleet.map((r:any) => <FleetRow key={r.id} fleet={r} />)}
-              {fleet.length===0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">BELUM ADA ARMADA.</td></tr>}
+              {fleet.length===0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">BELUM ADA ARMADA.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 ## SCM Control Tower
 
-**Versi:** 1.5  
+**Versi:** 1.6
 **Tanggal:** September 2026  
 **Status:** In Development  
 
@@ -61,12 +61,13 @@ Saat ini aplikasi digunakan oleh **1 user tunggal** (Kepala Gudang cabang), yang
 | **Delivery Issue Rate** *(pengganti Failure Rate)* | (Jumlah shipment dengan catatan kendala / Total pengiriman) x 100% | Issue Log (4.8) — dicatat sebagai catatan operasional, bukan status shipment | Serendah mungkin, breakdown per jenis kendala | Harian |
 
 **Catatan definisi:**
-- OTD: perlu didefinisikan ambang "tepat waktu" (window ±jam atau harus persis di hari yang dijanjikan) agar konsisten dengan `delivery_delay_days` dan `is_late` pada `outbound_header`.
-- OTIF lebih ketat dari OTD karena menggabungkan dua kondisi sekaligus: ketepatan waktu **dan** kelengkapan qty/item.
+- **OTD resmi** hanya dihitung dari shipment yang berstatus `Delivered`, memiliki POD, dan memiliki `delivery_time` aktual. Pembilang adalah shipment dengan `delivery_time` dalam SLA terhadap `promised_delivery_date`; penyebut adalah seluruh shipment Delivered ber-POD pada periode yang sama. `Cust. Receipt Date`, `is_late`, dan `delivery_delay_days` dari NAV tidak boleh dipakai untuk KPI OTD karena bukan bukti waktu lapangan.
+- Shipment yang sudah melewati `promised_delivery_date` tetapi belum Delivered dilaporkan sebagai **Overdue/Open Shipment**, terpisah dari OTD agar tidak mencampurkan kinerja final dengan pekerjaan yang belum selesai.
+- SLA OTD harus dikonfigurasi per customer/rute: default adalah selesai pada tanggal janji kirim pukul 23:59 waktu lokal; jika customer memakai window waktu, gunakan batas waktu tersebut.
+- OTIF hanya dihitung setelah tersedia data `qty_planned` dan `qty_delivered` per item pada stop pengiriman. Sebelum itu, dashboard wajib menampilkan OTIF sebagai `Belum tersedia`, bukan estimasi.
 - Delivery Lead Time dapat dipecah menjadi sub-metric untuk identifikasi bottleneck:
   - *Order-to-dispatch time*: dari order confirm sampai barang keluar gudang
   - *Dispatch-to-delivery time*: dari keluar gudang sampai sampai ke customer
-- Tidak ada proses retur/gagal kirim di alur shipment — kendala operasional (barang rusak, keterlambatan signifikan, dll.) dicatat sebagai entri terpisah di modul **Issues / Issue Log** (4.8), tidak mengubah status shipment yang tetap berakhir di Delivered.
 - Cost per Delivery dan Cost Ratio dipantau terpisah menurut **model transporter** (Internal/Eksternal) dan **DK/LK** (lihat 4.5.4) — jangan digabung rata-rata mentah karena karakteristik biaya sangat berbeda (LK jauh lebih tinggi dari DK).
 - Modul **Pengajuan Dana & Realisasi Biaya** (4.5.5) menggunakan agregasi Cost per Delivery/Total Biaya bulanan (khusus Internal) sebagai basis pengajuan anggaran bulan berikutnya.
 
@@ -87,8 +88,8 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 - Cost per drop point (untuk trip multi-drop)
 
 **Implikasi data & modul terkait:**
-- `shipment_tracking` perlu menyimpan timestamp aktual (dispatch, delivery, POD) sebagai basis perhitungan OTD, OTIF, dan lead time.
-- `master_rate_card` dan input biaya operasional aktual menjadi basis perhitungan Cost per Delivery.
+- Event status, POD, dan waktu aktual menjadi basis perhitungan OTD dan lead time; detail item per stop menjadi basis OTIF.
+- Biaya aktual dicatat sekali pada level trip dan dialokasikan ke stop untuk analitik Cost per Delivery dan Cost Ratio. `master_rate_card` hanya menjadi referensi estimasi/proyeksi.
 - Dashboard KPI cards (4.1) menampilkan ringkasan OTD/OTIF dan alert keterlambatan; detail breakdown (failure reason, cost trend) ditampilkan di modul **Workflow** (4.6) atau halaman KPI tersendiri.
 
 ### 4.2 Receiving / Inbound
@@ -183,6 +184,16 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 - "Stok Akhir" saat ini pada praktiknya sering bernilai 0 karena SCM tidak punya visibilitas stok fisik di gudang customer — ini keterbatasan yang perlu didokumentasikan; peningkatan akurasi ke depan bisa datang dari pelaporan stok on-hand berkala oleh customer/marketing
 - Snapshot dashboard dibuat berkala (mengikuti praktik saat ini yang manual per tanggal "Dibuat: [tanggal]") — bisa dijadwalkan mingguan di aplikasi
 
+### 4.4.2 Inventory Reconciliation & Data Governance
+
+**Keputusan desain v1.6:** NAV Vision tetap menjadi *source of truth* untuk saldo stok. SCM Control Tower tidak boleh membentuk saldo stok paralel tanpa proses rekonsiliasi yang disetujui.
+
+**Fitur dan aturan bisnis:**
+- Snapshot stok NAV per SKU-lokasi diimport secara terjadwal atau manual dengan batch ID, nama file, waktu upload, dan uploader.
+- Halaman rekonsiliasi membandingkan stok NAV, stock opname bila tersedia, barang inbound yang belum posted, serta barang outbound/crossdock yang belum selesai.
+- Selisih tidak mengubah saldo NAV; selisih dibuat sebagai Issue Log dengan PIC, alasan, tindakan koreksi, dan status penyelesaian.
+- Data NAV yang telah dipakai dalam shipment, POD, atau laporan biaya tidak boleh dihapus. Koreksi dilakukan melalui batch koreksi/audit event, bukan edit diam-diam.
+
 ### 4.5 Shipment Tracking & TMS (Transport Management System)
 
 **Tujuan:** Mengisi gap yang tidak dicover NAV Vision — mencatat proses fisik pengiriman dari PSS terbit sampai barang diterima pelanggan, karena NAV Vision hanya mencatat dokumen (PSS) tanpa proses transportasinya.
@@ -230,6 +241,21 @@ PSS diupload (dari NAV)
 
 **Catatan:** Tidak ada proses retur/gagal kirim dalam alur ini — setiap shipment yang sudah dispatch diasumsikan selesai sampai ke pelanggan (Delivered). Jika terjadi kendala operasional di lapangan (barang rusak, keterlambatan signifikan, dll.), dicatat terpisah sebagai catatan di **Issue Log (4.8)** tanpa mengubah status shipment.
 
+#### 4.5.2a Keputusan Pengendalian Status & Exception (v1.6)
+
+Ketentuan pada sub-bab ini menggantikan asumsi sebelumnya bahwa setiap shipment yang dispatch pasti berakhir Delivered.
+
+**Status normal:** `Draft` -> `Assigned` -> `Dispatched` -> `In Transit` -> `Delivered`.
+
+- `Draft`: sumber PSS/Crossdocking sudah tervalidasi, belum ditetapkan ke trip.
+- `Assigned`: trip, transporter, dan sumber daya yang diperlukan sudah ditetapkan.
+- `Dispatched`: `dispatch_time` wajib terisi.
+- `Delivered`: `delivery_time`, nama penerima, dan POD wajib terisi. Kuantitas aktual wajib dicatat ketika modul line sudah tersedia.
+
+**Exception:** dari `Assigned`, `Dispatched`, atau `In Transit`, user berwenang dapat membuat event `Delivery Attempt Failed`, `Partial Delivered`, `Rescheduled`, `Cancelled`, atau `Returned`. Setiap event wajib memiliki waktu, alasan, PIC, dan referensi Issue Log bila ada.
+
+**Kontrol:** perubahan status harus melalui transisi yang diizinkan dan tercatat pada event log yang tidak dapat ditimpa. Koreksi terhadap `Delivered` hanya dilakukan Admin dengan alasan. Status Crossdocking yang telah masuk TMS mengikuti status TMS sebagai sumber kebenaran agar tidak ada dua status operasional yang berbeda.
+
 #### 4.5.3 Fitur
 
 - **Daftar shipment aktif** dengan filter status: Draft, Dispatched, In Transit, Delivered
@@ -245,6 +271,25 @@ PSS diupload (dari NAV)
 - Status hanya bisa maju (Draft → Dispatched → In Transit → Delivered), tidak mundur, kecuali koreksi oleh Admin
 - Tidak ada status retur/gagal — proses ini tidak berlaku di operasional cabang
 - `is_on_time` dihitung dari `delivery_time` aktual vs `Promised Delivery Date` dari NAV (untuk shipment sumber PSS) atau tanggal janji kirim manual (untuk shipment sumber Crossdocking)
+
+#### 4.5.3a Model Data Trip, Stop, dan Line (v1.6)
+
+Untuk pengiriman multi-drop, `trip_id` saja tidak cukup sebagai tempat mencatat biaya. Model data operasional yang wajib digunakan adalah:
+
+```text
+Trip (satu kendaraan/perjalanan atau satu invoice transporter)
+  -> Trip Stop (satu tujuan/shipment)
+      -> Trip Stop Line (item, qty planned, qty delivered, reason)
+  -> Trip Expense (biaya aktual satu kali)
+  -> Expense Allocation (porsi biaya dari Trip ke setiap Stop)
+```
+
+**Aturan bisnis:**
+- Satu Trip dapat mempunyai banyak Stop; satu Stop terkait tepat satu sumber PSS atau Crossdocking.
+- Biaya aktual Internal maupun Eksternal dicatat satu kali pada Trip/Invoice. Total biaya cabang selalu dihitung dari Trip Expense, bukan penjumlahan biaya yang diulang pada setiap stop.
+- Untuk multi-drop, `allocation_method` wajib dipilih: `weight`, `invoice_value`, `quantity`, atau `equal`. Sistem menyimpan `allocated_cost` per stop beserta metode dan nilai pembaginya.
+- Cost per Delivery dan Cost Ratio per customer memakai `allocated_cost`; total biaya laporan cabang memakai biaya sumber Trip/Invoice satu kali.
+- `Trip Stop Line` menyimpan qty planned dan qty delivered; data inilah prasyarat perhitungan OTIF dan partial delivery.
 
 #### 4.5.4 Model Transporter & Skema Biaya
 
@@ -372,6 +417,14 @@ Dalam ILE, baris dengan `Document No.` prefix `PAO` (Purchase Adjustment Order) 
 
 ---
 
+## 6.1 Keputusan Arsitektur Data & Migrasi (v1.6)
+
+- **Satu master transporter:** aplikasi menggunakan tepat satu tabel master transporter sebagai sumber resmi. Bila `vendors` dipilih sebagai master, `shipment_tracking.transporter_id` harus mereferensikan `vendors.id`; bila `master_transporter` dipilih, seluruh UI dan import harus menggunakan tabel tersebut. Penyimpanan nama transporter/kendaraan/driver di `notes` tidak boleh menjadi sumber laporan resmi.
+- **Identitas dan audit:** setiap operasi create, update, delete, perubahan status, upload batch, POD, dan approval menyimpan `user_id`, waktu, aksi, nilai sebelum/sesudah yang relevan, dan alasan koreksi.
+- **Transaksi atomik:** pembuatan Crossdocking beserta detail, pembuatan Trip dengan Stop, serta pengalokasian biaya harus atomik. Jika salah satu bagian gagal, tidak boleh ada header atau biaya yatim.
+- **Penomoran aman konkurensi:** nomor Trip, Crossdocking, Issue, dan batch upload dibuat pada database dengan sequence/unique constraint; aplikasi tidak boleh hanya mencari nomor terbesar lalu menambah satu.
+- **Snapshot HD:** `machine_count` dan parameter konsumsi yang dipakai pada kalkulasi disalin ke record snapshot agar histori tidak berubah saat master customer diperbarui. Kalkulasi dapat dikerjakan melalui view atau trigger; generated column tidak boleh memakai subquery ke tabel customer.
+
 ## 7. Struktur Database (Tabel Utama)
 
 ```
@@ -389,6 +442,13 @@ master_transporter  — Master transporter Internal/Eksternal (BARU — untuk TM
 master_route        — Master rute
 master_rate_card    — Referensi tarif untuk estimasi/proyeksi biaya
 shipment_tracking   — Tracking & TMS pengiriman aktif (DIPERLUAS — lihat detail di bawah)
+trip                — Header perjalanan/invoice transporter (BARU v1.6)
+trip_stop           — Tujuan/shipment di dalam trip (BARU v1.6)
+trip_stop_line      — Item dan qty planned/actual per stop, basis OTIF (BARU v1.6)
+trip_expense        — Komponen biaya aktual satu kali per trip/invoice (BARU v1.6)
+expense_allocation  — Alokasi biaya trip ke stop/shipment (BARU v1.6)
+shipment_event_log  — Riwayat status dan exception yang append-only (BARU v1.6)
+upload_batch        — Jejak batch import NAV dan hasil validasi (BARU v1.6)
 delivery_pod        — Bukti serah terima / Proof of Delivery (BARU)
 budget_request       — Pengajuan dana biaya kirim bulanan, khusus Internal (BARU)
 budget_approval_log   — Riwayat/checklist approval pengajuan dana (BARU)
@@ -549,9 +609,28 @@ notes
 - **Keamanan:** Semua operasi tulis menggunakan `supabaseAdmin` (service role, bypass RLS) dari Server Action — tidak expose ke client
 - **Responsif:** Tampilan optimal di desktop (minimum 1280px lebar)
 
+### 8.1 Keamanan, Otorisasi, dan Audit (v1.6)
+
+- Login wajib untuk semua halaman dan Server Action yang membaca atau mengubah data operasional.
+- Service-role Supabase hanya boleh dipakai di server. Setiap Server Action yang memakainya wajib memverifikasi session dan otorisasi user terlebih dahulu; service role bukan pengganti otorisasi aplikasi.
+- Tahap saat ini memiliki role `Admin`. Desain akses masa depan: `Admin` (master data/koreksi/approval), `Operator Gudang` (upload, receiving, dispatch), `Driver/Checker` (update checkpoint/POD), dan `Viewer` (read-only).
+- Data final (POD, biaya final, delivery final, approval) tidak dihapus; koreksi dilakukan dengan event/audit trail sesuai kewenangan.
+- Foto POD disimpan pada storage privat dengan akses berbasis autentikasi; URL publik permanen tidak digunakan.
+
 ---
 
 ## 9. Backlog / Planned Features
+
+### Prioritas Go-Live (wajib sebelum KPI dan biaya menjadi dasar keputusan)
+
+- [ ] Konsolidasikan `vendors` dan `master_transporter` menjadi satu master resmi, lalu perbaiki seluruh FK dan laporan.
+- [ ] Implementasikan model `Trip`, `Trip Stop`, `Trip Expense`, dan `Expense Allocation`; migrasikan biaya yang saat ini tersimpan per shipment agar total biaya tidak berlipat pada multi-drop.
+- [ ] Ubah dashboard OTD agar hanya memakai `delivery_time` aktual + POD; tampilkan Overdue/Open Shipment terpisah.
+- [ ] Implementasikan status `Assigned`, event log append-only, serta exception delivery dan alasan koreksi.
+- [ ] Tambahkan trip stop line untuk qty planned/actual sebelum mengaktifkan KPI OTIF.
+- [ ] Perbaiki model snapshot HD dan buat view/trigger kalkulasi yang valid di PostgreSQL.
+- [ ] Tambahkan rekonsiliasi inventory NAV vs snapshot/opname/in-transit serta upload batch audit.
+- [ ] Terapkan verifikasi session/role pada seluruh Server Action dan audit field pada mutasi data.
 
 - [ ] Autentikasi dan role-based access control (admin, operator, viewer)
 - [ ] Dashboard KPI real-time dengan refresh otomatis

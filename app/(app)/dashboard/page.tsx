@@ -44,12 +44,14 @@ async function getDashboardData() {
       .in('status', ['Draft', 'Dispatched', 'In Transit'])
       .order('promised_delivery_date', { ascending: true })
       .limit(8),
-    // OTD: ambil data outbound_header 6 bulan terakhir
-    supabase.from('outbound_header')
-      .select('document_date, is_late, delivery_delay_days, project, customer_no')
-      .gte('document_date', fromDate)
-      .not('document_date', 'is', null)
-      .not('is_late', 'is', null),
+    // OTD resmi: hanya delivery final dengan POD dan timestamp aktual.
+    // Field keterlambatan dari NAV tidak dipakai karena bukan bukti lapangan.
+    supabase.from('shipment_tracking')
+      .select('delivery_time, promised_delivery_date, delivery_pod!inner(id)')
+      .eq('status', 'Delivered')
+      .gte('delivery_time', fromDate)
+      .not('delivery_time', 'is', null)
+      .not('promised_delivery_date', 'is', null),
     supabase.from('outbound_header').select('*', { count: 'exact', head: true }),
     // Alert: shipment lewat promised_delivery_date tapi belum Delivered
     supabase.from('shipment_tracking')
@@ -93,11 +95,8 @@ async function getDashboardData() {
       dispatch_time: string | null
     }[],
     otdRaw: (otdData ?? []) as {
-      document_date: string
-      is_late: boolean
-      delivery_delay_days: number | null
-      project: string | null
-      customer_no: string | null
+      delivery_time: string
+      promised_delivery_date: string
     }[],
     lateShipments: (lateShipments ?? []) as {
       id: number
@@ -112,30 +111,36 @@ async function getDashboardData() {
   }
 }
 
-function computeOtd(rows: { document_date: string; is_late: boolean; delivery_delay_days: number | null }[]) {
+function computeOtd(rows: { delivery_time: string; promised_delivery_date: string }[]) {
   if (!rows.length) return { rate: null, onTime: 0, late: 0, total: 0, avgDelay: null }
 
-  const onTime = rows.filter((r) => r.is_late === false).length
-  const late   = rows.filter((r) => r.is_late === true).length
+  const isOnTime = (r: { delivery_time: string; promised_delivery_date: string }) =>
+    r.delivery_time.slice(0, 10) <= r.promised_delivery_date
+  const onTime = rows.filter(isOnTime).length
+  const late   = rows.filter((r) => !isOnTime(r)).length
   const total  = rows.length
   const rate   = Math.round((onTime / total) * 100)
 
-  const lateRows = rows.filter((r) => r.is_late && r.delivery_delay_days != null)
+  const lateRows = rows.filter((r) => !isOnTime(r))
   const avgDelay = lateRows.length
-    ? Math.round(lateRows.reduce((s, r) => s + (r.delivery_delay_days ?? 0), 0) / lateRows.length)
+    ? Math.round(lateRows.reduce((sum, r) => {
+        const delivered = new Date(r.delivery_time).setHours(0, 0, 0, 0)
+        const promised = new Date(`${r.promised_delivery_date}T00:00:00`).getTime()
+        return sum + Math.max(0, Math.round((delivered - promised) / 86_400_000))
+      }, 0) / lateRows.length)
     : 0
 
   return { rate, onTime, late, total, avgDelay }
 }
 
-function computeMonthlyOtd(rows: { document_date: string; is_late: boolean }[]) {
+function computeMonthlyOtd(rows: { delivery_time: string; promised_delivery_date: string }[]) {
   const byMonth: Record<string, { onTime: number; total: number }> = {}
 
   for (const r of rows) {
-    const m = r.document_date.slice(0, 7)
+    const m = r.delivery_time.slice(0, 7)
     if (!byMonth[m]) byMonth[m] = { onTime: 0, total: 0 }
     byMonth[m].total++
-    if (!r.is_late) byMonth[m].onTime++
+    if (r.delivery_time.slice(0, 10) <= r.promised_delivery_date) byMonth[m].onTime++
   }
 
   return Object.entries(byMonth)
@@ -174,48 +179,57 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      {/* ── Header ───────────────────────────────────────── */}
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between animate-rise">
         <div>
           <div className="flex items-center gap-2 text-sm font-medium text-blue">
-            <span className="h-2 w-2 rounded-full bg-blue" />
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue" />
+            </span>
             Live control tower
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-tight">SCM Dashboard</h1>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Clock3 size={16} /> Update terakhir: hari ini,{' '}
+        <div className="flex items-center gap-2 text-sm text-muted bg-white border border-border rounded-lg px-3 py-2 shadow-sm">
+          <Clock3 size={15} className="text-blue" /> Update terakhir: hari ini,{' '}
           {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </header>
 
       {/* ── KPI Strip ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Link href="/receiving" className="rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <div className="flex items-center gap-2 text-xs text-gray-500"><PackageCheck size={14} /> Receiving</div>
-          <div className="mt-2 text-3xl font-bold">{counts.receiving}</div>
-          <div className="text-xs text-gray-500 mt-1">PTR Header masuk</div>
-        </Link>
-        <Link href="/outbound" className="rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <div className="flex items-center gap-2 text-xs text-gray-500"><Package size={14} /> Outbound PSS</div>
-          <div className="mt-2 text-3xl font-bold">{counts.outbound.toLocaleString('id-ID')}</div>
-          <div className="text-xs text-gray-500 mt-1">Total PSS header</div>
-        </Link>
-        <Link href="/shipment" className="rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <div className="flex items-center gap-2 text-xs text-gray-500"><Truck size={14} /> Shipment Aktif</div>
-          <div className="mt-2 text-3xl font-bold">{counts.activeShipments}</div>
-          <div className="mt-1 flex gap-2 flex-wrap">
-            {counts.draft > 0 && <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{counts.draft} Draft</span>}
-            {counts.dispatched > 0 && <span className="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">{counts.dispatched} Dispatched</span>}
-            {counts.inTransit > 0 && <span className="text-xs bg-orange-100 text-orange-700 rounded px-1.5 py-0.5">{counts.inTransit} In Transit</span>}
-          </div>
-        </Link>
-        <Link href="/issues" className="rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <div className="flex items-center gap-2 text-xs text-gray-500"><AlertTriangle size={14} /> Open Issues</div>
-          <div className={`mt-2 text-3xl font-bold ${counts.issues > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
-            {counts.issues}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">Open &amp; In Progress</div>
-        </Link>
+        {[
+          { href: '/receiving', icon: <PackageCheck size={14} />, label: 'Receiving', value: counts.receiving, sub: 'PTR Header masuk', delay: '0s' },
+          { href: '/outbound', icon: <Package size={14} />, label: 'Outbound PSS', value: counts.outbound.toLocaleString('id-ID'), sub: 'Total PSS header', delay: '0.08s' },
+          { href: '/shipment', icon: <Truck size={14} />, label: 'Shipment Aktif', value: counts.activeShipments, sub: null, delay: '0.16s' },
+          { href: '/issues', icon: <AlertTriangle size={14} />, label: 'Open Issues', value: counts.issues, sub: 'Open & In Progress', delay: '0.24s', warn: counts.issues > 0 },
+        ].map(({ href, icon, label, value, sub, delay, warn }) => (
+          <Link
+            key={href}
+            href={href}
+            style={{ animationDelay: delay }}
+            className="animate-rise rounded-xl border border-border bg-white p-4 group
+              hover:border-blue/40 hover:shadow-md hover:shadow-blue/8 hover:-translate-y-0.5
+              transition-all duration-200"
+          >
+            <div className="flex items-center gap-2 text-xs text-muted group-hover:text-blue transition-colors duration-200">
+              {icon} {label}
+            </div>
+            <div className={`mt-2 text-3xl font-bold transition-colors duration-200 ${warn ? 'text-orange' : 'text-text group-hover:text-blue'}`}>
+              {value}
+            </div>
+            {href === '/shipment' ? (
+              <div className="mt-1 flex gap-2 flex-wrap">
+                {counts.draft > 0 && <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{counts.draft} Draft</span>}
+                {counts.dispatched > 0 && <span className="text-xs bg-blue/10 text-blue rounded px-1.5 py-0.5">{counts.dispatched} Dispatched</span>}
+                {counts.inTransit > 0 && <span className="text-xs bg-orange/10 text-orange rounded px-1.5 py-0.5">{counts.inTransit} In Transit</span>}
+              </div>
+            ) : (
+              <div className="text-xs text-muted mt-1">{sub}</div>
+            )}
+          </Link>
+        ))}
       </div>
 
       {/* ── OTD KPI Section ───────────────────────────────── */}
@@ -289,7 +303,7 @@ export default async function DashboardPage() {
                 Dari {otd.late} pengiriman terlambat
               </div>
               <div className="mt-3 text-xs text-gray-400">
-                Dihitung dari: cust_receipt_date − promised_delivery_date
+                Dihitung dari: delivery_time aktual (POD) − promised_delivery_date
               </div>
             </div>
 
@@ -519,23 +533,32 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Quick links ───────────────────────────────────── */}
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Link href="/workflow" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <span className="rounded-lg bg-blue-100 p-2"><CheckCircle2 className="text-blue-600" size={20} /></span>
-          <div><div className="text-sm font-semibold">Workflow Overview</div><div className="text-xs text-gray-500">Status flow harian</div></div>
-        </Link>
-        <Link href="/master-data" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <span className="rounded-lg bg-indigo-100 p-2"><Package className="text-indigo-600" size={20} /></span>
-          <div><div className="text-sm font-semibold">Master Data</div><div className="text-xs text-gray-500">Vendor, Route, SKU</div></div>
-        </Link>
-        <Link href="/warehouse-checklist" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <span className="rounded-lg bg-purple-100 p-2"><CheckCircle2 className="text-purple-600" size={20} /></span>
-          <div><div className="text-sm font-semibold">Warehouse Checklist</div><div className="text-xs text-gray-500">Cek kesiapan gudang</div></div>
-        </Link>
-        <Link href="/settings" className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-indigo-300 transition">
-          <span className="rounded-lg bg-gray-100 p-2"><XCircle className="text-gray-600" size={20} /></span>
-          <div><div className="text-sm font-semibold">Settings</div><div className="text-xs text-gray-500">Status Supabase</div></div>
-        </Link>
+      <section className="animate-rise-delay">
+        <h2 className="text-sm font-semibold text-muted uppercase tracking-wide mb-3">Menu Cepat</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[
+            { href: '/workflow',           icon: <CheckCircle2 size={20} />, bg: 'bg-blue/10 text-blue',     label: 'Workflow Overview', sub: 'Status flow harian' },
+            { href: '/master-data',        icon: <Package size={20} />,      bg: 'bg-orange/10 text-orange', label: 'Master Data',       sub: 'Vendor, Route, SKU' },
+            { href: '/warehouse-checklist',icon: <CheckCircle2 size={20} />, bg: 'bg-green/10 text-green',   label: 'Warehouse Checklist', sub: 'Cek kesiapan gudang' },
+            { href: '/settings',           icon: <XCircle size={20} />,      bg: 'bg-border text-muted',     label: 'Settings',          sub: 'Status Supabase' },
+          ].map(({ href, icon, bg, label, sub }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 group
+                hover:border-blue/30 hover:shadow-md hover:shadow-blue/6 hover:-translate-y-0.5
+                transition-all duration-200"
+            >
+              <span className={`rounded-lg p-2 ${bg} transition-transform duration-200 group-hover:scale-110`}>
+                {icon}
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-text group-hover:text-blue transition-colors duration-200">{label}</div>
+                <div className="text-xs text-muted">{sub}</div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
     </div>
   )

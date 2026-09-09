@@ -29,7 +29,7 @@ export function RouteRow({ route }: { route: Route }) {
         <td className="px-4 py-2.5">
           {route.dk_lk
             ? <span className={`text-xs font-bold rounded px-1.5 py-0.5 ${route.dk_lk === 'D' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                {route.dk_lk === 'D' ? 'Dalam Kota' : 'Luar Kota'}
+                {route.dk_lk === 'D' ? 'DALAM KOTA' : 'LUAR KOTA'}
               </span>
             : <span className="text-gray-300 text-xs">—</span>
           }

@@ -1,16 +1,17 @@
 import Link from 'next/link'
 import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
-import { ArrowRight, BarChart3, Boxes, ClipboardCheck, Factory, ShieldAlert, Target, Truck, Users } from 'lucide-react'
+import { ArrowRight, BarChart3, Target, Boxes, ClipboardCheck, Users, Truck, ShieldAlert, Factory } from 'lucide-react'
+import { getLandingPageData } from '@/lib/landing-page-data'
 
-const areas = [
-  { n: '01', title: 'Strategy & Planning', desc: 'Control room untuk roadmap, target layanan, kapasitas, dan prioritas eksekusi SCM.', icon: Target, tone: 'blue', metrics: ['Service level', 'Capacity plan', 'Weekly priorities'] },
-  { n: '02', title: 'Inventory Management', desc: 'Pantau stok, movement, slow moving, safety stock, dan sinyal risiko kekurangan barang.', icon: Boxes, tone: 'green', metrics: ['Available stock', 'Low stock alert', 'Stock movement'] },
-  { n: '03', title: 'Procurement', desc: 'Kelola kebutuhan pengadaan, supplier lead time, harga, dan pemenuhan PO.', icon: ClipboardCheck, tone: 'orange', metrics: ['PR to PO lead time', 'Supplier SLA', 'Cost variance'] },
-  { n: '04', title: 'Vendor Management', desc: 'Lihat performa vendor, SLA, POD, coverage, rate card, dan issue transport.', icon: Users, tone: 'blue', metrics: ['On-time rate', 'POD completion', 'Vendor score'] },
-  { n: '05', title: 'Logistics & Distribution', desc: 'Tracking shipment, rute, ETA, delay, status POD, dan pengiriman sampai selesai.', icon: Truck, tone: 'red', metrics: ['Shipment status', 'Delay reason', 'Delivery lead time'] },
-  { n: '06', title: 'Risk Management', desc: 'Satu tempat untuk issue log, mitigasi, severity, owner, dan tindak lanjut operasional.', icon: ShieldAlert, tone: 'orange', metrics: ['Open issues', 'Risk level', 'Mitigation status'] },
-  { n: '07', title: 'Warehouse Management', desc: 'Monitor receiving, outbound, checklist gudang, staging, dock, equipment, dan produktivitas.', icon: Factory, tone: 'green', metrics: ['Checklist rate', 'Inbound flow', 'Outbound readiness'] },
-]
+const iconMap = {
+  Target,
+  Boxes,
+  ClipboardCheck,
+  Users,
+  Truck,
+  ShieldAlert,
+  Factory,
+}
 
 const toneMap: Record<string, string> = {
   blue: 'from-[#E5F2FC] via-white to-[#F7FBFF] text-[#2783DE] border-[#CDE6F8]',
@@ -19,7 +20,19 @@ const toneMap: Record<string, string> = {
   red: 'from-[#FCE9E7] via-white to-[#FFF8F7] text-[#E56458] border-[#F3C9C5]',
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const data = await getLandingPageData()
+
+  const areas = [
+    { n: '01', title: 'Strategy & Planning', desc: 'Control room untuk roadmap, target layanan, kapasitas, dan prioritas eksekusi SCM.', icon: iconMap.Target, tone: 'blue', metrics: data.areas[0].metrics },
+    { n: '02', title: 'Inventory Management', desc: 'Pantau stok, movement, slow moving, safety stock, dan sinyal risiko kekurangan barang.', icon: iconMap.Boxes, tone: 'green', metrics: data.areas[1].metrics },
+    { n: '03', title: 'Procurement', desc: 'Kelola kebutuhan pengadaan, supplier lead time, harga, dan pemenuhan PO.', icon: iconMap.ClipboardCheck, tone: 'orange', metrics: data.areas[2].metrics },
+    { n: '04', title: 'Vendor Management', desc: 'Lihat performa vendor, SLA, POD, coverage, rate card, dan issue transport.', icon: iconMap.Users, tone: 'blue', metrics: data.areas[3].metrics },
+    { n: '05', title: 'Logistics & Distribution', desc: 'Tracking shipment, rute, ETA, delay, status POD, dan pengiriman sampai selesai.', icon: iconMap.Truck, tone: 'red', metrics: data.areas[4].metrics },
+    { n: '06', title: 'Risk Management', desc: 'Satu tempat untuk issue log, mitigasi, severity, owner, dan tindak lanjut operasional.', icon: iconMap.ShieldAlert, tone: 'orange', metrics: data.areas[5].metrics },
+    { n: '07', title: 'Warehouse Management', desc: 'Monitor receiving, outbound, checklist gudang, staging, dock, equipment, dan produktivitas.', icon: iconMap.Factory, tone: 'green', metrics: data.areas[6].metrics },
+  ]
+
   return (
     <main className="min-h-screen bg-[#F9F8F7] text-[#2C2C2B] selection:bg-[#2783DE] selection:text-white">
       <nav className="fixed top-0 z-50 w-full border-b border-black/5 bg-white/70 backdrop-blur-xl">
@@ -42,6 +55,7 @@ export default function LandingPage() {
         <div className="absolute left-1/2 top-28 h-72 w-72 -translate-x-1/2 rounded-full bg-[#2783DE]/15 blur-3xl" />
         <div className="absolute bottom-24 right-10 h-80 w-80 rounded-full bg-[#46A171]/15 blur-3xl" />
         <div className="mx-auto grid max-w-7xl items-center gap-12 md:grid-cols-[1.05fr_.95fr]">
+
           <div className="relative animate-rise">
             <div className="mb-6 inline-flex rounded-full border border-[#E6E5E3] bg-white px-4 py-2 text-sm text-[#7D7A75] shadow-sm">
               Supply Chain command center untuk operasi harian
@@ -71,16 +85,21 @@ export default function LandingPage() {
                   <BarChart3 className="text-[#2783DE]" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {['Shipment', 'Receiving', 'Outbound', 'Inventory'].map((x, i) => (
-                    <div key={x} className="rounded-2xl border border-[#E6E5E3] bg-white p-4">
-                      <div className="text-xs text-[#7D7A75]">{x}</div>
-                      <div className="mt-2 text-3xl font-semibold">{[18, 7, 32, 5][i]}</div>
+                  {[
+                    { label: 'Shipment', value: data.scmPulse.shipment },
+                    { label: 'Receiving', value: data.scmPulse.receiving },
+                    { label: 'Outbound', value: data.scmPulse.outbound },
+                    { label: 'Inventory', value: data.scmPulse.inventory },
+                  ].map((x, i) => (
+                    <div key={x.label} className="rounded-2xl border border-[#E6E5E3] bg-white p-4">
+                      <div className="text-xs text-[#7D7A75]">{x.label}</div>
+                      <div className="mt-2 text-3xl font-semibold">{x.value}</div>
                     </div>
                   ))}
                 </div>
                 <div className="mt-4 rounded-2xl border border-[#E6E5E3] bg-white p-4">
-                  <div className="mb-3 flex justify-between text-sm"><span>Operational readiness</span><span className="font-medium text-[#46A171]">84%</span></div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[#E6E5E3]"><div className="h-full w-[84%] rounded-full bg-[#46A171]" /></div>
+                  <div className="mb-3 flex justify-between text-sm"><span>Operational readiness</span><span className="font-medium text-[#46A171]">{data.scmPulse.operationalReadiness}%</span></div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#E6E5E3]"><div className="h-full w-[84%] rounded-full bg-[#46A171]" style={{ width: `${data.scmPulse.operationalReadiness}%` }} /></div>
                 </div>
               </div>
             </div>
@@ -113,9 +132,9 @@ export default function LandingPage() {
                 <div className="mb-6 flex items-center justify-between"><span className="font-medium">Dashboard snapshot</span><span className="text-sm text-[#7D7A75]">Live module</span></div>
                 <div className="grid gap-3">
                   {area.metrics.map((m, idx) => (
-                    <div key={m} className="rounded-2xl border border-[#E6E5E3] bg-white p-5">
-                      <div className="flex items-center justify-between"><span className="text-sm text-[#7D7A75]">{m}</span><span className="text-2xl font-semibold">{[92, 18, 7][idx]}{idx === 0 ? '%' : ''}</span></div>
-                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#F0EFED]"><div className="h-full rounded-full bg-current" style={{ width: `${[78, 52, 34][idx]}%` }} /></div>
+                    <div key={m.label} className="rounded-2xl border border-[#E6E5E3] bg-white p-5">
+                      <div className="flex items-center justify-between"><span className="text-sm text-[#7D7A75]">{m.label}</span><span className="text-2xl font-semibold">{m.value}{m.unit}</span></div>
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#F0EFED]"><div className="h-2 rounded-full bg-current" style={{ width: `${m.value}%` }} /></div>
                     </div>
                   ))}
                 </div>

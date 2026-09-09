@@ -135,9 +135,10 @@ export default function ReceivingTable({ rows, details }: Props) {
   }
 
   return (
-    <div className="bg-white border border-border rounded-xl overflow-auto max-h-[85vh]">
+    <div className="max-h-[calc(100vh-170px)] overflow-auto bg-white border border-border rounded-xl">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b sticky top-0 z-20">
+        <thead className="sticky top-0 z-10 bg-gray-50 border-b">
+          
           <tr>
             <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">POSTING DATE</th>
             <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">PTR NO</th>
