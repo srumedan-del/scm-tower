@@ -1,9 +1,11 @@
 # Product Requirements Document (PRD)
 ## SCM Control Tower
 
-**Versi:** 1.6
-**Tanggal:** September 2026  
+**Versi:** 1.7
+**Tanggal:** 09 September 2026
 **Status:** In Development  
+
+**Catatan perubahan v1.7:** Shipment menjadi pusat perencanaan dan monitoring pengiriman. Menu Trip Control tidak lagi ditampilkan pada sidebar karena penetapan transporter, kendaraan, driver, helper, rute, dan Trip ID dilakukan langsung saat membuat atau mengedit Shipment. Pencatatan biaya dilakukan terpisah melalui menu Shipment Cost.
 
 ---
 
@@ -57,7 +59,7 @@ Saat ini aplikasi digunakan oleh **1 user tunggal** (Kepala Gudang cabang), yang
 | **Delivery Lead Time** | Rata-rata (Waktu barang diterima customer − Waktu order dikonfirmasi) | Timestamp sistem (order → dispatch → delivered) | Sesuai SLA cabang | Mingguan |
 | **Vehicle/Transporter Utilization Rate** | (Kapasitas/kuota terpakai / Total kapasitas) x 100% — khusus armada Internal (volume/berat/drop point) | Data muatan per trip (`shipment_tracking`, `master_vehicle`) | 75–85% (Internal) | Mingguan |
 | **Cost per Delivery** | Total biaya distribusi periode / Total jumlah pengiriman periode — dipantau terpisah per model (Internal/Eksternal) dan per DK/LK | Rekap biaya aktual per shipment (`shipment_tracking.total_biaya`) | Sesuai budget cabang | Bulanan |
-| **Cost Ratio** *(baru)* | `total_biaya / invoice_value` x 100% | `shipment_tracking` (total_biaya vs invoice_value dari PSS/PSI) | Dipantau tren-nya, terutama untuk shipment LK bernilai kecil | Bulanan |
+| **Cost Ratio** *(baru)* | `total_biaya / invoice_value` x 100% untuk shipment eksternal | `shipment_tracking` (total_biaya vs invoice_value dari PSS/PSI) | Dipantau tren-nya, terutama untuk shipment LK bernilai kecil; Internal tidak memakai invoice | Bulanan |
 | **Delivery Issue Rate** *(pengganti Failure Rate)* | (Jumlah shipment dengan catatan kendala / Total pengiriman) x 100% | Issue Log (4.8) — dicatat sebagai catatan operasional, bukan status shipment | Serendah mungkin, breakdown per jenis kendala | Harian |
 
 **Catatan definisi:**
@@ -211,14 +213,14 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 | Package Tracking No. | ✅ (kolom ada, sering kosong) | Parsial | Field disediakan NAV tapi tidak konsisten diisi |
 | **Klasifikasi DK/LK (Dalam Kota/Luar Kota) per pelanggan** | ❌ | **Gap** | Saat ini dikelola manual di spreadsheet terpisah (~94 pelanggan sudah dipetakan) — perlu jadi field master (`customers.region_type`) |
 | **Kendaraan/armada yang mengirim** | ❌ | **Gap** | Perlu dicatat manual di app (assign dari `master_vehicle`) |
-| **Driver & Helper** | ❌ | **Gap** | Belum ada master data driver/helper — perlu ditambahkan |
-| **Rute pengiriman** | ❌ | **Gap** | Perlu di-assign dari `master_route`, atau dicatat sebagai multi-drop trip |
-| **Waktu dispatch aktual (keluar gudang)** | ❌ | **Gap** | Basis perhitungan *dispatch-to-delivery time* |
-| **Waktu delivery aktual (sampai ke pelanggan)** | ❌ | **Gap** | Basis perhitungan OTD/OTIF real, bukan tanggal NAV yang tidak akurat |
-| **Bukti serah terima (POD)** | ❌ | **Gap** | Belum ada — bisa berupa foto/tanda tangan digital |
-| **Transporter (Internal/Eksternal) & model layanan** | ❌ | **Gap** | Perlu dicatat manual — assign dari `master_transporter` (lihat 4.5.4) |
-| **Rincian biaya aktual per trip (BBM, bongkar muat, hotel, uang makan, tol, parkir, kirim paket / invoice eksternal)** | Sebagian sudah dicatat manual di spreadsheet bulanan | **Gap di app** | Saat ini direkap manual per bulan di Excel (`Realisasi Biaya Kirim`) — perlu masuk ke `shipment_tracking` per shipment (lihat 4.5.4) |
-| **Pengajuan Dana & Realisasi Biaya bulanan (khusus Internal)** | Proses manual via dokumen teks + approval berjenjang | **Gap di app** | Perlu modul tersendiri — lihat 4.5.5 |
+| **Driver & Helper** | ✅ | Tersedia | Dipilih dari master driver/helper saat membuat atau mengedit Shipment |
+| **Rute pengiriman** | ✅ | Tersedia | Dipilih dari master route saat membuat atau mengedit Shipment |
+| **Waktu dispatch aktual (keluar gudang)** | ✅ | Tersedia | Diisi pada Shipment; basis perhitungan *dispatch-to-delivery time* |
+| **Waktu delivery aktual (sampai ke pelanggan)** | ✅ | Tersedia | Diisi melalui Shipment/POD; basis perhitungan OTD real |
+| **Bukti serah terima (POD)** | ✅ | Tersedia | Nama penerima, waktu terima, dan catatan; media foto/tanda tangan masih opsional/backlog |
+| **Transporter (Internal/Eksternal) & model layanan** | ✅ | Tersedia | Dipilih saat membuat atau mengedit Shipment |
+| **Rincian biaya aktual per trip/shipment** | ✅ sebagian | Tersedia | Diisi pada menu Shipment Cost; Internal memakai komponen biaya operasional, Eksternal memakai invoice/total biaya |
+| **Pengajuan Dana & Realisasi Biaya bulanan (khusus Internal)** | Proses manual via dokumen teks + approval berjenjang | **Parsial** | Agregasi dan halaman budget tersedia; approval/export lanjutan tetap backlog — lihat 4.5.5 |
 | **Data crossdocking dari Kantor Pusat** | ❌ (tidak ada di NAV cabang) | **Gap** | Perlu input manual — lihat modul Crossdocking (4.3.1) |
 
 #### 4.5.2 Alur Status Pengiriman (Delivery Workflow)
@@ -227,8 +229,8 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 PSS diupload (dari NAV)
       │
       ▼
-[Draft/Pending Dispatch]  — shipment otomatis muncul dari outbound_header yang baru diupload
-      │  (assign: kendaraan, driver, rute/trip)
+[Draft]  — PSS dipilih dari daftar For Transport Planning dan dibuat menjadi Shipment
+  │  (assign: transporter, kendaraan, driver, helper, rute, Trip ID)
       ▼
 [Dispatched]  — input waktu keluar gudang (dispatch_time), odometer/muatan opsional
       │
@@ -239,35 +241,35 @@ PSS diupload (dari NAV)
 [Delivered]  — input waktu sampai (delivery_time) + POD (nama penerima, tanda tangan/foto)
 ```
 
-**Catatan:** Tidak ada proses retur/gagal kirim dalam alur ini — setiap shipment yang sudah dispatch diasumsikan selesai sampai ke pelanggan (Delivered). Jika terjadi kendala operasional di lapangan (barang rusak, keterlambatan signifikan, dll.), dicatat terpisah sebagai catatan di **Issue Log (4.8)** tanpa mengubah status shipment.
+**Catatan:** Detail status pengiriman dikelola pada menu Shipment. Kendali perjalanan tidak memerlukan menu terpisah; assignment sumber daya dilakukan pada panel pembuatan/edit Shipment. Jika terjadi kendala operasional di lapangan, dicatat pada catatan Shipment dan/atau **Issue Log (4.8)**.
 
 #### 4.5.2a Keputusan Pengendalian Status & Exception (v1.6)
 
 Ketentuan pada sub-bab ini menggantikan asumsi sebelumnya bahwa setiap shipment yang dispatch pasti berakhir Delivered.
 
-**Status normal:** `Draft` -> `Assigned` -> `Dispatched` -> `In Transit` -> `Delivered`.
+**Status normal:** `Draft` -> `Dispatched` -> `In Transit` -> `Delivered`.
 
 - `Draft`: sumber PSS/Crossdocking sudah tervalidasi, belum ditetapkan ke trip.
-- `Assigned`: trip, transporter, dan sumber daya yang diperlukan sudah ditetapkan.
 - `Dispatched`: `dispatch_time` wajib terisi.
 - `Delivered`: `delivery_time`, nama penerima, dan POD wajib terisi. Kuantitas aktual wajib dicatat ketika modul line sudah tersedia.
 
-**Exception:** dari `Assigned`, `Dispatched`, atau `In Transit`, user berwenang dapat membuat event `Delivery Attempt Failed`, `Partial Delivered`, `Rescheduled`, `Cancelled`, atau `Returned`. Setiap event wajib memiliki waktu, alasan, PIC, dan referensi Issue Log bila ada.
+**Exception:** dari `Dispatched` atau `In Transit`, user berwenang dapat membuat event `Delivery Attempt Failed`, `Partial Delivered`, `Rescheduled`, `Cancelled`, atau `Returned` bila kebutuhan bisnis tersebut diaktifkan. Setiap event wajib memiliki waktu, alasan, PIC, dan referensi Issue Log bila ada.
 
 **Kontrol:** perubahan status harus melalui transisi yang diizinkan dan tercatat pada event log yang tidak dapat ditimpa. Koreksi terhadap `Delivered` hanya dilakukan Admin dengan alasan. Status Crossdocking yang telah masuk TMS mengikuti status TMS sebagai sumber kebenaran agar tidak ada dua status operasional yang berbeda.
 
 #### 4.5.3 Fitur
 
-- **Daftar shipment aktif** dengan filter status: Draft, Dispatched, In Transit, Delivered
-- **Assign trip**: pilih satu atau beberapa shipment (PSS dan/atau Crossdocking — lihat 4.3.1) untuk multi-drop → assign **transporter** (Internal/Eksternal, lihat 4.5.4), kendaraan (jika Internal), driver (jika Internal), rute (`master_route`)
+- **For Transport Planning**: daftar PSS dari Outbound yang belum dibuatkan Shipment Tracking; user dapat memilih satu atau beberapa PSS lalu membuat Shipment.
+- **List Outbound Deliveries**: daftar Shipment yang sudah dibuat, berisi PSS/CD No., Document Date, customer, transporter, driver, Trip ID, status, dan POD.
+- **Pembuatan/edit Shipment**: assign **transporter** (Internal/Eksternal), kendaraan, driver, helper, rute, dan Trip ID dalam satu panel Shipment.
 - **Update status** dengan timestamp aktual: `dispatch_time`, `delivery_time`
 - **Input POD**: nama penerima, waktu terima, foto bukti (upload), catatan
-- **Input biaya trip**: berbeda menurut model transporter — lihat 4.5.4 untuk detail skema biaya per model
+- **Shipment Cost**: menu terpisah untuk mengisi biaya aktual berdasarkan model transporter; tidak ada form biaya pada panel Shipment.
 - **Kalkulasi otomatis**: `dispatch_to_delivery_hours`, `is_on_time` (vs Promised Delivery Date NAV), status OTIF per shipment
 - Data ini menjadi sumber utama untuk KPI Delivery & Distribution (4.1.1): OTD, OTIF, Delivery Lead Time, Vehicle/Transporter Utilization, Cost per Delivery
 
 **Aturan bisnis:**
-- Satu shipment (`shipment_tracking`) terhubung ke satu sumber (`outbound_header`/PSS atau `crossdocking_header`), tapi satu trip bisa membawahi banyak shipment (multi-drop)
+- Satu shipment (`shipment_tracking`) terhubung ke satu sumber (`outbound_header`/PSS atau `crossdocking_header`); beberapa shipment masih dapat memakai Trip ID yang sama untuk kebutuhan grouping dan pelaporan.
 - Status hanya bisa maju (Draft → Dispatched → In Transit → Delivered), tidak mundur, kecuali koreksi oleh Admin
 - Tidak ada status retur/gagal — proses ini tidak berlaku di operasional cabang
 - `is_on_time` dihitung dari `delivery_time` aktual vs `Promised Delivery Date` dari NAV (untuk shipment sumber PSS) atau tanggal janji kirim manual (untuk shipment sumber Crossdocking)
@@ -316,11 +318,13 @@ Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-m
 | `invoice_no_eksternal` | Eksternal | No. Invoice dari perusahaan ekspedisi |
 | `total_biaya_eksternal` | Eksternal | Total tagihan dari ekspedisi per invoice |
 | `total_biaya` | Semua | GENERATED — jumlah seluruh komponen (Internal) atau `total_biaya_eksternal` (Eksternal) |
-| `invoice_value` | Semua | Nilai invoice/PSS dari NAV (basis Cost Ratio) |
-| `cost_ratio` | Semua | GENERATED — `total_biaya / invoice_value` — indikator efisiensi biaya kirim relatif terhadap nilai barang, terutama penting untuk shipment LK bernilai kecil ke lokasi jauh |
+| `invoice_value` | Eksternal | Nilai invoice/PSS dari NAV untuk analisis biaya eksternal; tidak digunakan untuk pengiriman Internal |
+| `cost_ratio` | Eksternal | GENERATED — `total_biaya / invoice_value`; tidak ditampilkan atau dihitung sebagai rasio untuk pengiriman Internal |
 
 **Catatan:**
 - 3 transporter eksternal yang sama bisa melayani baik model Retail maupun Trucking tergantung kebutuhan pengiriman — model (Retail/Trucking) ditentukan per shipment/trip, bukan melekat permanen ke transporter.
+- Pengiriman Internal tidak memerlukan Invoice Value, nomor invoice eksternal, atau nomor resi. Form Internal hanya mencatat biaya operasional seperti BBM, hotel, tol, parkir, uang makan, bongkar muat, kirim paket opsional, dan biaya lain-lain.
+- Pengisian biaya dilakukan pada menu **Shipment Cost**, sedangkan menu **Shipment** hanya menyimpan data operasional, timeline, status, dan POD.
 - Struktur di atas mengadopsi format kolom yang sudah dipakai cabang di rekap Excel bulanan "Realisasi Biaya Kirim Crossdocking", supaya transisi dari spreadsheet ke aplikasi tidak mengubah cara kerja tim finance/approval.
 - `master_rate_card` tetap berguna sebagai referensi estimasi/proyeksi biaya (misalnya untuk modul Pengajuan Dana di 4.5.5), meskipun biaya aktual per shipment dicatat langsung di `shipment_tracking`.
 
@@ -344,6 +348,14 @@ Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-m
 - Modul ini hanya berlaku untuk transporter **Internal** — biaya Eksternal tidak melalui proses pengajuan dana ini karena dibayar berdasarkan invoice ekspedisi (proses AP/hutang biasa)
 - Buffer biaya SCM adalah nilai tetap/manual yang bisa disesuaikan tiap bulan oleh Kepala Gudang saat submit pengajuan
 - Realisasi bulan berjalan otomatis tersedia setelah seluruh shipment bulan tersebut berstatus Delivered dan biayanya sudah diinput lengkap
+
+#### 4.5.6 Keputusan UI dan Navigasi v1.7
+
+- Sidebar menampilkan menu **Shipment** sebagai pusat perencanaan dan monitoring pengiriman.
+- Menu **Trip Control** tidak ditampilkan sebagai workflow terpisah. Data assignment perjalanan tetap tersimpan pada Shipment melalui `transporter_id`, `vehicle_id`, `driver_id`, `helper_id`, `route_id`, dan `trip_id`.
+- Menu **Shipment Cost** menjadi satu-satunya tempat input komponen biaya dan referensi invoice biaya.
+- Pada menu Shipment, tab **For Transport Planning** menampilkan PSS yang belum dibuatkan Shipment; tab **List Outbound Deliveries** menampilkan Shipment yang sudah dibuat.
+- Tabel data pada Shipment, Receiving, dan Outbound menggunakan scroll pada area tabel; header halaman dan kontrol tetap berada di luar area scroll.
 
 ### 4.6 Workflow
 - Analitik receiving: lead time trend, keterlambatan per shipping agent
@@ -388,6 +400,8 @@ Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-m
 | File Processing | XLSX (browser-side parsing) |
 | Deployment | (TBD) |
 
+**Catatan runtime:** Konvensi Next.js 16 menggunakan `proxy.ts` untuk refresh session Supabase dan proteksi route. File `middleware.ts` tidak lagi digunakan.
+
 **Pola upload data:**
 1. User pilih file Excel/CSV di browser
 2. File di-parse client-side dengan `xlsx` library
@@ -420,6 +434,7 @@ Dalam ILE, baris dengan `Document No.` prefix `PAO` (Purchase Adjustment Order) 
 ## 6.1 Keputusan Arsitektur Data & Migrasi (v1.6)
 
 - **Satu master transporter:** aplikasi menggunakan tepat satu tabel master transporter sebagai sumber resmi. Bila `vendors` dipilih sebagai master, `shipment_tracking.transporter_id` harus mereferensikan `vendors.id`; bila `master_transporter` dipilih, seluruh UI dan import harus menggunakan tabel tersebut. Penyimpanan nama transporter/kendaraan/driver di `notes` tidak boleh menjadi sumber laporan resmi.
+- **Implementasi saat ini:** transporter pada alur Shipment berasal dari tabel `vendors`, armada dari `transport_fleet`, driver/helper dari `master_driver`, dan rute dari `routes`. View TMS boleh menambahkan field hasil join untuk display, tetapi field tersebut tidak boleh dikirim kembali ke tabel `shipment_tracking` saat update.
 - **Identitas dan audit:** setiap operasi create, update, delete, perubahan status, upload batch, POD, dan approval menyimpan `user_id`, waktu, aksi, nilai sebelum/sesudah yang relevan, dan alasan koreksi.
 - **Transaksi atomik:** pembuatan Crossdocking beserta detail, pembuatan Trip dengan Stop, serta pengalokasian biaya harus atomik. Jika salah satu bagian gagal, tidak boleh ada header atau biaya yatim.
 - **Penomoran aman konkurensi:** nomor Trip, Crossdocking, Issue, dan batch upload dibuat pada database dengan sequence/unique constraint; aplikasi tidak boleh hanya mencari nomor terbesar lalu menambah satu.
@@ -530,8 +545,8 @@ kirim_paket_cost                     — khusus Internal, opsional
 invoice_no_eksternal                    — khusus Eksternal
 total_biaya_eksternal                     — khusus Eksternal
 total_biaya                                  — GENERATED: jumlah komponen Internal, atau total_biaya_eksternal
-invoice_value                                  — nilai invoice/PSS dari NAV (basis Cost Ratio)
-cost_ratio                                        — GENERATED: total_biaya / invoice_value
+invoice_value                                  — nilai invoice/PSS dari NAV, khusus shipment eksternal (basis Cost Ratio)
+cost_ratio                                        — GENERATED untuk shipment eksternal; Internal tidak memakai rasio invoice
 ```
 
 **Tabel baru `delivery_pod`:**
@@ -626,7 +641,7 @@ notes
 - [ ] Konsolidasikan `vendors` dan `master_transporter` menjadi satu master resmi, lalu perbaiki seluruh FK dan laporan.
 - [ ] Implementasikan model `Trip`, `Trip Stop`, `Trip Expense`, dan `Expense Allocation`; migrasikan biaya yang saat ini tersimpan per shipment agar total biaya tidak berlipat pada multi-drop.
 - [ ] Ubah dashboard OTD agar hanya memakai `delivery_time` aktual + POD; tampilkan Overdue/Open Shipment terpisah.
-- [ ] Implementasikan status `Assigned`, event log append-only, serta exception delivery dan alasan koreksi.
+- [ ] Implementasikan event log append-only serta exception delivery dan alasan koreksi. Status operasional saat ini tetap `Draft`, `Dispatched`, `In Transit`, dan `Delivered`.
 - [ ] Tambahkan trip stop line untuk qty planned/actual sebelum mengaktifkan KPI OTIF.
 - [ ] Perbaiki model snapshot HD dan buat view/trigger kalkulasi yang valid di PostgreSQL.
 - [ ] Tambahkan rekonsiliasi inventory NAV vs snapshot/opname/in-transit serta upload batch audit.
@@ -641,22 +656,22 @@ notes
 - [ ] Paginasi pada tabel outbound dan receiving untuk dataset besar
 
 **TMS (Transport Management System):**
-- [ ] Master data Driver (`master_driver`) — CRUD dasar, untuk 2 driver internal
-- [ ] Master data Transporter (`master_transporter`) — setup Internal (SRU) + 3 transporter eksternal, dengan `service_model` (Retail/Trucking)
-- [ ] Tabel `delivery_pod` + upload foto POD ke Supabase Storage
-- [ ] Form input manual Crossdocking (`crossdocking_header`/`crossdocking_detail`) — lihat 4.3.1
-- [ ] Halaman assign trip: pilih multi-shipment (PSS dan/atau Crossdocking) → assign transporter, kendaraan/driver (jika Internal), rute
-- [ ] Update status shipment via mobile-friendly form (untuk diisi driver/checker di lapangan, bukan hanya admin di kantor)
-- [ ] Perhitungan otomatis `is_on_time` berbasis `Promised Delivery Date` (bukan `Cust. Receipt Date` NAV yang tidak reliable)
-- [ ] Modul input biaya trip dengan 3 formula berbeda: operasional aktual (Internal), per-kg-per-tujuan (Eksternal-Retail), per-trip/FTL (Eksternal-Trucking)
+- [x] Master data Driver/Helper (`master_driver`) — CRUD dasar, dengan field role
+- [x] Master data Transporter melalui `vendors` — Internal (SRU) dan eksternal dengan model layanan
+- [ ] Tabel `delivery_pod` + upload foto POD ke Supabase Storage (data POD dasar sudah tersedia; media masih backlog)
+- [x] Form input manual Crossdocking (`crossdocking_header`/`crossdocking_detail`) — lihat 4.3.1
+- [x] Assignment transporter, kendaraan, driver/helper, rute, dan Trip ID dilakukan pada form Shipment; halaman Trip Control terpisah tidak menjadi workflow utama
+- [x] Update status shipment dan waktu aktual melalui form Shipment/POD
+- [x] Perhitungan otomatis `is_on_time` berbasis `Promised Delivery Date` dan `delivery_time`
+- [x] Modul input biaya pada Shipment Cost dengan formula Internal, Eksternal-Retail, dan Eksternal-Trucking
 - [ ] Setup `master_rate_card` dengan struktur per kg per tujuan (Retail) dan per rute (Trucking)
 - [ ] Notifikasi/alert saat shipment melewati Promised Delivery Date tapi status masih Draft/Dispatched
 - [ ] (Jangka panjang) Integrasi GPS tracking kendaraan real-time, jika budget/hardware tersedia
 
 **Cost Tracking & Budget Request:**
 - [ ] Tambahkan `psi_no` ke `outbound_header` dan `region_type` (DK/LK) ke `customers` — termasuk import awal ~94 pelanggan yang sudah dipetakan DK/LK dari spreadsheet eksisting
-- [ ] Form input biaya shipment sesuai rincian komponen riil (BBM, bongkar muat, hotel, uang makan driver/helper, tol, parkir, kirim paket) untuk Internal; No. Invoice + Total Biaya untuk Eksternal
-- [ ] Master data Driver & Helper dengan field `role`
+- [x] Form input biaya shipment sesuai rincian komponen riil (BBM, bongkar muat, hotel, uang makan driver/helper, tol, parkir, kirim paket, biaya lain-lain) untuk Internal; No. Invoice + Total Biaya untuk Eksternal
+- [x] Master data Driver & Helper dengan field `role`
 - [ ] Modul Pengajuan Dana & Realisasi Biaya (4.5.5): form proyeksi, kalkulasi otomatis subtotal, export ke format dokumen yang sesuai dengan proses submit ke finance saat ini
 - [ ] Dashboard/laporan Cost Ratio (biaya kirim vs invoice value) per shipment, per bulan, per DK/LK
 
@@ -677,7 +692,7 @@ notes
 - Cache Next.js (`.next`) perlu dihapus dan server di-restart setelah perubahan `next.config.ts`
 - Kolom `is_sale` dan `delivery_delay_days` adalah generated columns di Supabase — tidak boleh di-insert manual
 - Next.js versi yang digunakan: **16.3.3** (Turbopack) — ada breaking changes dari versi sebelumnya
-- File `middleware.ts` deprecated di Next.js 16, perlu diganti `proxy.ts` (migration: `npx @next/codemod@canary middleware-to-proxy .`)
+- Konvensi autentikasi Next.js 16 sudah menggunakan `proxy.ts`; `middleware.ts` telah dihapus.
 
 ---
 
@@ -757,6 +772,8 @@ ORDER BY document_date DESC;
 
 - Kolom **OTD** dihapus dari tabel tracking (tetap tersedia di halaman Shipment Cost)
 - Kolom **Biaya (Rp)** dihapus dari tabel tracking (dipindah ke halaman Shipment Cost)
+- Tab utama menggunakan **For Transport Planning** untuk PSS yang belum dibuatkan Shipment dan **List Outbound Deliveries** untuk daftar Shipment yang sudah dibuat.
+- Header Shipment Tracking tetap, sedangkan hanya isi tabel yang memiliki scroll; status card dan filter status terpisah tidak digunakan pada tampilan saat ini.
 - Klik baris mana saja (termasuk Draft/Dispatched) membuka panel edit — sebelumnya Draft/Dispatched hanya toggle checkbox
 - Checkbox tetap berfungsi untuk assign trip multi-drop (dengan `stopPropagation`)
 - Hapus shipment otomatis hapus POD terkait terlebih dahulu (menghindari FK constraint)
@@ -767,13 +784,14 @@ ORDER BY document_date DESC;
 **Status: ✅ Baru diimplementasikan**
 
 - Menu baru di sidebar: **Shipment Cost** (icon DollarSign) — posisi antara Shipment dan Receiving
-- **4 KPI cards**: Total Shipment, Total Biaya, Total Invoice Value, Avg Cost Ratio
+- **4 KPI cards**: Total Shipment, Total Biaya, Invoice Value Eksternal, Avg Cost Ratio
 - **Breakdown** per Model Transporter (Internal/Retail/Trucking) dan per DK/LK
 - **Tabel detail** per shipment:
   - Trip ID, PSS/CD No, Customer, DK/LK, Transporter (dari master atau `notes`), Model
   - No. Voucher (Internal) / No. Invoice Eksternal
   - Komponen biaya Internal: BBM, Bongkar Muat, Hotel, Uang Makan, Tol, Parkir, Kirim Paket
-  - Total Biaya, Invoice Value, Cost Ratio badge (hijau/kuning/merah), OTD, Status
+  - Total Biaya, Invoice Value Eksternal, Cost Ratio badge (hijau/kuning/merah), OTD, Status
+  - Model Internal hanya menampilkan komponen biaya operasional dan tidak menggunakan Invoice Value/Cost Ratio
 - Warning bar jika ada shipment belum diisi biaya
 - Baris highlight kuning untuk shipment tanpa biaya
 
