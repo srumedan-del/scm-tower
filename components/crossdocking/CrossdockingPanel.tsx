@@ -41,6 +41,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
   // Header form
   const [header, setHeader] = useState<Partial<CrossdockingHeader>>({
     status: 'Draft',
+    document_date: new Date().toISOString().slice(0, 10),
     received_from_hq_date: new Date().toISOString().slice(0, 10),
     promised_delivery_date: '',
   })
@@ -127,11 +128,11 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
         if (!isEdit) {
           // INSERT baru
           const { customer_code, customer_name, destination_address,
-                  hq_reference_no, received_from_hq_date, promised_delivery_date,
+                  pss_no, psi_no, document_date, hq_reference_no, received_from_hq_date, promised_delivery_date,
                   status, notes, created_by } = header as any
           await insertCrossdocking(
             { customer_code, customer_name, destination_address,
-              hq_reference_no, received_from_hq_date, promised_delivery_date,
+              pss_no, psi_no, document_date, hq_reference_no, received_from_hq_date, promised_delivery_date,
               status: status ?? 'Draft', notes, created_by },
             validDetails.map(({ _key, id, item_name, ...rest }) => rest)
           )
@@ -219,6 +220,18 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                 placeholder="Alamat lengkap tujuan akhir"
               />
             </Field>
+
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Nomor PSS">
+                <input value={header.pss_no ?? ''} onChange={e => hup('pss_no', e.target.value || null)} className="inp font-mono" placeholder="PSS-XXXX-XXXX" />
+              </Field>
+              <Field label="Nomor PSI">
+                <input value={header.psi_no ?? ''} onChange={e => hup('psi_no', e.target.value || null)} className="inp font-mono" placeholder="PSI-XXXX-XXXX" />
+              </Field>
+              <Field label="Tanggal Dokumen">
+                <input type="date" value={header.document_date?.slice(0, 10) ?? ''} onChange={e => hup('document_date', e.target.value || null)} className="inp" />
+              </Field>
+            </div>
 
             {/* Tanggal & referensi */}
             <div className="grid grid-cols-3 gap-3">
@@ -314,14 +327,12 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                           ))}
                           <option value="__manual">→ Input manual</option>
                         </select>
-                        {d.item_no === '__manual' && (
-                          <input
-                            value={d.item_no === '__manual' ? '' : (d.item_no ?? '')}
-                            onChange={e => dupd(d._key, 'item_no', e.target.value || null)}
-                            className="mt-1 w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
-                            placeholder="Kode item manual"
-                          />
-                        )}
+                        <input
+                          value={d.item_no === '__manual' ? '' : (d.item_no ?? '')}
+                          onChange={e => onItemChange(d._key, e.target.value)}
+                          className="mt-1 w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:border-indigo-500"
+                          placeholder="Atau ketik kode item manual"
+                        />
                       </td>
                       {/* Deskripsi */}
                       <td className="px-2 py-1.5">

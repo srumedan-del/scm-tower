@@ -71,27 +71,6 @@ export default function CrossdockingPage() {
         </div>
       )}
 
-      {/* Stats */}
-      {tmsAvail === true && (
-        <div className="grid grid-cols-4 gap-3">
-          {(['Draft', 'Ready', 'Dispatched', 'Delivered'] as const).map(s => {
-            const count = rows.filter(r => r.status === s).length
-            const colors: Record<string, string> = {
-              Draft: 'text-gray-700 bg-gray-50',
-              Ready: 'text-blue-700 bg-blue-50',
-              Dispatched: 'text-orange-700 bg-orange-50',
-              Delivered: 'text-green-700 bg-green-50',
-            }
-            return (
-              <div key={s} className={`rounded-xl border p-3 ${colors[s]}`}>
-                <div className="text-2xl font-bold">{count}</div>
-                <div className="text-xs mt-0.5 opacity-80">{s}</div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
       {/* Tabel */}
       <div className="bg-white border border-border rounded-xl overflow-x-auto">
         <table className="w-full text-sm">

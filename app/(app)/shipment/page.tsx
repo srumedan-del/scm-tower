@@ -178,10 +178,10 @@ export default function ShipmentPage() {
                         className="rounded border-gray-300" title="Pilih semua" />
                     )}
                   </th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Doc Date</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">PSS No.</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Customer</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Kota Tujuan</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Doc Date</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Promised Date</th>
                   <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Delay</th>
                 </tr>
@@ -210,10 +210,10 @@ export default function ShipmentPage() {
                         <input type="checkbox" checked={isChecked} onChange={() => toggleUtCheck(r.pss_no)}
                           className="rounded border-gray-300" />
                       </td>
+                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
                       <td className="px-4 py-2.5 font-mono text-xs font-bold text-indigo-600 whitespace-nowrap">{r.pss_no}</td>
                       <td className="px-4 py-2.5 text-xs max-w-[160px] truncate">{r.customer_name ?? '-'}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
-                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.promised_delivery_date ?? '-'}</td>
                       <td className="px-4 py-2.5 text-center">
                         {r.is_late

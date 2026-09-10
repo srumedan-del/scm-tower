@@ -166,6 +166,32 @@ export async function insertOutboundDetailRows(rows: Record<string, any>[]) {
   return { inserted, skipped }
 }
 
+/** Isi timestamp NAV pada detail yang telah ada ketika file ILE di-upload ulang. */
+export async function updateOutboundDetailCreatedTimes(rows: Record<string, any>[]) {
+  const updates = rows.filter(row =>
+    row.entry_no !== null && row.entry_no !== undefined && row.document_created_at
+  )
+
+  const BATCH = 100
+  let updated = 0
+  for (let index = 0; index < updates.length; index += BATCH) {
+    const batch = updates.slice(index, index + BATCH)
+    const results = await Promise.all(batch.map(row =>
+      supabaseAdmin
+        .from('outbound_detail')
+        .update({ document_created_at: row.document_created_at })
+        .eq('entry_no', Number(row.entry_no))
+        .is('document_created_at', null)
+        .select('id')
+    ))
+    for (const { data, error } of results) {
+      if (error) throw error
+      updated += data?.length ?? 0
+    }
+  }
+  return { updated }
+}
+
 /* ── Outbound Full Data (modal detail) ──────────────────── */
 
 export async function getOutboundFullData(pssNo: string) {

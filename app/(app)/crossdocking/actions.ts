@@ -8,6 +8,9 @@ export type CrossdockingHeader = {
   customer_code: string | null
   customer_name: string | null
   destination_address: string | null
+  pss_no: string | null
+  psi_no: string | null
+  document_date: string | null
   hq_reference_no: string | null
   received_from_hq_date: string
   promised_delivery_date: string

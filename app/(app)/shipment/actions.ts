@@ -97,21 +97,48 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
 export type ServiceLevelShipmentRow = Pick<
   ShipmentTrackingRow,
   'id' | 'pss_no' | 'customer_name' | 'document_date' | 'promised_delivery_date' |
-  'status' | 'delivery_time' | 'notes' | 'transporter_name'
->
+  'status' | 'delivery_time' | 'notes' | 'transporter_name' | 'dk_lk'
+> & { document_created_at: string | null }
 
 /** Data ringkas untuk laporan service level pada periode document date tertentu. */
 export async function getServiceLevelShipments(startDate: string, endDate: string): Promise<ServiceLevelShipmentRow[]> {
   const { data, error } = await supabaseAdmin
     .from('vw_shipment_tms')
-    .select('id, pss_no, customer_name, document_date, promised_delivery_date, status, delivery_time, notes, transporter_name')
+    .select('id, pss_no, customer_name, document_date, promised_delivery_date, status, delivery_time, notes, transporter_name, dk_lk')
     .gte('document_date', startDate)
     .lte('document_date', endDate)
     .order('document_date', { ascending: false })
     .limit(1000)
 
   if (error) throw error
-  return (data ?? []) as ServiceLevelShipmentRow[]
+
+  const shipments = (data ?? []) as ServiceLevelShipmentRow[]
+  const pssNos = [...new Set(shipments.map(row => row.pss_no?.trim()).filter(Boolean))] as string[]
+  if (!pssNos.length) return shipments
+
+  const { data: details, error: detailError } = await supabaseAdmin
+    .from('outbound_detail')
+    .select('document_no, entry_type, document_created_at')
+    .in('document_no', pssNos)
+    .not('document_created_at', 'is', null)
+
+  if (detailError) throw detailError
+
+  const createdAtByPss = new Map<string, { sale: string | null; fallback: string | null }>()
+  for (const detail of details ?? []) {
+    const pssNo = String(detail.document_no ?? '').trim()
+    const createdAt = String(detail.document_created_at ?? '')
+    if (!pssNo || !createdAt) continue
+    const current = createdAtByPss.get(pssNo) ?? { sale: null, fallback: null }
+    if (!current.fallback || createdAt < current.fallback) current.fallback = createdAt
+    if (String(detail.entry_type ?? '').trim().toLowerCase() === 'sale' && (!current.sale || createdAt < current.sale)) current.sale = createdAt
+    createdAtByPss.set(pssNo, current)
+  }
+
+  return shipments.map(shipment => {
+    const created = shipment.pss_no ? createdAtByPss.get(shipment.pss_no.trim()) : undefined
+    return { ...shipment, document_created_at: created?.sale ?? created?.fallback ?? null }
+  })
 }
 
 export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> & { id?: number }) {
@@ -124,7 +151,7 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     payment_voucher_no, bbm_liter, bbm_rupiah, bongkar_muat_cost,
     hotel_cost, uang_makan_driver, uang_makan_helper, toll_cost,
     parkir_cost, kirim_paket_cost, misc_cost, misc_cost_notes,
-    no_resi, invoice_no_eksternal, total_biaya_eksternal,
+    invoice_no_eksternal,
     biaya_trucking, biaya_tkbm, invoice_value,
     // Kolom legacy/tidak ada di tabel baru
     trip_cost,

@@ -33,8 +33,34 @@ function vendorName(row: ServiceLevelShipmentRow) {
   return match?.[1].trim() || 'Belum tercatat'
 }
 
+function slaHours(row: ServiceLevelShipmentRow) {
+  return row.dk_lk === 'DK' ? 24 : 72
+}
+
+function slaDueAt(row: ServiceLevelShipmentRow) {
+  if (!row.document_created_at) return null
+  const documentCreatedAt = new Date(row.document_created_at)
+  if (Number.isNaN(documentCreatedAt.getTime())) return null
+  return new Date(documentCreatedAt.getTime() + slaHours(row) * 60 * 60 * 1000)
+}
+
 function isOnTime(row: ServiceLevelShipmentRow) {
-  return Boolean(row.delivery_time && row.promised_delivery_date && row.delivery_time.slice(0, 10) <= row.promised_delivery_date.slice(0, 10))
+  const dueAt = slaDueAt(row)
+  if (!row.delivery_time || !dueAt) return false
+  const deliveryAt = new Date(row.delivery_time)
+  return !Number.isNaN(deliveryAt.getTime()) && deliveryAt <= dueAt
+}
+
+function needsAttention(row: ServiceLevelShipmentRow, now = new Date()) {
+  const dueAt = slaDueAt(row)
+  if (!dueAt) return false
+  if (row.status === 'Delivered') return !isOnTime(row)
+  return now > dueAt
+}
+
+function formatDateTime(value: Date | null) {
+  if (!value) return 'Timestamp belum tersedia'
+  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }).format(value)
 }
 
 function groupRows(rows: ServiceLevelShipmentRow[], key: (row: ServiceLevelShipmentRow) => string): GroupRow[] {
@@ -134,13 +160,14 @@ export default function ServiceLevelPage() {
   const statusCounts = useMemo(() => Object.fromEntries(STATUS_ORDER.map(status => [status, filtered.filter(row => row.status === status).length])), [filtered]) as Record<string, number>
   const delivered = statusCounts.Delivered ?? 0
   const onTime = filtered.filter(row => row.status === 'Delivered' && isOnTime(row)).length
-  const late = delivered - onTime
+  const late = filtered.filter(row => row.status === 'Delivered' && slaDueAt(row) && !isOnTime(row)).length
   const open = filtered.length - delivered
   const customerRows = useMemo(() => groupRows(filtered, row => row.customer_name || 'Belum tercatat'), [filtered])
   const vendorRows = useMemo(() => groupRows(filtered, vendorName), [filtered])
   const attentionRows = useMemo(() => filtered
-    .filter(row => row.status !== 'Delivered' || (row.status === 'Delivered' && !isOnTime(row)))
+    .filter(row => needsAttention(row))
     .slice(0, 8), [filtered])
+  const overdue = attentionRows.filter(row => row.status !== 'Delivered').length
 
   return (
     <div className="space-y-5">
@@ -218,12 +245,12 @@ export default function ServiceLevelPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-white overflow-hidden">
-        <div className="border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Shipment Butuh Perhatian</h2><p className="text-xs text-gray-500 mt-0.5">Belum selesai atau Delivered tetapi melewati promised date.</p></div>
+        <div className="border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Shipment Butuh Perhatian</h2><p className="text-xs text-gray-500 mt-0.5">Melewati SLA dari Document Created Date/Time: DK 24 jam · LK 72 jam.</p></div>
         <div className="max-h-72 overflow-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-4 py-2.5 text-left">PSS</th><th className="px-4 py-2.5 text-left">Customer</th><th className="px-4 py-2.5 text-left">Vendor</th><th className="px-4 py-2.5 text-left">Promised Date</th><th className="px-4 py-2.5 text-center">Status</th></tr></thead>
+            <thead className="sticky top-0 bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-4 py-2.5 text-left">PSS</th><th className="px-4 py-2.5 text-left">Customer</th><th className="px-4 py-2.5 text-left">Vendor</th><th className="px-4 py-2.5 text-left">Batas SLA</th><th className="px-4 py-2.5 text-center">Status</th></tr></thead>
             <tbody className="divide-y">
-              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang memerlukan perhatian.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-3 font-mono text-xs text-indigo-700">{row.pss_no ?? '-'}</td><td className="px-4 py-3">{row.customer_name ?? '-'}</td><td className="px-4 py-3">{vendorName(row)}</td><td className="px-4 py-3">{row.promised_delivery_date ?? '-'}</td><td className="px-4 py-3 text-center"><StatusBadge status={row.status} /></td></tr>)}
+              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-3 font-mono text-xs text-indigo-700">{row.pss_no ?? '-'}</td><td className="px-4 py-3">{row.customer_name ?? '-'}</td><td className="px-4 py-3">{vendorName(row)}</td><td className="px-4 py-3"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-3 text-center"><StatusBadge status={row.status} /></td></tr>)}
             </tbody>
           </table>
         </div>

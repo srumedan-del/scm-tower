@@ -11,6 +11,7 @@ import {
   getOutboundHeadersByPssNos,
   getExistingOutboundDetailEntryNos,
   insertOutboundDetailRows,
+  updateOutboundDetailCreatedTimes,
 } from '@/app/(app)/outbound/actions'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +59,28 @@ const toISODate = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString().slice(0, 10)
 
   return '9999-12-31'
+}
+
+const toISODateTime = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value)
+    if (!date) return null
+    return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T${String(date.H ?? 0).padStart(2, '0')}:${String(date.M ?? 0).padStart(2, '0')}:${String(date.S ?? 0).padStart(2, '0')}+07:00`
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString()
+
+  const text = String(value).trim()
+  const indonesianDateTime = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+  if (indonesianDateTime) {
+    const [, day, month, year, hour, minute, second = '00'] = indonesianDateTime
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:${second}+07:00`
+  }
+
+  const parsed = new Date(text)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
 }
 
 const toNumber = (value: unknown): number | null => {
@@ -206,6 +229,7 @@ const HEADER_ALLOWED_FIELDS = [
   'shipment_no',
   'psi_no',
   'posting_date',
+  'document_created_at',
   'document_date',
   'document_type',
   'location_code',
@@ -392,6 +416,7 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
 
   const record: Record<string, any> = {
     posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date'])) || now.slice(0, 10),
+    document_created_at: toISODateTime(pickValue(row, ['document_created_date_time', 'document_created_datetime', 'document_created_at', 'created_date'])),
     entry_type: pickValue(row, ['entry_type']) ?? null,
     document_no: pickValue(row, ['document_no', 'doc_no', 'no']) ?? null,
     item_no: pickValue(row, ['item_no', 'sku', 'item']) ?? null,
@@ -479,6 +504,9 @@ export function OutboundDetailUploadButton() {
         outbound_header_id: headerMap.get(String(row.document_no).trim()) ?? null,
       }))
 
+      // File yang di-upload ulang juga melengkapi timestamp NAV pada detail lama.
+      const { updated: timestampsBackfilled } = await updateOutboundDetailCreatedTimes(rowsWithHeaderId)
+
       // Step 5: Deduplicate berdasarkan entry_no
       const entryNos = rowsWithHeaderId
         .map((r) => r['entry_no'] as number | null | undefined)
@@ -506,7 +534,7 @@ export function OutboundDetailUploadButton() {
       const skipped = rowsWithHeaderId.length - toInsert.length
 
       if (!toInsert.length) {
-        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.`)
+        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp Document Created Date/Time dilengkapi.` : ''}`)
         return
       }
 
@@ -517,7 +545,7 @@ export function OutboundDetailUploadButton() {
       showAlert(
         'success',
         'Upload Berhasil',
-        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${remapNote}${unmapNote}`
+        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp lama dilengkapi.` : ''}${remapNote}${unmapNote}`
       )
     } catch (error: any) {
       showAlert('error', 'Upload Gagal', formatError(error))

@@ -109,6 +109,11 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
 
   const selectedTransporter = transporters.find(t => t.id === form.transporter_id)
   const isInternal = selectedTransporter?.type === 'Internal'
+  const transporterName = selectedTransporter?.name
+    ?? form.transporter_name
+    ?? form.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim()
+    ?? ''
+  const isIndahLogistik = /indah\s+logistik/i.test(transporterName)
 
   function del() {
     if (!shipment) return
@@ -305,6 +310,28 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
 				<DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
               </Field>
             </div>
+            {isIndahLogistik && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field label="Nomor Resi Indah Logistik">
+                  <input
+                    value={form.no_resi ?? ''}
+                    onChange={e => up('no_resi', e.target.value || null)}
+                    className="inp font-mono"
+                    placeholder="Masukkan nomor resi setelah serah-terima"
+                  />
+                </Field>
+                <Field label="Biaya Kirim per Resi (Rp)">
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.total_biaya_eksternal ?? ''}
+                    onChange={e => up('total_biaya_eksternal', e.target.value === '' ? null : Number(e.target.value))}
+                    className="inp"
+                    placeholder="0"
+                  />
+                </Field>
+              </div>
+            )}
           </Section>
 
           <Field label="Catatan">
