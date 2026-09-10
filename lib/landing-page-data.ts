@@ -1,6 +1,6 @@
 "use server"
 
-import { supabase } from './supabase'
+import { supabaseAdmin as supabase } from './supabaseAdmin'
 
 export async function getLandingPageData() {
   const today = new Date().toISOString().slice(0, 10)

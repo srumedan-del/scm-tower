@@ -42,7 +42,7 @@ async function getAvailableMonths() {
   return months.sort().reverse()
 }
 
-async function getOutboundHeaders(months: string[]) {
+async function getOutboundHeaders(months: string[], customer: string) {
   let query = supabase
     .from('outbound_header')
     .select(
@@ -60,6 +60,10 @@ async function getOutboundHeaders(months: string[]) {
     query = query.or(conditions)
   }
 
+  if (customer) {
+    query = query.ilike('customer_name', `%${customer}%`)
+  }
+
   const { data } = await query.limit(500)
   return data ?? []
 }
@@ -67,16 +71,17 @@ async function getOutboundHeaders(months: string[]) {
 export default async function OutboundPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string | string[] }>
+  searchParams: Promise<{ month?: string | string[]; customer?: string }>
 }) {
   const sp = await searchParams
   const monthParam = sp.month
   const months = typeof monthParam === 'string'
     ? monthParam.split(',').filter(Boolean)
     : (monthParam ?? [])
+  const customer = typeof sp.customer === 'string' ? sp.customer.trim().slice(0, 100) : ''
 
   const [rows, availableMonths] = await Promise.all([
-    getOutboundHeaders(months),
+    getOutboundHeaders(months, customer),
     getAvailableMonths(),
   ])
 
@@ -96,6 +101,7 @@ export default async function OutboundPage({
       <div className="max-h-[calc(100vh-190px)] overflow-auto bg-white border border-border rounded-xl">
         <div className="border-b px-4 py-3 flex items-center justify-between">
           <span className="text-xs text-gray-500 font-medium">
+            {customer ? `CUSTOMER: ${customer} · ` : ''}
             {rows.length} DOKUMEN
             {months.length > 0 ? ` · ${months.length} BULAN DIPILIH` : ''}
           </span>
@@ -186,7 +192,9 @@ export default async function OutboundPage({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
-                  {months.length > 0
+                  {customer
+                    ? 'TIDAK ADA DATA UNTUK CUSTOMER YANG DICARI'
+                    : months.length > 0
                     ? 'TIDAK ADA DATA UNTUK BULAN YANG DIPILIH'
                     : 'BELUM ADA DATA OUTBOUND'}
                 </td>

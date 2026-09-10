@@ -138,8 +138,9 @@ function UploadButtonShell({
 // ─────────────────────────────────────────────────────────────────────────────
 // PAO → PSS Normalization
 // Runs entirely in the browser before data is sent to the server.
-// Strategy: for each row where document_no starts with "PAO",
-// look for the nearest PSS above first, then below.
+// Strategy: for each row where document_no starts with "PAO", look for a
+// PSS in the same project, branch, and location. Prefer the closest preceding
+// PSS; fall back to the first following PSS only within that same context.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PSS_PREFIXES = ['PSS']
@@ -155,31 +156,35 @@ function isPao(val: string): boolean {
   return PAO_PREFIXES.some((p) => v.startsWith(p))
 }
 
-function normalizePaoToPss(docNos: string[]): { normalized: string[]; remappedCount: number; unmappedPaos: string[] } {
-  const result = [...docNos]
+function normalizePaoToPss(rows: Record<string, any>[]): { normalized: string[]; remappedCount: number; unmappedPaos: string[] } {
+  const result = rows.map((row) => String(row.document_no ?? '').trim())
   let remappedCount = 0
   const unmappedPaos: string[] = []
+
+  const contextFor = (row: Record<string, any>) => [
+    row.project,
+    row.branch_representative,
+    row.location_code,
+  ].map((value) => String(value ?? '').trim()).join('\u001f')
+
+  const pssByContext = new Map<string, { index: number; documentNo: string }[]>()
+  rows.forEach((row, index) => {
+    const documentNo = result[index]
+    if (!isPss(documentNo)) return
+    const context = contextFor(row)
+    const candidates = pssByContext.get(context) ?? []
+    candidates.push({ index, documentNo })
+    pssByContext.set(context, candidates)
+  })
 
   for (let i = 0; i < result.length; i++) {
     if (!isPao(result[i])) continue
 
-    // Cari ke atas dulu
-    let replacement: string | null = null
-    for (let j = i - 1; j >= 0; j--) {
-      if (isPss(result[j])) {
-        replacement = result[j]
-        break
-      }
-    }
-    // Kalau tidak ada di atas, cari ke bawah
-    if (!replacement) {
-      for (let j = i + 1; j < result.length; j++) {
-        if (isPss(result[j])) {
-          replacement = result[j]
-          break
-        }
-      }
-    }
+    const candidates = pssByContext.get(contextFor(rows[i])) ?? []
+    const preceding = candidates.filter((candidate) => candidate.index <= i)
+    const replacement = preceding.length > 0
+      ? preceding[preceding.length - 1].documentNo
+      : candidates[0]?.documentNo ?? null
 
     if (replacement) {
       result[i] = replacement
@@ -444,8 +449,7 @@ export function OutboundDetailUploadButton() {
         throw new Error('Tidak ada baris valid. Pastikan kolom Document No. terisi.')
 
       // Step 2: Normalisasi PAO → PSS (client-side, sebelum kirim ke DB)
-      const rawDocNos = mappedRows.map((r) => String(r.document_no).trim())
-      const { normalized, remappedCount, unmappedPaos } = normalizePaoToPss(rawDocNos)
+      const { normalized, remappedCount, unmappedPaos } = normalizePaoToPss(mappedRows)
 
       // Apply hasil normalisasi kembali ke rows
       const normalizedRows = mappedRows.map((row, i) => ({
@@ -455,7 +459,7 @@ export function OutboundDetailUploadButton() {
 
       // Peringatan jika ada PAO yang tidak bisa di-remap
       if (unmappedPaos.length > 0) {
-        console.warn('PAO tidak bisa di-remap (tidak ada PSS terdekat):', unmappedPaos)
+        console.warn('PAO tidak bisa di-remap (tidak ada PSS dalam konteks yang sama):', unmappedPaos)
       }
 
       // Step 3: Cari PSS yang unik untuk link ke outbound_header

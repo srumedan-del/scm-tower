@@ -1,0 +1,81 @@
+{
+  "auditedAt": "2026-09-10T03:40:35.953Z",
+  "headerCount": 1069,
+  "detailCount": 5114,
+  "headersWithoutDetails": 8,
+  "unlinkedDetails": 0,
+  "emptyHeaders": [
+    {
+      "id": 5860,
+      "pss_no": "PSS-2608-2747",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-08-24",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6422,
+      "pss_no": "PSS-2604-2090",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-04-17",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6592,
+      "pss_no": "PSS-2603-0279",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-03-03",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6619,
+      "pss_no": "PSS-2602-3069",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-02-25",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6620,
+      "pss_no": "PSS-2602-3068",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-02-25",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6764,
+      "pss_no": "PSS-2601-2171",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-01-22",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6768,
+      "pss_no": "PSS-2601-2098",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-01-22",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    },
+    {
+      "id": 6773,
+      "pss_no": "PSS-2601-2089",
+      "customer_no": "RSP000017",
+      "customer_name": "RSUD GUNUNG SITOLI",
+      "document_date": "2026-01-22",
+      "project": "NON-PROJECT",
+      "location_code": "MDN-PAR"
+    }
+  ]
+}

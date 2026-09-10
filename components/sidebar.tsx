@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Truck, Package,
   AlertTriangle, Settings, Warehouse, Activity,
   Database, LogOut, ArrowLeftRight, DollarSign, ChartNoAxesCombined,
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 const items = [
   ['Dashboard',     '/dashboard',     LayoutDashboard],
@@ -42,11 +42,6 @@ const itemVariants = {
 export function Sidebar() {
   const pathname = usePathname()
   const router   = useRouter()
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  )
 
   async function handleLogout() {
     await supabase.auth.signOut()

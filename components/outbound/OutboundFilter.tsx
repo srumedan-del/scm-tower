@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState, useRef, useEffect } from 'react'
-import { Calendar, ChevronDown, Filter, Check } from 'lucide-react'
+import { Calendar, ChevronDown, Filter, Check, Search, X } from 'lucide-react'
 
 type Props = {
   months: string[]
@@ -12,11 +12,13 @@ export default function OutboundFilter({ months }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState('')
   const triggerRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const selected = searchParams.getAll('month')
   const selectedSet = new Set(selected)
+  const customer = searchParams.get('customer')?.trim() ?? ''
 
   const updateUrl = useCallback((newSelected: string[]) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -38,6 +40,26 @@ export default function OutboundFilter({ months }: Props) {
     setOpen(false)
   }, [updateUrl])
 
+  const updateCustomer = useCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('customer')
+    if (value) params.set('customer', value)
+    const qs = params.toString()
+    router.replace(qs ? `?${qs}` : '?', { scroll: false })
+  }, [router, searchParams])
+
+  useEffect(() => {
+    setCustomerSearch(customer)
+  }, [customer])
+
+  useEffect(() => {
+    const normalized = customerSearch.trim()
+    if (normalized === customer) return
+
+    const timeoutId = window.setTimeout(() => updateCustomer(normalized), 300)
+    return () => window.clearTimeout(timeoutId)
+  }, [customer, customerSearch, updateCustomer])
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -55,6 +77,30 @@ export default function OutboundFilter({ months }: Props) {
 
   return (
     <div className="relative inline-flex items-center gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="search"
+          value={customerSearch}
+          onChange={(event) => setCustomerSearch(event.target.value)}
+          placeholder="Cari customer..."
+          aria-label="Cari berdasarkan nama customer"
+          className="w-48 rounded-lg border border-gray-300 bg-white py-1.5 pl-9 pr-8 text-sm text-gray-700 shadow-sm outline-none placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+        />
+        {customerSearch && (
+          <button
+            type="button"
+            onClick={() => {
+              setCustomerSearch('')
+              updateCustomer('')
+            }}
+            aria-label="Hapus pencarian customer"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded text-gray-400 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
       <div
         ref={triggerRef}
         onClick={() => setOpen(!open)}

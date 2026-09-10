@@ -1,25 +1,22 @@
 'use client'
 
 import { FormEvent, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, LogIn, AlertCircle, Loader2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard'
+  const requestedRedirect = searchParams.get('redirectTo')
+  const redirectTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//')
+    ? requestedRedirect
+    : '/dashboard'
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  )
 
   async function signIn(event: FormEvent) {
     event.preventDefault()
@@ -34,8 +31,9 @@ function LoginForm() {
       return
     }
 
-    router.push(redirectTo)
-    router.refresh()
+    // Auth cookies are written by the browser client. Use a document navigation so
+    // the proxy receives the new session instead of reusing the pre-login router state.
+    window.location.assign(redirectTo)
   }
 
   return (
