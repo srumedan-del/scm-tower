@@ -105,7 +105,7 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         <div className="flex items-center justify-between border-b border-border p-4">
           <h3 className="text-lg font-bold uppercase">{sku ? 'EDIT SKU' : 'NEW SKU'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>

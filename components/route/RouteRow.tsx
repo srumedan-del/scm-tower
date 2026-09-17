@@ -9,6 +9,7 @@ type Route = {
   origin: string
   destination: string
   standard_lead_time_hours: number | null
+  distance_km: number | null
   dk_lk: 'D' | 'L' | null
   notes: string | null
 }
@@ -36,6 +37,9 @@ export function RouteRow({ route }: { route: Route }) {
         </td>
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
           {lt} JAM <span className="text-gray-400 text-xs">({days} HARI)</span>
+        </td>
+        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+          {route.distance_km == null ? '-' : `${Number(route.distance_km).toLocaleString('id-ID', { maximumFractionDigits: 1 })} KM`}
         </td>
         <td className="px-4 py-2.5 text-xs text-gray-600">{String(route.notes ?? '-').toUpperCase()}</td>
       </tr>

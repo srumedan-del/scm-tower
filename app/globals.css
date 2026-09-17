@@ -14,7 +14,49 @@
 
 :root{scroll-behavior:smooth}
 html{scroll-snap-type:y proximity}
-body{background:#F9F8F7;color:#2C2C2B}
+body{background:#F9F8F7;color:#2C2C2B;font-family:ui-sans-serif,system-ui,sans-serif}
+table{font-family:ui-sans-serif,system-ui,sans-serif}
+table th,table td{font-family:inherit;font-size:.875rem}
+table .font-mono{font-family:inherit}
+/* Compact record rows: 32px high with 4px vertical cell padding. */
+table tbody tr{height:2rem}
+table tbody td{padding-top:.25rem!important;padding-bottom:.25rem!important}
+input[type="number"], .inp[type="number"], .numeric-input{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+  appearance:textfield;
+  -moz-appearance:textfield;
+  -webkit-appearance:textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+.inp[type="number"]::-webkit-outer-spin-button,
+.inp[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+  display:none;
+}
+td[data-numeric="true"],
+.numeric-cell{
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
+.data-list-scroll{
+  /* Standard record-table viewport: header plus 21 compact rows. */
+  --list-visible-rows: 21;
+  --list-row-height: 2rem;
+  --list-header-height: 3rem;
+  height:calc((var(--list-visible-rows) * var(--list-row-height)) + var(--list-header-height));
+  overflow:auto;
+}
+.data-list-scroll thead{position:sticky;top:0;z-index:10;background:#f9fafb}
+.data-list-scroll.data-list-scroll--19-with-summary{
+  --list-visible-rows:19;
+  --list-header-height:6rem;
+}
+main:has(.rate-card-page){overflow:hidden}
 .hospital-marker-wrap{background:transparent;border:0;overflow:visible}
 
 /* Pin shape */

@@ -8,6 +8,7 @@ type Route = {
   origin: string
   destination: string
   standard_lead_time_hours: number | null
+  distance_km: number | null
   dk_lk: 'D' | 'L' | null
   notes: string | null
 }
@@ -23,6 +24,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
     origin:                   route.origin ?? '',
     destination:              route.destination ?? '',
     standard_lead_time_hours: route.standard_lead_time_hours,
+    distance_km:              route.distance_km,
     notes:                    route.notes ?? '',
   } : {
     route_code:               '',
@@ -30,6 +32,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
     origin:                   'SRU MEDAN',
     destination:              '',
     standard_lead_time_hours: 24 as number | null,
+    distance_km:              null as number | null,
     notes:                    '',
   })
 
@@ -75,6 +78,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
         city:                     dest,   // kompatibilitas kolom DB
         standard_lead_time_hours: form.standard_lead_time_hours == null
                                     ? null : Number(form.standard_lead_time_hours),
+        distance_km:              form.distance_km == null ? null : Number(form.distance_km),
         dk_lk:                    form.dk_lk as 'D' | 'L',
         notes:                    form.notes.trim().toUpperCase() || null,
       }
@@ -85,7 +89,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
           <h3 className="text-lg font-bold uppercase">{route ? 'EDIT RUTE' : 'TAMBAH RUTE'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
@@ -147,6 +151,18 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
               value={form.standard_lead_time_hours ?? ''}
               onChange={e => up('standard_lead_time_hours', e.target.value === '' ? null : Number(e.target.value))}
               className="inp"
+            />
+          </Field>
+
+          <Field label="JARAK (KM)">
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={form.distance_km ?? ''}
+              onChange={e => up('distance_km', e.target.value === '' ? null : Number(e.target.value))}
+              className="inp"
+              placeholder="0"
             />
           </Field>
 

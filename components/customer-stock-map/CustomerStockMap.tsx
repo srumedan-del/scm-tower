@@ -181,6 +181,8 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 	const [saving, setSaving] = useState(false)
 	const [message, setMessage] = useState('')
 	const [maintenanceOpen, setMaintenanceOpen] = useState(false)
+	const [stockFilter, setStockFilter] = useState<'all' | 'reorder'>('all')
+	const [pendingStockFilter, setPendingStockFilter] = useState<'all' | 'reorder'>('all')
 
 	useEffect(() => {
 		let active = true
@@ -246,6 +248,14 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 	}, [customers])
 
 	const visibleCustomers = useMemo(() => province === 'All' ? customers : customers.filter((customer) => customer.province === province), [customers, province])
+	const listCustomers = useMemo(() => stockFilter === 'reorder'
+		? visibleCustomers.filter((customer) => {
+			const reorderDate = idealReorderDate(customer, latestOrders[customer.customer_code])
+			const today = new Date()
+			today.setHours(0, 0, 0, 0)
+			return reorderDate ? reorderDate < today : false
+		})
+		: visibleCustomers, [latestOrders, stockFilter, visibleCustomers])
 	const criticalCount = visibleCustomers.filter((customer) => statusFor(customer).label === 'Critical').length
 
 	function startEdit(customer?: Customer) {
@@ -379,26 +389,26 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 			{loading && <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted"><span className="rounded-full border border-white/70 bg-white/75 px-4 py-2 shadow-sm backdrop-blur">Memuat data customer...</span></div>}
 		</div>}
 		{(mode === 'maintain' || showMaintainBelow) && <div className="p-6">
-			<div className="mb-4 flex items-center justify-between"><div><h3 className="font-semibold">Maintain customer master</h3><p className="mt-1 text-sm text-muted">Isi koordinat peta dan jumlah mesin HD. Perubahan tersimpan ke Supabase realtime.</p></div><button onClick={() => startEdit()} className="inline-flex items-center gap-2 rounded-lg bg-blue px-3 py-2 text-sm font-medium text-white"><Plus size={16} />Tambah customer</button></div>
+			<div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h3 className="font-semibold">DASHBOARD MONITOR STOK HD</h3><p className="mt-1 text-xs text-muted">Updated : masukkan tanggal terakhir upload data outbound</p></div><div className="flex flex-wrap items-center gap-2"><select id="customer-stock-filter" aria-label="Filter customer stock" value={pendingStockFilter} onChange={(event) => setPendingStockFilter(event.target.value as 'all' | 'reorder')} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="all">Semua customer</option><option value="reorder">Perlu reorder</option></select><button type="button" onClick={() => setStockFilter(pendingStockFilter)} className="rounded-lg bg-text px-3 py-2 text-sm font-medium text-white">Terapkan</button><button type="button" onClick={() => { setPendingStockFilter('all'); setStockFilter('all') }} className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Reset</button></div></div>
 			{formOpen ? <form onSubmit={saveCustomer} className="mb-6 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3"><div className="rounded-lg border border-blue/20 bg-blue/5 p-3 text-xs text-muted md:col-span-3">Cara mengambil koordinat: buka Google Maps, klik kanan pada lokasi customer, lalu klik angka koordinat untuk menyalin. Tempel format seperti <strong>1.28895440385333, 97.61411017362235</strong> pada kolom koordinat; sistem otomatis memisahkan Latitude dan Longitude.</div>{([['customer_name','Nama customer'],['city','Kabupaten/kota'],['province','Provinsi'],['latitude','Latitude'],['longitude','Longitude'],['machine_count','Jumlah mesin HD']] as [keyof FormState,string][]).map(([field,label]) => <label key={field} className="text-xs font-medium text-muted">{label}<input required min={field === 'latitude' ? -90 : field === 'longitude' ? -180 : field === 'machine_count' ? 0 : undefined} max={field === 'latitude' ? 90 : field === 'longitude' ? 180 : undefined} step="any" type={field === 'province' || field === 'customer_name' || field === 'city' ? 'text' : 'number'} value={String(form[field] ?? '')} onChange={(event) => updateField(field, event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label>)}<label className="text-xs font-medium text-muted md:col-span-3">Paste koordinat Google Maps<input required type="text" inputMode="decimal" placeholder="1.28895440385333, 97.61411017362235" value={coordinateText} onChange={(event) => updateCoordinates(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label><div className="flex items-end gap-2 md:col-span-3"><button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-green px-3 py-2 text-sm font-medium text-white"><Save size={16} />{saving ? 'Menyimpan...' : 'Simpan'}</button><button type="button" onClick={() => { setEditing(null); setFormOpen(false); setForm(emptyForm); setCoordinateText('') }} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><X size={16} />Batal</button></div></form> : null}
 			<div className="overflow-x-auto">
 						<table className="w-max text-left text-sm">
 					<thead className="bg-surface text-xs uppercase tracking-wide text-muted">
 						<tr>
-							<th className="whitespace-nowrap px-2.5 py-2">Customer</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-right">Mesin HD</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-right leading-tight"><span className="block">Kebutuhan</span><span className="block">/hari</span></th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-right leading-tight"><span className="block">Kebutuhan</span><span className="block">/bulan</span></th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-right leading-tight"><span className="block">Safety Stock</span><span className="block">(6 hari)</span></th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-right leading-tight"><span className="block">ROP</span><span className="block">(8 hari)</span></th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-right">Order terakhir</th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-right">DOI</th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-right leading-tight"><span className="block">Stock Habis</span><span className="block">Tanggal</span></th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-right">Reorder ideal</th>
+							<th className="whitespace-nowrap px-2.5 py-2 text-center">Customer</th>
+							<th className="whitespace-nowrap px-2.5 py-2 text-center">Mesin HD</th>
+							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Kebutuhan / hari</th>
+							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Kebutuhan / bulan</th>
+							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Safety Stock (6 hari)</th>
+							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">ROP (8 hari)</th>
+									<th className="whitespace-nowrap px-2.5 py-2 text-center">Order terakhir</th>
+									<th className="whitespace-nowrap px-2.5 py-2 text-center">DOI</th>
+									<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Stock Habis Tanggal</th>
+									<th className="whitespace-nowrap px-2.5 py-2 text-center">Reorder ideal</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
-						{visibleCustomers.map((customer) => {
+						{listCustomers.map((customer) => {
 							const status = statusFor(customer)
 							const qty = reorderQty(customer, status.usage)
 							const latestOrder = latestOrders[customer.customer_code]
@@ -418,7 +428,7 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 									<td className="whitespace-nowrap px-2.5 py-2 text-right">{(status.usage * 8).toLocaleString('id-ID')} set</td>
 									<td className="whitespace-nowrap px-2.5 py-2 text-right text-muted">
 										{latestOrder ? (
-											<><span className="font-medium text-text">{formatDate(latestOrder.documentDate)}</span><span className="block text-xs">{latestOrder.totalSets.toLocaleString('id-ID')} set</span></>
+											<span className="font-medium text-text">{formatDate(latestOrder.documentDate)} · {latestOrder.totalSets.toLocaleString('id-ID')} set</span>
 										) : 'Belum ada data'}
 									</td>
 									<td className="whitespace-nowrap px-2.5 py-2 text-right">
@@ -446,7 +456,7 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 						})}
 					</tbody>
 				</table>
-				{!loading && visibleCustomers.length === 0 && <div className="py-12 text-center text-sm text-muted">Belum ada customer di Supabase. Gunakan Tambah customer atau isi data melalui Supabase.</div>}
+				{!loading && listCustomers.length === 0 && <div className="py-12 text-center text-sm text-muted">{stockFilter === 'reorder' ? 'Tidak ada customer yang perlu reorder.' : 'Belum ada customer di Supabase. Gunakan Tambah customer atau isi data melalui Supabase.'}</div>}
 			</div>
 		</div>}
 	</section>

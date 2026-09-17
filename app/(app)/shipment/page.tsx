@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import {
-  getShipmentTrackings, getUntrackedPss,
+  getShipmentTrackings, getUntrackedPss, getRetailInTransitShipments,
   type ShipmentTrackingRow, type UntrackedPssRow,
 } from './actions'
 import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
-import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle } from 'lucide-react'
+import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned } from 'lucide-react'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -30,11 +30,16 @@ const otdBadge = (isOnTime: boolean | null) => {
     : <span className="text-xs rounded-full px-2 py-0.5 bg-red-100 text-red-700 font-medium">Late</span>
 }
 
+const formatRupiah = (amount: number | null) => {
+  if (amount === null || amount === undefined) return '-'
+  return `Rp ${Math.round(amount).toLocaleString('id-ID')}`
+}
+
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function ShipmentPage() {
-  // Tab utama: 'untracked' | 'tracking'
-  const [mainTab, setMainTab]           = useState<'untracked' | 'tracking'>('untracked')
+  // Tab utama: planning, daftar outbound, atau retail yang sedang dalam perjalanan.
+  const [mainTab, setMainTab]           = useState<'untracked' | 'tracking' | 'retail-in-transit'>('untracked')
 
   // ── untracked state ──
   const [untracked, setUntracked]       = useState<UntrackedPssRow[]>([])
@@ -45,6 +50,8 @@ export default function ShipmentPage() {
   const [loading, startLoad]            = useTransition()
   const [tmsAvail, setTmsAvail]         = useState<boolean | null>(null)
   const [showAllStatuses, setShowAllStatuses] = useState(false)
+  const [retailInTransit, setRetailInTransit] = useState<ShipmentTrackingRow[]>([])
+  const [loadingRetail, startLoadRetail]      = useTransition()
 
   // Panels
   const [selected, setSelected]         = useState<ShipmentTrackingRow | null>(null)
@@ -68,7 +75,7 @@ export default function ShipmentPage() {
   function loadTracking(includeAllStatuses = showAllStatuses) {
     startLoad(async () => {
       try {
-        const data = await getShipmentTrackings({ status: includeAllStatuses ? 'all' : 'Dispatched' })
+        const data = await getShipmentTrackings({ status: includeAllStatuses ? 'all' : 'In Transit' })
         setRows(data)
         setTmsAvail(true)
       } catch (e: any) {
@@ -77,10 +84,20 @@ export default function ShipmentPage() {
     })
   }
 
+  function loadRetailInTransit() {
+    startLoadRetail(async () => {
+      try { setRetailInTransit(await getRetailInTransitShipments()) } catch {}
+    })
+  }
+
   useEffect(() => {
     loadUntracked()
-    loadTracking()
   }, [])
+
+  useEffect(() => {
+    if (mainTab === 'tracking') loadTracking()
+    if (mainTab === 'retail-in-transit') loadRetailInTransit()
+  }, [mainTab])
 
   // Klik baris PSS untracked → buka form shipment pre-filled (single)
   function openFromUntracked(pss: UntrackedPssRow) {
@@ -98,6 +115,16 @@ export default function ShipmentPage() {
     setCheckedUt(allUtChecked ? new Set() : new Set(untracked.map(r => r.pss_no)))
   }
   const selectedUtRows = untracked.filter(r => checkedUt.has(r.pss_no))
+  const selectedTripRows = selected?.trip_id
+    ? rows.filter(row => row.trip_id === selected.trip_id)
+    : selected ? [selected] : []
+
+  function formatLoadTonnage(value: number | null | undefined) {
+    if (value == null) return '-'
+    const tonnage = Math.abs(Number(value))
+    if (tonnage < 1) return `${(tonnage * 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} kg`
+    return `${tonnage.toLocaleString('id-ID', { maximumFractionDigits: 2 })} ton`
+  }
 
   // ── assign trip helpers dihapus — 1 PSS = 1 Trip ID ──────────────────────
 
@@ -117,10 +144,10 @@ export default function ShipmentPage() {
         </header>
 
         {/* ── Main tabs ── */}
-        <div className="flex gap-1 border-b border-border">
+        <nav className="grid grid-cols-1 border-b border-border sm:grid-cols-3" aria-label="Shipment Tracking">
         <button
           onClick={() => setMainTab('untracked')}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
             mainTab === 'untracked'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -129,14 +156,14 @@ export default function ShipmentPage() {
           <AlertCircle className="h-4 w-4" />
           For Transport Planning
           {untracked.length > 0 && (
-            <span className="ml-1 rounded-full bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5">
+            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold leading-none text-orange-700">
               {untracked.length}
             </span>
           )}
         </button>
         <button
           onClick={() => setMainTab('tracking')}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
             mainTab === 'tracking'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -145,12 +172,28 @@ export default function ShipmentPage() {
           <Truck className="h-4 w-4" />
           List Outbound Deliveries
           {rows.length > 0 && (
-            <span className="ml-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5">
+            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold leading-none text-indigo-700">
               {rows.length}
             </span>
           )}
         </button>
-        </div>
+        <button
+          onClick={() => setMainTab('retail-in-transit')}
+          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+            mainTab === 'retail-in-transit'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <MapPinned className="h-4 w-4" />
+          Pengiriman Retail Indah Logistik
+          {retailInTransit.length > 0 && (
+            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold leading-none text-orange-700">
+              {retailInTransit.length}
+            </span>
+          )}
+        </button>
+        </nav>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -169,7 +212,12 @@ export default function ShipmentPage() {
           </div>
 
           <div className="max-h-[calc(100vh-250px)] overflow-auto bg-white border border-border rounded-xl">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-xs">
+              <colgroup>
+                <col className="w-10" /><col className="w-28" /><col className="w-36" />
+                <col className="w-44" /><col className="w-32" /><col className="w-32" />
+                <col className="w-56" /><col className="w-52" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-orange-50 border-b">
                 <tr>
                   <th className="px-4 py-3 w-8">
@@ -183,16 +231,17 @@ export default function ShipmentPage() {
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Customer</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Kota Tujuan</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Promised Date</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Delay</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Muatan</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Status Dokumen</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loadingUT && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
                 )}
                 {!loadingUT && untracked.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-green-400 mb-2" />
                       Semua PSS sudah dibuatkan Shipment Tracking.
                     </td>
@@ -215,13 +264,15 @@ export default function ShipmentPage() {
                       <td className="px-4 py-2.5 text-xs max-w-[160px] truncate">{r.customer_name ?? '-'}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.promised_delivery_date ?? '-'}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        {r.is_late
-                          ? <span className="text-xs rounded-full px-2 py-0.5 bg-red-100 text-red-700 font-bold">
-                              Terlambat {r.delivery_delay_days ?? ''}h
-                            </span>
-                          : <span className="text-xs text-gray-400">—</span>
-                        }
+                      <td className="px-4 py-2.5 text-left text-[11px] whitespace-nowrap">
+                        {r.total_koli != null ? (
+                          <span className={r.incomplete_load_count > 0 ? 'text-orange-600' : 'text-gray-700'}>
+                            {Number(r.total_koli).toLocaleString('id-ID')} koli · {formatLoadTonnage(r.total_tonnage)} · {Number(r.total_volume_cbm ?? 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })} m3
+                          </span>
+                        ) : <span className="text-gray-400">Belum dihitung</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-left">
+                        <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">BELUM DIBUAT SHIPMENT</span>
                       </td>
                     </tr>
                   )
@@ -281,7 +332,12 @@ export default function ShipmentPage() {
 
           {/* Tabel tracking */}
           <div className="max-h-[calc(100vh-250px)] overflow-auto bg-white border border-border rounded-xl">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-xs">
+              <colgroup>
+                <col className="w-32" /><col className="w-36" /><col className="w-32" />
+                <col className="w-44" /><col className="w-44" /><col className="w-40" />
+                <col className="w-28" /><col className="w-24" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-gray-50 border-b">
                 <tr>
 								<th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Trip ID</th>
@@ -318,7 +374,7 @@ export default function ShipmentPage() {
                     <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
                     <td className="px-4 py-2.5 text-xs max-w-[140px] truncate">{r.customer_name ?? '-'}</td>
                     <td className="px-4 py-2.5 text-xs">
-                      <div>{r.transporter_name ?? (r.notes?.match(/Vendor: ([^|]+)/)?.[1]?.trim()) ?? '-'}</div>
+                      <div>{r.transporter_name ?? (r.cost_model === 'Internal' || r.fleet_type === 'Internal' ? 'SRU MEDAN' : (r.notes?.match(/Vendor: ([^|]+)/)?.[1]?.trim()) ?? '-')}</div>
                       {r.transporter_service_model && <div className="text-gray-400">{r.transporter_service_model}</div>}
                       {!r.transporter_name && r.notes?.match(/Nopol: ([^|]+)/)?.[1] && (
                         <div className="text-gray-400 font-mono text-xs">{r.notes.match(/Nopol: ([^|]+)/)?.[1]?.trim()}</div>
@@ -359,14 +415,61 @@ export default function ShipmentPage() {
       )}
 
       {/* ── Panels ── */}
+      {mainTab === 'retail-in-transit' && (
+        <>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-gray-500">Pengiriman Retail yang sudah diserahterimakan ke vendor dan memiliki <strong>nomor resi</strong>. Status tetap <strong>In Transit</strong> sampai barang diterima pelanggan.</p>
+            <button onClick={loadRetailInTransit} className="text-xs text-indigo-600 hover:underline">Refresh</button>
+          </div>
+          <div className="max-h-[calc(100vh-250px)] overflow-auto bg-white border border-border rounded-xl">
+            <table className="w-full table-fixed text-xs">
+              <colgroup>
+                <col className="w-36" /><col className="w-36" /><col className="w-44" />
+                <col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-36" />
+                <col className="w-28" /><col className="w-28" />
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-orange-50 border-b"><tr>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">PSS / CD No.</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Document Date Time</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Customer</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Kota Tujuan</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Nomor Resi</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Waktu Serah Terima</th>
+                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Biaya Pengiriman</th>
+                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Status</th>
+                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Penerimaan</th>
+              </tr></thead>
+              <tbody className="divide-y divide-border">
+                {loadingRetail && <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
+                {!loadingRetail && retailInTransit.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">Tidak ada shipment Retail yang sedang dalam perjalanan.</td></tr>}
+                {retailInTransit.map(r => (
+                  <tr key={r.id} onClick={() => setSelected(r)} className="cursor-pointer transition-colors hover:bg-orange-50">
+                    <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">{r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}</td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
+                    <td className="px-4 py-2.5 text-xs max-w-[180px] truncate">{r.customer_name ?? '-'}</td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs font-medium whitespace-nowrap">{r.no_resi ?? '-'}</td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">{formatRupiah(r.total_biaya ?? r.total_biaya_eksternal)}</td>
+                    <td className="px-4 py-2.5 text-center"><span className="text-xs rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">In Transit</span></td>
+                    <td className="px-4 py-2.5 text-center" onClick={e => e.stopPropagation()}><button onClick={() => setPodShipment(r)} className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"><PackageCheck className="h-3.5 w-3.5" /> Terima</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
       {(selected || adding) && (
         <ShipmentTMSPanel
           shipment={selected}
+          relatedShipments={selected ? selectedTripRows : undefined}
           prefillPss={prefillPss}
           onClose={() => { setSelected(null); setAdding(false); setPrefillPss(null) }}
           onSaved={() => {
             setSelected(null); setAdding(false); setPrefillPss(null)
-            loadTracking(); loadUntracked()
+            loadTracking(); loadUntracked(); loadRetailInTransit()
             setMainTab('tracking')
           }}
         />
@@ -375,14 +478,14 @@ export default function ShipmentPage() {
         <PodPanel
           shipment={podShipment}
           onClose={() => setPodShipment(null)}
-          onSaved={() => { setPodShipment(null); loadTracking() }}
+          onSaved={() => { setPodShipment(null); loadTracking(); loadRetailInTransit() }}
         />
       )}
       {bulkOpen && selectedUtRows.length > 0 && (
         <BulkShipmentPanel
           selectedPss={selectedUtRows}
           onClose={() => setBulkOpen(false)}
-          onSaved={() => { setBulkOpen(false); loadUntracked(); loadTracking(); setMainTab('tracking') }}
+          onSaved={() => { setBulkOpen(false); loadUntracked(); loadTracking(); loadRetailInTransit(); setMainTab('tracking') }}
         />
       )}
     </div>

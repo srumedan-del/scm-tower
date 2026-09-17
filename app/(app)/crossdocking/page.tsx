@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { getCrossdockings, type CrossdockingHeader } from './actions'
 import CrossdockingPanel from '@/components/crossdocking/CrossdockingPanel'
+import PtsPanel from '@/components/crossdocking/PtsPanel'
 import { Plus } from 'lucide-react'
 
 const statusBadge = (status: string) => {
@@ -28,6 +29,7 @@ export default function CrossdockingPage() {
   // undefined = panel tutup, null = form tambah baru, number = form edit
   const [loading, startLoad]  = useTransition()
   const [tmsAvail, setAvail]  = useState<boolean | null>(null)
+  const [activeView, setActiveView] = useState<'crossdocking' | 'pts'>('crossdocking')
 
   function load() {
     startLoad(async () => {
@@ -54,13 +56,22 @@ export default function CrossdockingPage() {
             Shipment dari Kantor Pusat via Medan — input manual
           </p>
         </div>
-        <button
-          onClick={() => setEditId(null)}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
-        >
-          <Plus className="h-4 w-4" /> Tambah Crossdocking
-        </button>
+        {activeView === 'crossdocking' && (
+          <button
+            onClick={() => setEditId(null)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+          >
+            <Plus className="h-4 w-4" /> Tambah Crossdocking
+          </button>
+        )}
       </header>
+
+      <nav className="flex w-fit rounded-lg border border-border bg-white p-1" aria-label="Crossdocking submenu">
+        <button type="button" onClick={() => setActiveView('crossdocking')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'crossdocking' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>Crossdocking</button>
+        <button type="button" onClick={() => setActiveView('pts')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'pts' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>PTS</button>
+      </nav>
+
+      {activeView === 'pts' ? <PtsPanel /> : <>
 
       {/* Schema belum ada */}
       {tmsAvail === false && (
@@ -77,7 +88,9 @@ export default function CrossdockingPage() {
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">CD No.</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Customer / Tujuan</th>
+              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">PSS No.</th>
+              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
+              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Kota Tujuan</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Terima dari HQ</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Promised Date</th>
               <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Sisa Hari</th>
@@ -88,11 +101,11 @@ export default function CrossdockingPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {loading && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
             )}
             {!loading && rows.length === 0 && tmsAvail !== false && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-gray-400 text-sm">
+                <td colSpan={10} className="px-4 py-10 text-center text-gray-400 text-sm">
                   Belum ada crossdocking. Klik <strong>+ Tambah Crossdocking</strong> untuk mulai.
                 </td>
               </tr>
@@ -111,11 +124,14 @@ export default function CrossdockingPage() {
                   <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
                     {r.crossdocking_no}
                   </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-indigo-600 whitespace-nowrap">
+                    {r.pss_no ?? '-'}
+                  </td>
                   <td className="px-4 py-2.5 text-xs max-w-[180px]">
                     <div className="font-medium truncate">{r.customer_name ?? '-'}</div>
-                    {r.destination_address && (
-                      <div className="text-gray-400 text-xs truncate">{r.destination_address}</div>
-                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                    {r.destination_city ?? '-'}
                   </td>
                   <td className="px-4 py-2.5 text-xs whitespace-nowrap">
                     {r.received_from_hq_date?.slice(0, 10) ?? '-'}
@@ -160,6 +176,7 @@ export default function CrossdockingPage() {
           onSaved={() => { setEditId(undefined); load() }}
         />
       )}
+      </>}
     </div>
   )
 }

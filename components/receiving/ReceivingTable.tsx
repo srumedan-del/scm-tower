@@ -135,7 +135,7 @@ export default function ReceivingTable({ rows, details }: Props) {
   }
 
   return (
-    <div className="max-h-[calc(100vh-170px)] overflow-auto bg-white border border-border rounded-xl">
+    <div className="data-list-scroll overflow-auto bg-white border border-border rounded-xl">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-gray-50 border-b">
           
@@ -161,7 +161,7 @@ export default function ReceivingTable({ rows, details }: Props) {
              const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt >= 11 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
 
             return (
-              <tr key={String(r.id)} className="border-t border-border hover:bg-blue-50 align-top">
+              <tr key={String(r.id)} className="h-8 border-t border-border hover:bg-blue-50 align-top">
                  <td className="px-4 py-2.5 text-xs font-medium">{formatDate(r.posting_date)}</td>
                 <td className="px-4 py-2.5 font-mono text-xs font-medium">
                   <button
@@ -227,7 +227,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                        onClick={() => handleDeleteHeader(r)}
                        disabled={pendingAction}
                        title={`Hapus PTR ${ptr}`}
-                       className="inline-flex items-center justify-center rounded-md p-1.5 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                       className="inline-flex items-center justify-center rounded-md p-0.5 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
                      >
                        <Trash className="h-4 w-4" />
                      </button>
@@ -240,10 +240,10 @@ export default function ReceivingTable({ rows, details }: Props) {
              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">BELUM ADA DATA RECEIVING</td></tr>
           )}
 
-          {rows.length > 0 && rows.length < 15 && (
+          {rows.length > 0 && rows.length < 21 && (
             <tr>
               <td colSpan={8}>
-                <div style={{ height: `${(15 - rows.length) * 38}px` }} />
+                <div style={{ height: `${(21 - rows.length) * 32}px` }} />
               </td>
             </tr>
           )}

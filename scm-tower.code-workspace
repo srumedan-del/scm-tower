@@ -5,6 +5,12 @@
 		}
 	],
 	"settings": {
-		"9router-for-github-copilot.serverUrl": "http://localhost:20128/v1"
+		"9router-for-github-copilot.serverUrl": "http://localhost:20128/v1",
+		"chat.tools.terminal.autoApprove": {
+			"/^npx supabase db dump --schema public --data-only=false 2>&1 \\| Select-Object -First 300$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
 	}
 }

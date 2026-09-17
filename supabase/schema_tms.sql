@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.crossdocking_header (
   customer_code         text   REFERENCES public.customers(customer_code) ON UPDATE CASCADE,
   customer_name         text,                    -- diisi manual jika belum ada di master
   destination_address   text,
+  destination_city      text,
   hq_reference_no       text,                    -- nomor dokumen dari Kantor Pusat (bebas)
   received_from_hq_date date   NOT NULL,
   promised_delivery_date date  NOT NULL,

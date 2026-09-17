@@ -1,11 +1,16 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import * as XLSX from 'xlsx'
+import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
 import { ReactNode } from 'react'
 import { getExistingReceivingHeaderPtrs, insertReceivingHeaderRows, getReceivingHeadersByPtrs, getExistingReceivingDetailKeys, insertReceivingDetailRows } from '@/app/(app)/receiving/actions'
 import { Modal } from '@/components/ui/Modal'
+
+// SheetJS is large and only needed after a user picks an upload file. Keeping
+// it out of the route's initial bundle makes the receiving page compile faster.
+let XLSX: typeof XLSXModule
+const loadXlsx = async () => XLSX ??= await import('xlsx')
 
 const normalizeKey = (value: string) =>
   value
@@ -18,7 +23,7 @@ const normalizeKey = (value: string) =>
  * sebelum baris header kolom yang sebenarnya.
  * Cari baris yang mengandung "No." atau "PTR" sebagai header aktual.
  */
-function parseNavExcel(firstSheet: XLSX.WorkSheet): Record<string, any>[] {
+function parseNavExcel(firstSheet: XLSXModule.WorkSheet): Record<string, any>[] {
   const rawAll = XLSX.utils.sheet_to_json(firstSheet, { defval: null, header: 1 }) as any[][]
   let headerRowIndex = 0
   for (let i = 0; i < Math.min(rawAll.length, 10); i++) {
@@ -287,6 +292,7 @@ export function PtrHeaderUploadButton() {
     closeAlert()
 
     try {
+      await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -440,6 +446,7 @@ export function PtrDetailUploadButton() {
     closeAlert()
 
     try {
+      await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -543,6 +550,7 @@ export default function ReceivingUploadButton() {
     closeAlert()
 
     try {
+      await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]

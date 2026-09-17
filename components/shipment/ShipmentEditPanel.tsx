@@ -1,7 +1,10 @@
 'use client'
 import { useState, useTransition, useEffect } from 'react'
 import { supabase as supabaseRaw } from '@/lib/supabase'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 const supabase: any = supabaseRaw
+
+type FleetType = 'Internal' | 'Eksternal'
 
 type Shipment = {
   id: string
@@ -23,6 +26,7 @@ type Shipment = {
   pod_status: string | null
   delay_reason: string | null
   notes: string | null
+  fleet_type: string | null
 }
 
 type Log = { id:number; status_from:string|null; status_to:string|null; updated_at:string|null; location:string|null; notes:string|null }
@@ -34,10 +38,10 @@ const POD_OPTS = ['Pending','Missing'] as const
 const empty: Omit<Shipment,'id'> = {
   shipment_no:'', document_no:'', shipment_date:'', origin_warehouse:'SRU MEDAN',
   destination_site:null, destination_name:'', destination_city:'', route:'', shipment_type:'trucking',
-  vendor_name:'', vehicle_no:'', driver_name:'', status:'Draft', eta:'', sla_status:'Pending', pod_status:'Pending', delay_reason:'', notes:'',
+  vendor_name:'', vehicle_no:'', driver_name:'', status:'Draft', eta:'', sla_status:'Pending', pod_status:'Pending', delay_reason:'', notes:'', fleet_type: null,
 }
 
-export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors }:{ shipment: Shipment|null; onClose:()=>void; onSaved:()=>void; vendors:{vendor_name:string;vendor_code:string}[] }) {
+export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors, fleetType }:{ shipment: Shipment|null; onClose:()=>void; onSaved:()=>void; vendors:{vendor_name:string;vendor_code:string}[]; fleetType?: FleetType }) {
   const [form,setForm]=useState<Omit<Shipment,'id'>>(()=>{
     if(shipment) return {
       shipment_no: shipment.shipment_no ?? '',
@@ -58,8 +62,9 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
       pod_status: shipment.pod_status ?? 'Pending',
       delay_reason: shipment.delay_reason ?? '',
       notes: shipment.notes ?? '',
+      fleet_type: shipment.fleet_type ?? null,
     }
-    return { ...empty, shipment_date: new Date().toISOString().slice(0,10) }
+    return { ...empty, shipment_date: new Date().toISOString().slice(0,10), fleet_type: fleetType ?? null }
   })
   const [saving,startSaving]=useTransition()
   const [deleting,startDeleting]=useTransition()
@@ -67,6 +72,9 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
   const [logs,setLogs]=useState<Log[]>([])
   const [logsLoading,setLogsLoading]=useState(false)
   const up=(k:keyof typeof form,v:any)=>setForm(f=>({...f,[k]:v}))
+
+  // Determine cost_model based on fleet_type
+  const cost_model: 'Internal' | 'Trucking' | null = form.fleet_type === 'Internal' ? 'Internal' : form.fleet_type === 'Eksternal' ? 'Trucking' : null
 
   useEffect(()=>{
     if(!shipment?.id) return
@@ -90,6 +98,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
     startSaving(async()=>{
       setErr(null)
       if(!String(form.shipment_no ?? '').trim()||!form.shipment_date||!String(form.destination_city ?? '').trim()){setErr('SHIPMENT NO, TANGGAL & DESTINATION CITY WAJIB DIISI');return}
+      if(!form.fleet_type){setErr('PILIH JENIS ARMADA (Internal/Eksternal)');return}
       const payload:any={
         shipment_no: String(form.shipment_no ?? '').trim().toUpperCase(),
         document_no: (form.document_no??'').trim().toUpperCase()||null,
@@ -108,6 +117,8 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
         pod_status: form.pod_status || null,
         delay_reason: (form.delay_reason??'').trim().toUpperCase()||null,
         notes: (form.notes??'').trim().toUpperCase()||null,
+        fleet_type: form.fleet_type,
+        cost_model: cost_model,
       }
       let error
       const prevStatus = shipment?.status ?? null
@@ -131,12 +142,39 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         <div className="flex items-center justify-between border-b p-4 shrink-0">
           <h3 className="text-lg font-bold uppercase">{shipment ? 'EDIT SHIPMENT' : 'TAMBAH SHIPMENT'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
         <div className="p-4 space-y-3 overflow-y-auto">
+          {/* ── Fleet Type Selector (first step) ── */}
+          <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+            <label className="block text-xs font-bold text-gray-700 mb-2">JENIS ARMADA *</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="Internal"
+                  checked={form.fleet_type === 'Internal'}
+                  onChange={() => up('fleet_type', 'Internal')}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm">Internal (Kendaraan milik SRU)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="Eksternal"
+                  checked={form.fleet_type === 'Eksternal'}
+                  onChange={() => up('fleet_type', 'Eksternal')}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm">Eksternal (Sewa / Vendor)</span>
+              </label>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="SHIPMENT NO *"><input value={String(form.shipment_no ?? '')} onChange={e=>up('shipment_no',e.target.value)} className="inp font-mono" placeholder="SHP-2026-08-31-001" disabled={!!shipment} /></Field>
             <Field label="DOCUMENT NO (PSS)"><input value={form.document_no ?? ''} onChange={e=>up('document_no',e.target.value)} className="inp font-mono" placeholder="PSS-..." /></Field>
@@ -150,22 +188,40 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
             <Field label="DESTINATION CITY *"><input value={String(form.destination_city ?? '')} onChange={e=>up('destination_city',e.target.value)} className="inp" placeholder="BANDA ACEH" /></Field>
           </div>
           <Field label="DESTINATION NAME"><input value={form.destination_name ?? ''} onChange={e=>up('destination_name',e.target.value)} className="inp" placeholder="NAMA CUSTOMER/SITE" /></Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="VENDOR">
-              <select value={form.vendor_name ?? ''} onChange={e=>up('vendor_name',e.target.value)} className="inp">
-                <option value="">-- PILIH VENDOR --</option>
-                {vendors.map(v=> <option key={v.vendor_name} value={v.vendor_name}>{v.vendor_code} — {v.vendor_name}</option>)}
-              </select>
+
+          {/* ── Vendor (only for Eksternal) ── */}
+          {form.fleet_type === 'Eksternal' && (
+            <Field label="VENDOR *">
+              <SearchableSelect value={form.vendor_name ?? ''} onChange={value => up('vendor_name', value)} placeholder="-- PILIH VENDOR --" options={vendors.map(v => ({ value: v.vendor_name, label: `${v.vendor_code} — ${v.vendor_name}` }))} />
             </Field>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
             <Field label="SHIPMENT TYPE">
               <select value={form.shipment_type ?? 'trucking'} onChange={e=>up('shipment_type',e.target.value)} className="inp">
                 <option value="trucking">TRUCKING</option><option value="courier">COURIER</option><option value="expedition">EXPEDITION</option><option value="retail_delivery">RETAIL DELIVERY</option>
               </select>
             </Field>
+            {/* ── Vehicle No (Internal: from master armada; Eksternal: manual input) ── */}
+            <Field label="VEHICLE NO">
+              {form.fleet_type === 'Internal' ? (
+                <input value={form.vehicle_no ?? ''} onChange={e=>up('vehicle_no',e.target.value)} className="inp font-mono" placeholder="BK 1234 XX" />
+              ) : (
+                <input value={form.vehicle_no ?? ''} onChange={e=>up('vehicle_no',e.target.value)} className="inp font-mono" placeholder="Nopol kendaraan vendor" />
+              )}
+            </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="VEHICLE NO"><input value={form.vehicle_no ?? ''} onChange={e=>up('vehicle_no',e.target.value)} className="inp font-mono" placeholder="BK 1234 XX" /></Field>
-            <Field label="DRIVER"><input value={form.driver_name ?? ''} onChange={e=>up('driver_name',e.target.value)} className="inp" /></Field>
+            <Field label="DRIVER">
+              {form.fleet_type === 'Internal' ? (
+                <input value={form.driver_name ?? ''} onChange={e=>up('driver_name',e.target.value)} className="inp" placeholder="Driver internal SRU" />
+              ) : (
+                <input value={form.driver_name ?? ''} onChange={e=>up('driver_name',e.target.value)} className="inp" placeholder="Nama driver vendor" />
+              )}
+            </Field>
+            <Field label="HELPER (Opsional)">
+              <input value={form.notes ?? ''} onChange={e=>up('notes',e.target.value)} className="inp" placeholder="Nama helper" />
+            </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field label="STATUS">
@@ -185,7 +241,6 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors 
             </Field>
           </div>
           <Field label="DELAY REASON"><input value={form.delay_reason ?? ''} onChange={e=>up('delay_reason',e.target.value)} className="inp" /></Field>
-          <Field label="NOTES"><textarea value={form.notes ?? ''} onChange={e=>up('notes',e.target.value)} className="inp" rows={2} /></Field>
           {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">{err}</div>}
 
           {shipment && (

@@ -32,7 +32,7 @@ export function ExportExcelButton({
         setErr('Tidak ada data untuk di-export.')
         return
       }
-      exportToExcel(sheets, fileName)
+      await exportToExcel(sheets, fileName)
     } catch (e: any) {
       setErr(e.message ?? 'Export gagal')
     } finally {

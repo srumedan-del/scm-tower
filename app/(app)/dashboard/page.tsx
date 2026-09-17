@@ -1,25 +1,49 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
+import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
 import {
   AlertTriangle, CheckCircle2, Clock3, MapPin,
-  PackageCheck, Truck, XCircle, TrendingUp, TrendingDown,
+  Truck, XCircle, TrendingUp, TrendingDown,
   Minus, Package, Bell,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
-async function getDashboardData() {
-  // 6 bulan terakhir untuk OTD
-  const sixMonthsAgo = new Date()
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
-  const fromDate = sixMonthsAgo.toISOString().slice(0, 7) + '-01'
+function currentMonth() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+function nextMonth(month: string) {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const date = new Date(year, monthNumber, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+function monthLabel(month: string) {
+  const [year, monthNumber] = month.split('-').map(Number)
+  return new Date(year, monthNumber - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+}
+
+function availableDashboardMonths() {
+  const months: string[] = []
+  const now = new Date()
+  for (let offset = 0; offset < 12; offset++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1)
+    months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return months
+}
+
+async function getDashboardData(period: string) {
+  const fromDate = `${period}-01`
+  const toDate = nextMonth(period)
 
   const today = new Date().toISOString().slice(0, 10)
 
   const [
     { count: vendorCount },
-    { count: receivingCount },
     { count: issueCount },
     { data: customers },
     { data: openIssues },
@@ -34,7 +58,6 @@ async function getDashboardData() {
     { count: deliveredTodayCount },
   ] = await Promise.all([
     supabase.from('vendors').select('*', { count: 'exact', head: true }),
-    supabase.from('receiving_header').select('*', { count: 'exact', head: true }),
     supabase.from('issue_log').select('*', { count: 'exact', head: true }).in('status', ['Open', 'In Progress']),
     supabase.from('customers').select('id, customer_name, city, is_active, machine_count, latitude, longitude').eq('is_active', true).limit(200),
     supabase.from('issue_log').select('issue_no, title, status, category, due_date').in('status', ['Open', 'In Progress']).order('due_date', { ascending: true }).limit(5),
@@ -50,6 +73,7 @@ async function getDashboardData() {
       .select('delivery_time, promised_delivery_date, delivery_pod!inner(id)')
       .eq('status', 'Delivered')
       .gte('delivery_time', fromDate)
+      .lt('delivery_time', toDate)
       .not('delivery_time', 'is', null)
       .not('promised_delivery_date', 'is', null),
     supabase.from('outbound_header').select('*', { count: 'exact', head: true }),
@@ -74,7 +98,6 @@ async function getDashboardData() {
   return {
     counts: {
       vendors: vendorCount ?? 0,
-      receiving: receivingCount ?? 0,
       issues: issueCount ?? 0,
       outbound: outboundTotal ?? 0,
       activeShipments: activeShipmentCount ?? 0,
@@ -153,8 +176,11 @@ function computeMonthlyOtd(rows: { delivery_time: string; promised_delivery_date
     }))
 }
 
-export default async function DashboardPage() {
-  const { counts, customers, openIssues, activeShipments, otdRaw, lateShipments } = await getDashboardData()
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const params = await searchParams
+  const defaultPeriod = currentMonth()
+  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.period ?? '') ? params.period as string : defaultPeriod
+  const { counts, customers, openIssues, activeShipments, otdRaw, lateShipments } = await getDashboardData(period)
 
   const customerActive  = customers.length
   const totalMesinHD    = (customers as any[]).reduce((s: number, r: any) => s + (Number(r.machine_count) || 0), 0)
@@ -200,10 +226,9 @@ export default async function DashboardPage() {
       {/* ── KPI Strip ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          { href: '/receiving', icon: <PackageCheck size={14} />, label: 'Receiving', value: counts.receiving, sub: 'PTR Header masuk', delay: '0s' },
-          { href: '/outbound', icon: <Package size={14} />, label: 'Outbound PSS', value: counts.outbound.toLocaleString('id-ID'), sub: 'Total PSS header', delay: '0.08s' },
-          { href: '/shipment', icon: <Truck size={14} />, label: 'Shipment Aktif', value: counts.activeShipments, sub: null, delay: '0.16s' },
-          { href: '/issues', icon: <AlertTriangle size={14} />, label: 'Open Issues', value: counts.issues, sub: 'Open & In Progress', delay: '0.24s', warn: counts.issues > 0 },
+          { href: '/outbound', icon: <Package size={14} />, label: 'Outbound PSS', value: counts.outbound.toLocaleString('id-ID'), sub: 'Total PSS header', delay: '0s' },
+          { href: '/shipment', icon: <Truck size={14} />, label: 'Shipment Aktif', value: counts.activeShipments, sub: null, delay: '0.08s' },
+          { href: '/issues', icon: <AlertTriangle size={14} />, label: 'Open Issues', value: counts.issues, sub: 'Open & In Progress', delay: '0.16s', warn: counts.issues > 0 },
         ].map(({ href, icon, label, value, sub, delay, warn }) => (
           <Link
             key={href}
@@ -238,9 +263,10 @@ export default async function DashboardPage() {
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <TrendingUp size={18} /> On-Time Delivery (OTD)
           </h2>
-          <span className="text-xs text-gray-500">
-            {otdRaw.length} pengiriman · 6 bulan terakhir
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500">Periode data</span>
+            <DashboardPeriodSelect period={period} months={availableDashboardMonths()} />
+          </div>
         </div>
 
         {otdRaw.length === 0 ? (
@@ -252,7 +278,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {/* OTD Rate card */}
             <div className="rounded-xl border border-border bg-white p-5">
-              <div className="text-xs text-gray-500 mb-1">OTD Rate (6 bln)</div>
+              <div className="text-xs text-gray-500 mb-1">OTD Rate ({monthLabel(period)})</div>
               <div className="flex items-end gap-2">
                 <span
                   className={`text-4xl font-bold ${

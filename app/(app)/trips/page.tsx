@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getTrips } from './actions'
+import { displayVendorName } from '@/lib/vendor-display'
 import { TripCreateButton } from './TripCreateButton'
 
 export const dynamic = 'force-dynamic'
@@ -61,7 +62,7 @@ export default async function TripsPage() {
             {trips.map((trip) => (
               <tr key={trip.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-indigo-700">{trip.trip_no}</td>
-                <td className="px-4 py-3 text-xs">{trip.vendor_name ?? '-'}</td>
+                <td className="px-4 py-3 text-xs">{displayVendorName(trip.vendor_name) || '-'}</td>
                 <td className="px-4 py-3 text-xs">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
                 <td className="px-4 py-3 text-center text-xs font-semibold">{trip.stop_count}</td>
                 <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{rupiah(trip.total_expense)}</td>

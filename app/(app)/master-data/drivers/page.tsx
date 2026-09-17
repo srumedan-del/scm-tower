@@ -61,7 +61,7 @@ export default function DriversPage() {
         ))}
       </div>
 
-      <div className="bg-white border border-border rounded-xl overflow-hidden">
+      <div className="data-list-scroll bg-white border border-border rounded-xl overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>

@@ -41,13 +41,13 @@ export default async function LandingPage() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2C2C2B] text-sm font-semibold text-white">SC</span>
             <span className="font-semibold tracking-tight">SCM Control Tower</span>
           </a>
-          <div className="hidden items-center gap-6 text-sm text-[#7D7A75] md:flex">
-            <a href="#areas" className="hover:text-[#2C2C2B]">7 Area</a>
-            <a href="#top" className="hover:text-[#2C2C2B]">Customer Map</a>
-            <a href="#workflow" className="hover:text-[#2C2C2B]">Workflow</a>
-            <a href="#access" className="hover:text-[#2C2C2B]">Access</a>
+          <div className="hidden items-center gap-4 text-sm text-[#7D7A75] lg:flex">
+            <Link href="/receiving" className="hover:text-[#2C2C2B]">Receiving</Link>
+            <Link href="/outbound" className="hover:text-[#2C2C2B]">Outbound</Link>
+            <Link href="/crossdocking" className="hover:text-[#2C2C2B]">Crossdocking</Link>
+            <Link href="/shipment" className="hover:text-[#2C2C2B]">Shipment</Link>
+            <Link href="/shipment-cost" className="hover:text-[#2C2C2B]">Shipment Cost</Link>
           </div>
-          <Link href="/login" className="rounded-xl bg-[#2C2C2B] px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-black">Login</Link>
         </div>
       </nav>
 

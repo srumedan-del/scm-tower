@@ -51,6 +51,8 @@ export type Database = {
 				created_by: string | null
 				created_at: string | null
 				updated_at: string | null
+				fleet_type: string | null
+				cost_model: string | null
 			}>
 			receiving_header: Table<Record<string, unknown>>
 			outbound_detail: Table<Record<string, unknown>>

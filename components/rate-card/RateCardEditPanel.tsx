@@ -1,6 +1,8 @@
 'use client'
-import { useState, useTransition } from 'react'
-import { upsertRateCard, deleteRateCard } from '@/app/(app)/master-data/rate-card/actions'
+import { useEffect, useState, useTransition } from 'react'
+import SearchableSelect from '@/components/ui/SearchableSelect'
+import { upsertRateCard, deleteRateCard, getRateCardRoutes, type RateCardRouteOption } from '@/app/(app)/master-data/rate-card/actions'
+import { getVendors, type VendorRow } from '@/app/(app)/vendor/actions'
 
 type Rate = {
   id: number
@@ -16,6 +18,31 @@ type Rate = {
   service_name: string | null
   effective_from: string | null
   vendor_id: number | null
+  route_id: number | null
+}
+
+const TRUCK_TYPES = ['AVANZA', 'GRANMAX', 'L-300', 'CDE', 'CDE-L', 'CDD', 'CDD-L', 'FUSO', 'R4', 'R6']
+
+function formatPrice(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return ''
+  return value.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+}
+
+function formatDimension(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return ''
+  return value.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+}
+
+function buildServiceName(vehicleType: string, tonnage: number | null, cbm: number | null, destination: string) {
+  const parts = ['TRUCKING']
+  if (tonnage != null) parts.push(`${formatDimension(tonnage)} TON`)
+  if (cbm != null) parts.push(`${formatDimension(cbm)} CBM`)
+
+  const fleetLabel = vehicleType === 'CDD' || vehicleType === 'CDD-L' ? 'R6' : vehicleType
+  if (fleetLabel) parts.push(fleetLabel.toUpperCase())
+  if (destination.trim()) parts.push(`TUJUAN ${destination.trim().toUpperCase()}`)
+
+  return parts.length > 1 ? parts.join(', ') : ''
 }
 
 export default function RateCardEditPanel({ rate, onClose, onSaved }: {
@@ -35,13 +62,75 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
     status: rate.status ?? 'aktif',
     service_name: rate.service_name ?? '',
     effective_from: rate.effective_from ? rate.effective_from.slice(0,10) : '',
+    vendor_id: rate.vendor_id ?? null as number | null,
+    route_id: rate.route_id ?? null as number | null,
   } : {
-    rate_code: '', origin: 'MEDAN', destination: '', vehicle_type: 'R6', tonnage: null as number | null, cbm: null as number | null, tariff_model: 'per_trip', price: null as number | null, status: 'aktif', service_name: '', effective_from: '',
+    rate_code: '', origin: '', destination: '', vehicle_type: 'R6', tonnage: null as number | null, cbm: null as number | null, tariff_model: 'per_trip', price: null as number | null, status: 'aktif', service_name: '', effective_from: '', vendor_id: null as number | null, route_id: null as number | null,
   })
+  const [vendors, setVendors] = useState<VendorRow[]>([])
+  const [routes, setRoutes] = useState<RateCardRouteOption[]>([])
+  const [routeSearch, setRouteSearch] = useState('')
+  const [routeOpen, setRouteOpen] = useState(false)
+  const [priceFocused, setPriceFocused] = useState(false)
+  const [dimensionFocused, setDimensionFocused] = useState<'tonnage' | 'cbm' | null>(null)
   const [saving, startSaving] = useTransition()
   const [deleting, startDeleting] = useTransition()
   const [err, setErr] = useState<string | null>(null)
   const up = (k: string, v: any) => setForm((f:any) => ({ ...f, [k]: v }))
+  const routeLabel = (route: RateCardRouteOption) => `${route.route_code} — ${route.origin} → ${route.destination}`
+
+  useEffect(() => {
+    getVendors()
+      .then(data => setVendors(data.filter(vendor => vendor.is_active !== false)))
+      .catch(() => setVendors([]))
+  }, [])
+
+  useEffect(() => {
+    getRateCardRoutes()
+      .then(availableRoutes => {
+        setRoutes(availableRoutes)
+        if (!rate?.route_id) {
+          const matchedRoute = availableRoutes.find(route =>
+            route.origin.trim().toUpperCase() === rate?.origin.trim().toUpperCase() &&
+            route.destination.trim().toUpperCase() === rate?.destination.trim().toUpperCase()
+          )
+          if (matchedRoute) {
+            setForm(current => ({ ...current, route_id: matchedRoute.id, origin: matchedRoute.origin, destination: matchedRoute.destination }))
+            setRouteSearch(routeLabel(matchedRoute))
+          }
+        } else {
+          const selectedRoute = availableRoutes.find(route => route.id === rate.route_id)
+          if (selectedRoute) setRouteSearch(routeLabel(selectedRoute))
+        }
+      })
+      .catch(() => setRoutes([]))
+  }, [rate])
+
+  useEffect(() => {
+    if (rate?.service_name?.trim()) return
+
+    const generatedServiceName = buildServiceName(form.vehicle_type, form.tonnage, form.cbm, form.destination)
+    setForm(current => current.service_name === generatedServiceName
+      ? current
+      : { ...current, service_name: generatedServiceName })
+  }, [form.vehicle_type, form.tonnage, form.cbm, form.destination])
+
+  function selectRoute(selectedRoute: RateCardRouteOption | undefined) {
+    setForm(current => ({
+      ...current,
+      route_id: selectedRoute?.id ?? null,
+      origin: selectedRoute?.origin ?? '',
+      destination: selectedRoute?.destination ?? '',
+    }))
+    setRouteSearch(selectedRoute ? routeLabel(selectedRoute) : '')
+    setRouteOpen(false)
+  }
+
+  const filteredRoutes = routes.filter(route => {
+    const query = routeSearch.trim().toLowerCase()
+    if (!query) return true
+    return routeLabel(route).toLowerCase().includes(query)
+  }).slice(0, 100)
 
   function del() {
     if (!rate) return
@@ -69,10 +158,11 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
         status: (form.status as string).trim().toLowerCase() || 'aktif',
         service_name: (form.service_name as string).trim().toUpperCase() || null,
         effective_from: (form.effective_from as string) || null,
+        vendor_id: form.vendor_id == null ? null : Number(form.vendor_id),
+        route_id: form.route_id == null ? null : Number(form.route_id),
       }
       if (!payload.rate_code) { setErr('RATE CODE wajib diisi'); return }
-      if (!payload.origin) { setErr('ORIGIN wajib diisi'); return }
-      if (!payload.destination) { setErr('DESTINATION wajib diisi'); return }
+      if (!payload.route_id) { setErr('RUTE wajib dipilih dari Master Routes'); return }
       try {
         await upsertRateCard(payload, rate?.id)
         onSaved(); onClose()
@@ -82,21 +172,95 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
           <h3 className="text-lg font-bold uppercase">{rate ? 'EDIT RATE CARD' : 'TAMBAH RATE CARD'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
         <div className="p-4 space-y-3 overflow-y-auto">
           <Field label="RATE CODE *"><input value={form.rate_code} onChange={e=>up('rate_code', e.target.value)} className="inp font-mono" placeholder="BIA-EKS-2137" disabled={!!rate} /></Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="ORIGIN *"><input value={form.origin} onChange={e=>up('origin', e.target.value)} className="inp" placeholder="MEDAN" /></Field>
-            <Field label="DESTINATION *"><input value={form.destination} onChange={e=>up('destination', e.target.value)} className="inp" placeholder="BANDA ACEH" /></Field>
-          </div>
+          <Field label="VENDOR">
+            <SearchableSelect
+              value={form.vendor_id ?? ''}
+              onChange={(value: string) => up('vendor_id', value === '' ? null : Number(value))}
+              placeholder="— Pilih Vendor —"
+              options={vendors.map(vendor => ({
+                value: vendor.id,
+                label: vendor.vendor_name,
+              }))}
+            />
+          </Field>
+          <Field label="RUTE *">
+            <div className="relative">
+              <input
+                value={routeSearch}
+                onFocus={() => setRouteOpen(true)}
+                onChange={e => {
+                  setRouteSearch(e.target.value)
+                  up('route_id', null)
+                  setRouteOpen(true)
+                }}
+                className="inp"
+                placeholder="Ketik kode, origin, atau tujuan route"
+                autoComplete="off"
+              />
+              {routeOpen && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                  {filteredRoutes.map(route => (
+                    <button
+                      key={route.id}
+                      type="button"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => selectRoute(route)}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                    >
+                      {routeLabel(route)}
+                    </button>
+                  ))}
+                  {!filteredRoutes.length && <div className="px-3 py-2 text-sm text-gray-500">Route tidak ditemukan.</div>}
+                </div>
+              )}
+            </div>
+          </Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="VEHICLE"><input value={form.vehicle_type} onChange={e=>up('vehicle_type', e.target.value)} className="inp" placeholder="R6" /></Field>
-            <Field label="TONNAGE"><input type="number" step="any" value={form.tonnage ?? ''} onChange={e=>up('tonnage', e.target.value === '' ? null : Number(e.target.value))} className="inp" /></Field>
-            <Field label="CBM"><input type="number" step="any" value={form.cbm ?? ''} onChange={e=>up('cbm', e.target.value === '' ? null : Number(e.target.value))} className="inp" /></Field>
+            <Field label="TYPE TRUCK">
+              <select value={form.vehicle_type} onChange={e=>up('vehicle_type', e.target.value)} className="inp">
+                <option value="">-- Pilih Type Truck --</option>
+                {[...new Set([...(form.vehicle_type ? [form.vehicle_type] : []), ...TRUCK_TYPES])].map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="TONNAGE">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={dimensionFocused === 'tonnage' ? (form.tonnage ?? '') : formatDimension(form.tonnage)}
+                onFocus={() => setDimensionFocused('tonnage')}
+                onBlur={() => setDimensionFocused(null)}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^\d,.-]/g, '').replace(',', '.')
+                  up('tonnage', raw === '' || raw === '-' ? null : Number(raw))
+                }}
+                className="inp text-right tabular-nums"
+                placeholder="4"
+              />
+            </Field>
+            <Field label="CBM">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={dimensionFocused === 'cbm' ? (form.cbm ?? '') : formatDimension(form.cbm)}
+                onFocus={() => setDimensionFocused('cbm')}
+                onBlur={() => setDimensionFocused(null)}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^\d,.-]/g, '').replace(',', '.')
+                  up('cbm', raw === '' || raw === '-' ? null : Number(raw))
+                }}
+                className="inp text-right tabular-nums"
+                placeholder="15"
+              />
+            </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="TARIFF MODEL">
@@ -107,9 +271,30 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
                 <option value="per_unit">PER_UNIT</option>
               </select>
             </Field>
-            <Field label="PRICE *"><input type="number" value={form.price ?? ''} onChange={e=>up('price', e.target.value === '' ? null : Number(e.target.value))} className="inp" placeholder="1250000" /></Field>
+            <Field label="PRICE *">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={priceFocused ? (form.price ?? '') : formatPrice(form.price)}
+                onFocus={() => setPriceFocused(true)}
+                onBlur={() => setPriceFocused(false)}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^\d,.-]/g, '').replace(',', '.')
+                  up('price', raw === '' || raw === '-' ? null : Number(raw))
+                }}
+                className="inp text-right tabular-nums"
+                placeholder="1.250.000"
+              />
+            </Field>
           </div>
-          <Field label="SERVICE NAME"><input value={form.service_name} onChange={e=>up('service_name', e.target.value)} className="inp" placeholder="TRUCKING 4 TON..." /></Field>
+          <Field label="SERVICE NAME">
+            <input
+              value={form.service_name}
+              readOnly
+              className="inp bg-gray-50 text-gray-600"
+              placeholder="Otomatis dari tipe truck, tonase, CBM, dan tujuan"
+            />
+          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="EFFECTIVE FROM"><input type="date" value={form.effective_from} onChange={e=>up('effective_from', e.target.value)} className="inp" /></Field>
             <Field label="STATUS">

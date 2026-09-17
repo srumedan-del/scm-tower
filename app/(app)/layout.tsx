@@ -5,7 +5,7 @@ export default function AppLayout({children}:{children:React.ReactNode}){
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar/>
-      <main className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8">
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 pb-6 pt-16 md:p-8">
         <PageTransition>
           {children}
         </PageTransition>

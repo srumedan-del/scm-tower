@@ -5,12 +5,12 @@ export type CostSummary = {
   totalBiaya: number
   totalInvoiceValue: number
   avgCostRatio: number | null
-  byModel: Record<string, { count: number; total: number }>
+  byVendor: Record<string, { count: number; total: number }>
   byDkLk: Record<string, { count: number; total: number }>
 }
 
 export function computeCostSummary(rows: ShipmentCostRow[]): CostSummary {
-  const byModel: Record<string, { count: number; total: number }> = {}
+  const byVendor: Record<string, { count: number; total: number }> = {}
   const byDkLk:  Record<string, { count: number; total: number }> = {}
   let totalBiaya = 0
   let totalInvoiceValue = 0
@@ -23,11 +23,11 @@ export function computeCostSummary(rows: ShipmentCostRow[]): CostSummary {
     if (r.cost_model !== 'Internal' && r.invoice_value) totalInvoiceValue += r.invoice_value
     if (r.cost_ratio != null) { ratioSum += r.cost_ratio; ratioCount++ }
 
-    // Legacy rows with no model use the database's Internal cost formula.
-    const model = r.cost_model ?? 'Internal'
-    if (!byModel[model]) byModel[model] = { count: 0, total: 0 }
-    byModel[model].count++
-    byModel[model].total += biaya
+    const notesVendor = r.notes?.match(/(?:^|\|\s*)Vendor:\s*([^|]+)/i)?.[1]?.trim()
+    const vendor = r.transporter_name?.trim() || notesVendor || 'Vendor belum ditentukan'
+    if (!byVendor[vendor]) byVendor[vendor] = { count: 0, total: 0 }
+    byVendor[vendor].count++
+    byVendor[vendor].total += biaya
 
     const dk = r.dk_lk ?? '-'
     if (!byDkLk[dk]) byDkLk[dk] = { count: 0, total: 0 }
@@ -40,7 +40,7 @@ export function computeCostSummary(rows: ShipmentCostRow[]): CostSummary {
     totalBiaya,
     totalInvoiceValue,
     avgCostRatio: ratioCount > 0 ? Math.round((ratioSum / ratioCount) * 10) / 10 : null,
-    byModel,
+    byVendor,
     byDkLk,
   }
 }

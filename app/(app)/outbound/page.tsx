@@ -1,6 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { OutboundHeaderUploadButton, OutboundDetailUploadButton } from '@/components/outbound/OutboundUploadButton'
-import OutboundDeleteButton from '@/components/outbound/OutboundDeleteButton'
 import PssDetailModal from '@/components/outbound/PssDetailModal'
 import OutboundFilter from '@/components/outbound/OutboundFilter'
 import { Suspense } from 'react'
@@ -46,8 +45,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
   let query = supabase
     .from('outbound_header')
     .select(
-      'id, pss_no, psi_no, shipment_no, document_date, order_no, ' +
-      'customer_no, customer_name, cust_receipt_date, ' +
+      'id, pss_no, shipment_no, document_date, document_created_at, order_no, ' +
+      'customer_no, customer_name, ' +
       'delivery_delay_days, is_late'
     )
     .order('document_date', { ascending: false })
@@ -65,7 +64,53 @@ async function getOutboundHeaders(months: string[], customer: string) {
   }
 
   const { data } = await query.limit(500)
-  return data ?? []
+  const rows = (data ?? []) as unknown as Array<{
+    customer_no: string | null
+    document_created_at: string | null
+    [key: string]: any
+  }>
+  const customerCodes = [...new Set(rows.map(row => row.customer_no).filter(Boolean))]
+  const regionByCustomer = new Map<string, string>()
+
+  if (customerCodes.length) {
+    const { data: customers } = await supabase
+      .from('customers')
+      .select('customer_code, dk_lk')
+      .in('customer_code', customerCodes)
+
+    for (const item of customers ?? []) {
+      if (item.customer_code && item.dk_lk) regionByCustomer.set(item.customer_code, item.dk_lk)
+    }
+  }
+
+  return rows.map(row => {
+    const region = row.customer_no ? regionByCustomer.get(row.customer_no) : null
+    const hours = region === 'DK' ? 48 : region === 'LK' ? 72 : null
+    const createdAt = row.document_created_at ? new Date(row.document_created_at).getTime() : NaN
+    const mta = hours !== null && Number.isFinite(createdAt)
+      ? new Date(createdAt + hours * 60 * 60 * 1000).toISOString()
+      : null
+
+    return { ...row, dk_lk: region, mta }
+  })
+}
+
+function formatDateTime(value: string | null, includeTime = true) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}),
+    timeZone: 'Asia/Jakarta',
+  }).formatToParts(date)
+  const get = (type: string) => parts.find(part => part.type === type)?.value ?? ''
+  const day = get('day')
+  const month = get('month')
+  const year = get('year')
+  return includeTime ? `${day}/${month}/${year}, ${get('hour')}:${get('minute')}` : `${day}/${month}/${year}`
 }
 
 export default async function OutboundPage({
@@ -98,40 +143,35 @@ export default async function OutboundPage({
         </div>
       </header>
 
-      <div className="max-h-[calc(100vh-190px)] overflow-auto bg-white border border-border rounded-xl">
-        <div className="border-b px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-gray-500 font-medium">
-            {customer ? `CUSTOMER: ${customer} · ` : ''}
-            {rows.length} DOKUMEN
-            {months.length > 0 ? ` · ${months.length} BULAN DIPILIH` : ''}
-          </span>
-        </div>
-        <table className="w-full text-sm">
+      <div className="data-list-scroll overflow-auto bg-white border border-border rounded-xl">
+        <table className="w-full min-w-[960px] table-fixed text-sm">
+          <colgroup>
+            <col className="w-[18%]" />
+            <col className="w-[12%]" />
+            <col className="w-[15%]" />
+            <col className="w-[32%]" />
+            <col className="w-[14%]" />
+            <col className="w-[9%]" />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-gray-50 border-b">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
-                DOCUMENT DATE
+                DOCUMENT DATE TIME
               </th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
                 PSS NO
               </th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
-                PSI NO
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
                 ORDER NO
               </th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900">
-                CUSTOMER
+                CUSTOMER NAME
               </th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
-                RECEIPT DATE
+                MTA
               </th>
               <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
                 DELAY
-              </th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900">
-                ACTION
               </th>
             </tr>
           </thead>
@@ -142,27 +182,26 @@ export default async function OutboundPage({
               const delayDays = r.delivery_delay_days ?? null
 
               return (
-                <tr key={r.id} className="border-t border-border hover:bg-blue-50">
+                <tr key={r.id} className="border-t border-border align-middle hover:bg-blue-50">
                   <td className="px-4 py-2.5 text-xs whitespace-nowrap">
-                    {r.document_date?.slice(0, 10) ?? '-'}
+                    {formatDateTime(r.document_created_at)}
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
                     <PssDetailModal pssNo={pssNo} />
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-gray-500">
-                    {r.psi_no ?? <span className="text-gray-300">—</span>}
-                  </td>
                   <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
                     {String(r.order_no ?? '-').toUpperCase()}
                   </td>
-                  <td className="px-4 py-2.5 text-xs max-w-[220px] truncate">
-                    <span className="font-mono text-gray-400 mr-1 text-xs">
-                      {r.customer_no ?? ''}
-                    </span>
-                    {String(r.customer_name ?? '-')}
+                  <td className="px-4 py-2.5 text-xs">
+                    <div className="truncate font-medium text-gray-700">
+                      <span className="mr-1.5 text-[10px] font-normal text-gray-400">
+                        {r.customer_no ?? ''}
+                      </span>
+                      {String(r.customer_name ?? '-')}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 text-xs whitespace-nowrap">
-                    {r.cust_receipt_date?.slice(0, 10) ?? '-'}
+                    {formatDateTime(r.mta)}
                   </td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap">
                     {delayDays !== null ? (
@@ -177,21 +216,12 @@ export default async function OutboundPage({
                       <span className="text-gray-400 text-xs">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-center">
-                    <OutboundDeleteButton
-                      row={{
-                        id: r.id,
-                        outbound_header_id: r.id,
-                        document_no: pssNo,
-                      }}
-                    />
-                  </td>
                 </tr>
               )
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={6} className="px-4 py-12 text-center text-gray-400 text-sm">
                   {customer
                     ? 'TIDAK ADA DATA UNTUK CUSTOMER YANG DICARI'
                     : months.length > 0

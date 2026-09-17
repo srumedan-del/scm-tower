@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 import {
   upsertHdMonitoring, deleteHdMonitoring,
   getHdCustomers, getLastShipmentForCustomer,
@@ -170,7 +171,7 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">
@@ -191,19 +192,16 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
                     {row.customer_name ?? row.customer_code}
                   </div>
                 ) : (
-                  <select
-                    value={form.customer_id}
-                    onChange={e => handleCustomerChange(e.target.value)}
-                    className="inp"
+                  <SearchableSelect
+                    value={form.customer_id || ''}
+                    onChange={value => handleCustomerChange(String(value))}
+                    placeholder="-- Pilih customer --"
                     disabled={custLoading}
-                  >
-                    <option value={0}>-- Pilih customer --</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.customer_name ?? c.customer_code} — {c.city} ({c.machine_count ?? 0} mesin)
-                      </option>
-                    ))}
-                  </select>
+                    options={customers.map(c => ({
+                      value: c.id,
+                      label: `${c.customer_name ?? c.customer_code} — ${c.city} (${c.machine_count ?? 0} mesin)`,
+                    }))}
+                  />
                 )}
               </Field>
               <Field label="Tanggal Snapshot *">

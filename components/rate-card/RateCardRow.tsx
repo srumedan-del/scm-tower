@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import RateCardEditPanel from './RateCardEditPanel'
 
 type Rate = {
@@ -25,25 +26,38 @@ function statusBadge(s: string | null) {
   return <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${isAktif ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{String(s ?? '-').toUpperCase()}</span>
 }
 
+function truckSpecification(rate: Rate) {
+  const parts = [String(rate.vehicle_type ?? '-').toUpperCase()]
+  if (rate.tonnage != null) parts.push(`${Number(rate.tonnage).toLocaleString('id-ID', { maximumFractionDigits: 2 })} TON`)
+  if (rate.cbm != null) parts.push(`${Number(rate.cbm).toLocaleString('id-ID', { maximumFractionDigits: 2 })} CBM`)
+  return parts.join(' · ')
+}
+
 export function RateCardRow({ rate }: { rate: Rate }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
 
   return (
     <>
-      <tr className="hover:bg-blue-50 cursor-pointer transition-colors" onClick={()=>setOpen(true)}>
-        <td className="px-4 py-2.5 font-mono text-xs font-medium">{rate.rate_code}</td>
-        <td className="px-4 py-2.5 text-xs font-bold">{String((rate as any).vendor_code ?? (rate as any).vendor_name ?? '-').toUpperCase()}</td>
-        <td className="px-4 py-2.5">{String(rate.origin).toUpperCase()} → {String(rate.destination).toUpperCase()}</td>
-        <td className="px-4 py-2.5">{String(rate.vehicle_type ?? '-').toUpperCase()}{rate.tonnage ? ` · ${rate.tonnage}T` : ''}{rate.cbm ? ` · ${rate.cbm} CBM` : ''}</td>
-        <td className="px-4 py-2.5">{String(rate.tariff_model ?? '-').toUpperCase()}</td>
-        <td className="px-4 py-2.5 text-right font-medium">{rate.price != null ? Number(rate.price).toLocaleString('id-ID') : '-'}</td>
-        <td className="px-4 py-2.5 text-center">{statusBadge(rate.status)}</td>
+      <tr className="cursor-pointer transition-colors hover:bg-blue-50" onClick={()=>setOpen(true)}>
+        <td className="break-words px-2 py-2.5 text-left font-mono text-[11px] font-medium sm:px-3">{rate.rate_code}</td>
+        <td className="break-words px-2 py-2.5 text-left text-[11px] font-bold sm:px-3">
+          {(rate as any).vendor_name ? String((rate as any).vendor_name).toUpperCase() : '-'}
+        </td>
+        <td className="break-words px-2 py-2.5 text-left sm:px-3">{String(rate.origin).toUpperCase()} → {String(rate.destination).toUpperCase()}</td>
+        <td className="break-words px-2 py-2.5 text-left sm:px-3">{truckSpecification(rate)}</td>
+        <td className="break-words px-2 py-2.5 text-left sm:px-3">{String(rate.tariff_model ?? '-').toUpperCase()}</td>
+        <td className="whitespace-nowrap px-2 py-2.5 text-right font-medium sm:px-3">{rate.price != null ? Number(rate.price).toLocaleString('id-ID') : '-'}</td>
+        <td className="px-2 py-2.5 text-center sm:px-3">{statusBadge(rate.status)}</td>
       </tr>
       {mounted && open && createPortal(
-        <RateCardEditPanel rate={rate as any} onClose={()=>setOpen(false)} onSaved={()=>{ if(typeof window!=='undefined') window.location.reload() }} />,
+        <RateCardEditPanel rate={rate as any} onClose={()=>setOpen(false)} onSaved={() => {
+          setOpen(false)
+          router.refresh()
+        }} />,
         document.body
       )}
     </>

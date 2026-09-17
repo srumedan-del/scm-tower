@@ -5,7 +5,7 @@ import { Plus, Trash2, Package } from 'lucide-react'
 import {
   insertCrossdocking, updateCrossdockingHeader, deleteCrossdocking,
   upsertCrossdockingDetail, deleteCrossdockingDetail,
-  getCrossdockingOptions, getCrossdockingById,
+  getCrossdockingOptions, getCrossdockingById, getPtsDetailsForCrossdocking,
   type CrossdockingHeader, type CrossdockingDetail,
   type SkuOption, type CustomerOption,
 } from '@/app/(app)/crossdocking/actions'
@@ -30,17 +30,40 @@ const emptyDetail = (): DetailDraft => ({
   uom: null, lot_no: null, expiration_date: null, notes: null,
 })
 
+function nowLocalDateTime() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function toLocalDateTimeInput(value: string | null | undefined) {
+  if (!value) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00`
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function normalizeDocumentDateTime(value: string | null | undefined) {
+  if (!value) return { document_created_at: null, document_date: null }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return { document_created_at: null, document_date: value.slice(0, 10) || null }
+  return { document_created_at: date.toISOString(), document_date: value.slice(0, 10) }
+}
+
 export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: Props) {
   const isEdit = crossdockingId !== null
 
   // Options
   const [skus,      setSkus]      = useState<SkuOption[]>([])
   const [customers, setCustomers] = useState<CustomerOption[]>([])
+  const [ptsOptions, setPtsOptions] = useState<Array<{ id: number; pts_no: string; document_date: string | null }>>([])
+  const [selectedPtsIds, setSelectedPtsIds] = useState<number[]>([])
   const [optLoading, setOptLoading] = useState(true)
 
   // Header form
   const [header, setHeader] = useState<Partial<CrossdockingHeader>>({
     status: 'Draft',
+    document_created_at: nowLocalDateTime(),
     document_date: new Date().toISOString().slice(0, 10),
     received_from_hq_date: new Date().toISOString().slice(0, 10),
     promised_delivery_date: '',
@@ -61,6 +84,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
     getCrossdockingOptions().then(opts => {
       setSkus(opts.skus)
       setCustomers(opts.customers)
+      setPtsOptions(opts.pts)
       setOptLoading(false)
     }).catch(() => setOptLoading(false))
 
@@ -76,12 +100,51 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
     }
   }, [crossdockingId])
 
-  // Saat customer dipilih, auto-fill customer_name
-  function onCustomerChange(code: string) {
-    hup('customer_code', code || null)
-    const c = customers.find(c => c.customer_code === code)
-    if (c) hup('customer_name', c.customer_name)
-    else if (!code) hup('customer_name', null)
+  // Suggestion list comes from the dedicated Crossdocking customer master.
+  function onCustomerNameChange(name: string) {
+    hup('customer_name', name || null)
+    const c = customers.find(c => c.customer_name.toLowerCase() === name.trim().toLowerCase())
+    if (c) {
+      hup('destination_city', c.destination_city)
+      hup('destination_address', c.destination_address)
+    }
+  }
+
+  function onPtsChange(value: string) {
+    const ptsId = Number(value)
+    if (!ptsId || selectedPtsIds.includes(ptsId)) return
+    const nextIds = [...selectedPtsIds, ptsId]
+    setSelectedPtsIds(nextIds)
+    hup('pts_id', nextIds[0])
+
+    const selectedOptions = ptsOptions.filter(option => nextIds.includes(option.id))
+    const dates = selectedOptions.map(option => option.document_date).filter(Boolean).sort()
+    hup('hq_reference_no', selectedOptions.map(option => option.pts_no).join(', '))
+    if (dates[0]) {
+      hup('document_date', dates[0])
+      hup('received_from_hq_date', dates[0])
+    }
+
+    Promise.all(nextIds.map(id => getPtsDetailsForCrossdocking(id)))
+      .then(detailGroups => {
+        const merged = detailGroups.flat()
+        setDetails(merged.length ? merged.map((row, index) => ({ ...row, _key: `pts-${index}` })) : [emptyDetail()])
+      })
+      .catch(error => setErr(error.message))
+  }
+
+  function removePts(ptsId: number) {
+    const nextIds = selectedPtsIds.filter(id => id !== ptsId)
+    setSelectedPtsIds(nextIds)
+    hup('pts_id', nextIds[0] ?? null)
+    const selectedOptions = ptsOptions.filter(option => nextIds.includes(option.id))
+    hup('hq_reference_no', selectedOptions.map(option => option.pts_no).join(', ') || null)
+    Promise.all(nextIds.map(id => getPtsDetailsForCrossdocking(id)))
+      .then(detailGroups => {
+        const merged = detailGroups.flat()
+        setDetails(merged.length ? merged.map((row, index) => ({ ...row, _key: `pts-${index}` })) : [emptyDetail()])
+      })
+      .catch(error => setErr(error.message))
   }
 
   // Detail helpers
@@ -89,14 +152,16 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
     setDetails(ds => ds.map(d => d._key === key ? { ...d, [field]: value } : d))
 
   function onItemChange(key: string, skuCode: string) {
-    dupd(key, 'item_no', skuCode || null)
-    const sku = skus.find(s => s.sku_code === skuCode)
+    const itemNo = skuCode.trim()
+    const sku = skus.find(s => s.sku_code.toLowerCase() === itemNo.toLowerCase())
     if (sku) {
       setDetails(ds => ds.map(d =>
         d._key === key
-          ? { ...d, item_no: skuCode, description: sku.item_name, item_name: sku.item_name, uom: sku.uom }
+          ? { ...d, item_no: sku.sku_code, description: sku.item_name, item_name: sku.item_name, uom: sku.uom }
           : d
       ))
+    } else {
+      setDetails(ds => ds.map(d => d._key === key ? { ...d, item_no: itemNo || null, item_name: null } : d))
     }
   }
 
@@ -121,25 +186,29 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
       if (!header.customer_name && !header.customer_code) {
         setErr('Customer wajib diisi'); return
       }
+      if (!header.destination_city?.trim()) {
+        setErr('Kota tujuan wajib diisi'); return
+      }
 
       const validDetails = details.filter(d => d.quantity > 0)
 
       try {
         if (!isEdit) {
           // INSERT baru
-          const { customer_code, customer_name, destination_address,
-                  pss_no, psi_no, document_date, hq_reference_no, received_from_hq_date, promised_delivery_date,
+          const documentDateTime = normalizeDocumentDateTime(header.document_created_at ?? header.document_date)
+          const { customer_code, customer_name, destination_address, destination_city, pts_id,
+                  pss_no, psi_no, hq_reference_no, received_from_hq_date, promised_delivery_date,
                   status, notes, created_by } = header as any
           await insertCrossdocking(
-            { customer_code, customer_name, destination_address,
-              pss_no, psi_no, document_date, hq_reference_no, received_from_hq_date, promised_delivery_date,
-              status: status ?? 'Draft', notes, created_by },
+            { customer_code, customer_name, destination_address, destination_city, pts_id,
+              pss_no, psi_no, ...documentDateTime, hq_reference_no, received_from_hq_date, promised_delivery_date,
+              status: status ?? 'Draft', notes, created_by, pts_ids: selectedPtsIds },
             validDetails.map(({ _key, id, item_name, ...rest }) => rest)
           )
         } else {
           // UPDATE header
           const { id, crossdocking_no, created_at, updated_at, ...payload } = header as any
-          await updateCrossdockingHeader(crossdockingId!, payload)
+          await updateCrossdockingHeader(crossdockingId!, { ...payload, ...normalizeDocumentDateTime(header.document_created_at ?? header.document_date) })
           // Upsert setiap detail
           for (const d of validDetails) {
             const { _key, item_name, ...rest } = d
@@ -164,7 +233,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
 
         {/* ── Title ── */}
         <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
@@ -186,28 +255,48 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
           <section className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Info Pengiriman</h3>
 
+            {!isEdit && (
+              <Field label="PTS sumber detail (opsional)">
+                <select value="" onChange={e => onPtsChange(e.target.value)} className="inp">
+                  <option value="">Pilih PTS yang telah di-upload</option>
+                  {ptsOptions.map(pts => <option key={pts.id} value={pts.id}>{pts.pts_no}{pts.document_date ? ` · ${pts.document_date}` : ''}</option>)}
+                </select>
+                {selectedPtsIds.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {selectedPtsIds.map(id => {
+                      const pts = ptsOptions.find(option => option.id === id)
+                      return <button key={id} type="button" onClick={() => removePts(id)} className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-red-50 hover:text-red-700">
+                        {pts?.pts_no ?? id} ×
+                      </button>
+                    })}
+                  </div>
+                )}
+                <p className="mt-1 text-[11px] text-gray-500">Pilih lebih dari satu PTS untuk menggabungkannya menjadi satu PSS.</p>
+              </Field>
+            )}
+
             {/* Customer */}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Customer (dari master)">
-                <select
-                  value={header.customer_code ?? ''}
-                  onChange={e => onCustomerChange(e.target.value)}
-                  className="inp"
-                >
-                  <option value="">-- Pilih dari master (opsional) --</option>
-                  {customers.map(c => (
-                    <option key={c.customer_code} value={c.customer_code}>
-                      {c.customer_name} — {c.city ?? ''}
-                    </option>
-                  ))}
-                </select>
-              </Field>
               <Field label="Nama Customer / Tujuan *">
                 <input
                   value={header.customer_name ?? ''}
-                  onChange={e => hup('customer_name', e.target.value || null)}
+                  onChange={e => onCustomerNameChange(e.target.value)}
                   className="inp"
-                  placeholder="Isi manual jika tidak ada di master"
+                  list="crossdocking-customer-options"
+                  placeholder="Ketik atau pilih customer sebelumnya"
+                />
+                <datalist id="crossdocking-customer-options">
+                  {customers.map(c => (
+                    <option key={`${c.customer_name}-${c.destination_city ?? ''}`} value={c.customer_name} label={c.destination_city ?? ''} />
+                  ))}
+                </datalist>
+              </Field>
+              <Field label="Kota Tujuan *">
+                <input
+                  value={header.destination_city ?? ''}
+                  onChange={e => hup('destination_city', e.target.value || null)}
+                  className="inp"
+                  placeholder="MEDAN"
                 />
               </Field>
             </div>
@@ -228,8 +317,18 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
               <Field label="Nomor PSI">
                 <input value={header.psi_no ?? ''} onChange={e => hup('psi_no', e.target.value || null)} className="inp font-mono" placeholder="PSI-XXXX-XXXX" />
               </Field>
-              <Field label="Tanggal Dokumen">
-                <input type="date" value={header.document_date?.slice(0, 10) ?? ''} onChange={e => hup('document_date', e.target.value || null)} className="inp" />
+              <Field label="Document Date Time">
+                <input
+                  type="datetime-local"
+                  value={toLocalDateTimeInput(header.document_created_at ?? header.document_date)}
+                  onChange={e => {
+                    const value = e.target.value || null
+                    const normalized = normalizeDocumentDateTime(value)
+                    hup('document_created_at', value)
+                    hup('document_date', normalized.document_date)
+                  }}
+                  className="inp"
+                />
               </Field>
             </div>
 
@@ -261,7 +360,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <Field label="Status">
                 <select
                   value={header.status ?? 'Draft'}
@@ -270,14 +369,6 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                 >
                   {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-              </Field>
-              <Field label="Catatan">
-                <input
-                  value={header.notes ?? ''}
-                  onChange={e => hup('notes', e.target.value || null)}
-                  className="inp"
-                  placeholder="Opsional"
-                />
               </Field>
             </div>
           </section>
@@ -314,25 +405,20 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                 <tbody className="divide-y divide-gray-100">
                   {details.map(d => (
                     <tr key={d._key} className="hover:bg-gray-50">
-                      {/* Item No — dropdown SKU */}
+                      {/* Ketik kode produk; daftar menampilkan kode dan nama SKU. */}
                       <td className="px-2 py-1.5">
-                        <select
+                        <input
                           value={d.item_no ?? ''}
                           onChange={e => onItemChange(d._key, e.target.value)}
+                          list="crossdocking-sku-options"
                           className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">-- Pilih SKU --</option>
-                          {skus.map(s => (
-                            <option key={s.sku_code} value={s.sku_code}>{s.sku_code}</option>
-                          ))}
-                          <option value="__manual">→ Input manual</option>
-                        </select>
-                        <input
-                          value={d.item_no === '__manual' ? '' : (d.item_no ?? '')}
-                          onChange={e => onItemChange(d._key, e.target.value)}
-                          className="mt-1 w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:border-indigo-500"
-                          placeholder="Atau ketik kode item manual"
+                          placeholder="Cari kode produk"
                         />
+                        <datalist id="crossdocking-sku-options">
+                          {skus.map(s => (
+                            <option key={s.sku_code} value={s.sku_code} label={s.item_name} />
+                          ))}
+                        </datalist>
                       </td>
                       {/* Deskripsi */}
                       <td className="px-2 py-1.5">

@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type TransporterRow = {
   id: number
@@ -26,6 +27,7 @@ export async function getTransporters() {
 }
 
 export async function upsertTransporter(t: Partial<TransporterRow> & { id?: number }) {
+  await requireAuthenticatedUser()
   const { id, ...payload } = t
   if (id) {
     const { error } = await supabaseAdmin.from('master_transporter').update(payload).eq('id', id)
@@ -37,6 +39,7 @@ export async function upsertTransporter(t: Partial<TransporterRow> & { id?: numb
 }
 
 export async function deleteTransporter(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('master_transporter').delete().eq('id', id)
   if (error) throw error
 }

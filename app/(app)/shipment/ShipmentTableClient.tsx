@@ -42,6 +42,16 @@ function OtdBadge({ isOnTime }: { isOnTime: boolean | null }) {
   )
 }
 
+function FleetTypeBadge({ fleetType }: { fleetType: string | null }) {
+  if (!fleetType) return <span className="text-xs text-muted">—</span>
+  const isInternal = fleetType === 'Internal'
+  return (
+    <span className={`text-xs font-medium rounded-full px-2.5 py-1 ${isInternal ? 'bg-indigo/10 text-indigo' : 'bg-orange/10 text-orange'}`}>
+      {isInternal ? 'Internal' : 'Eksternal'}
+    </span>
+  )
+}
+
 export function ShipmentTableClient({ untrackedData, trackedData, onRefresh }: Props) {
   const [mainTab, setMainTab] = useState<'untracked' | 'tracked'>('untracked')
   const [statusTab, setStatusTab] = useState<string>('all')
@@ -113,6 +123,12 @@ export function ShipmentTableClient({ untrackedData, trackedData, onRefresh }: P
       key: 'transporter_name',
       label: 'Transporter',
       render: (val) => <span className="text-sm">{val ?? '-'}</span>,
+    },
+    {
+      key: 'fleet_type',
+      label: 'Armada',
+      width: '90px',
+      render: (val) => <FleetTypeBadge fleetType={val} />,
     },
     {
       key: 'status',
@@ -258,11 +274,11 @@ export function ShipmentTableClient({ untrackedData, trackedData, onRefresh }: P
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-xs text-muted font-bold">Dispatch</span>
-                      <p className="text-sm mt-1">{row.dispatch_time?.slice(0, 10) ?? '-'}</p>
+                      <p className="text-sm mt-1">{row.dispatch_time ? new Date(row.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted font-bold">Delivery</span>
-                      <p className="text-sm mt-1">{row.delivery_time?.slice(0, 10) ?? '-'}</p>
+                      <p className="text-sm mt-1">{row.delivery_time ? new Date(row.delivery_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted font-bold">Cost Model</span>

@@ -92,6 +92,33 @@ export async function getOutboundHeadersByPssNos(pssNos: string[]) {
   return { data: allData, error: null }
 }
 
+export async function getOutboundHeadersForPaoMatching() {
+  const { data, error } = await supabaseAdmin
+    .from('outbound_header')
+    .select('id, pss_no, shipment_no, document_created_at, document_date, project, branch_representative, location_code')
+    .not('pss_no', 'is', null)
+
+  return { data: data ?? [], error }
+}
+
+export async function getOutboundDetailHeaderIds(headerIds: number[]) {
+  if (!headerIds.length) return { data: [], error: null }
+
+  const CHUNK = 500
+  const allData: any[] = []
+  for (let i = 0; i < headerIds.length; i += CHUNK) {
+    const chunk = headerIds.slice(i, i + CHUNK)
+    const { data, error } = await supabaseAdmin
+      .from('outbound_detail')
+      .select('outbound_header_id')
+      .in('outbound_header_id', chunk)
+    if (error) return { data: [], error }
+    allData.push(...(data ?? []))
+  }
+
+  return { data: allData, error: null }
+}
+
 /* ── Outbound Detail (ILE) ──────────────────────────────── */
 
 export async function getExistingOutboundDetailEntryNos(entryNos: number[]) {
@@ -103,6 +130,28 @@ export async function getExistingOutboundDetailEntryNos(entryNos: number[]) {
     .in('entry_no', entryNos)
 
   return { data: data ?? [], error }
+}
+
+export async function updateOutboundDetailDocumentLinks(rows: Record<string, any>[]) {
+  const updates = rows.filter(row =>
+    row.entry_no !== null && row.entry_no !== undefined && row.document_no && row.outbound_header_id
+  )
+
+  let updated = 0
+  for (const row of updates) {
+    const { data, error } = await supabaseAdmin
+      .from('outbound_detail')
+      .update({
+        document_no: String(row.document_no).trim(),
+        outbound_header_id: Number(row.outbound_header_id),
+      })
+      .eq('entry_no', Number(row.entry_no))
+      .select('id')
+    if (error) throw error
+    updated += data?.length ?? 0
+  }
+
+  return { updated }
 }
 
 export async function insertOutboundDetailRows(rows: Record<string, any>[]) {
@@ -192,10 +241,40 @@ export async function updateOutboundDetailCreatedTimes(rows: Record<string, any>
   return { updated }
 }
 
+/** Propagate the earliest NAV document timestamp for each PSS to its header. */
+export async function updateOutboundHeaderCreatedTimes(rows: Record<string, any>[]) {
+  const earliestByDocument = new Map<string, string>()
+
+  for (const row of rows) {
+    const documentNo = String(row.document_no ?? '').trim()
+    const createdAt = row.document_created_at
+    if (!documentNo || !createdAt) continue
+
+    const previous = earliestByDocument.get(documentNo)
+    if (!previous || new Date(createdAt).getTime() < new Date(previous).getTime()) {
+      earliestByDocument.set(documentNo, createdAt)
+    }
+  }
+
+  let updated = 0
+  for (const [documentNo, documentCreatedAt] of earliestByDocument) {
+    const { data, error } = await supabaseAdmin
+      .from('outbound_header')
+      .update({ document_created_at: documentCreatedAt })
+      .or(`pss_no.eq.${documentNo},shipment_no.eq.${documentNo}`)
+      .select('id')
+
+    if (error) throw error
+    updated += data?.length ?? 0
+  }
+
+  return { updated }
+}
+
 /* ── Outbound Full Data (modal detail) ──────────────────── */
 
 export async function getOutboundFullData(pssNo: string) {
-  if (!pssNo) return { header: null, details: [], customer: null, error: null }
+  if (!pssNo) return { header: null, details: [], customer: null, excludedItems: [], error: null }
 
   // 1. Ambil header
   const { data: header, error: headerError } = await supabaseAdmin
@@ -204,7 +283,7 @@ export async function getOutboundFullData(pssNo: string) {
     .eq('pss_no', pssNo)
     .single()
 
-  if (headerError) return { header: null, details: [], customer: null, error: headerError }
+  if (headerError) return { header: null, details: [], customer: null, excludedItems: [], error: headerError }
 
   // 2. Ambil detail
   const { data: details, error: detailError } = await supabaseAdmin
@@ -216,7 +295,7 @@ export async function getOutboundFullData(pssNo: string) {
     .eq('document_no', pssNo)
     .order('entry_no', { ascending: true })
 
-  if (detailError) return { header, details: [], customer: null, error: detailError }
+  if (detailError) return { header, details: [], customer: null, excludedItems: [], error: detailError }
 
   // 3. Enrich deskripsi dari master_sku
   const itemNos = [...new Set((details as any[]).map((d: any) => String(d.item_no ?? '').trim()).filter(Boolean))]
@@ -233,18 +312,26 @@ export async function getOutboundFullData(pssNo: string) {
     }
   }
 
-  // 4. Filter: hapus baris item_no mengandung "HD SET" yang tidak punya deskripsi di master_sku
+  const excludedItems = (details as any[])
+    .filter((d) => String(d.item_no ?? '').trim().toUpperCase() === 'HD SET BLMDN005-ANAK')
+    .map((d) => String(d.item_no ?? '').trim())
+
+  // 4. Tampilkan semua detail yang di-upload, kecuali item non-SKU tertentu yang memang
+  // bukan SKU. Beberapa item assembly / HD SET bisa tidak ada di master_sku, tetapi
+  // tetap harus muncul di modal agar user bisa melihat data yang benar-benar masuk.
   const enrichedDetails = (details as any[])
-    .map((d) => ({
-      ...d,
-      description: skuMap.get(String(d.item_no ?? '').trim()) || d.description || null,
-    }))
+    .map((d) => {
+      const itemNo = String(d.item_no ?? '').trim()
+      return {
+        ...d,
+        description: skuMap.get(itemNo) || d.description || itemNo || null,
+      }
+    })
     .filter((d) => {
-      const itemNo = String(d.item_no ?? '').toUpperCase()
-      const hasHdSet = itemNo.includes('HD SET')
-      const hasDesc = !!d.description
-      // Sembunyikan kalau item_no mengandung "HD SET" DAN tidak ada deskripsi
-      return !(hasHdSet && !hasDesc)
+      const itemNo = String(d.item_no ?? '').trim().toUpperCase()
+      // Khusus item assembly yang memang bukan SKU; jangan tampilkan di list detail.
+      if (itemNo === 'HD SET BLMDN005-ANAK') return false
+      return true
     })
 
   // 5. Ambil alamat customer dari tabel customers
@@ -263,5 +350,5 @@ export async function getOutboundFullData(pssNo: string) {
     }
   }
 
-  return { header, details: enrichedDetails, customer, error: null }
+  return { header, details: enrichedDetails, customer, excludedItems, error: null }
 }

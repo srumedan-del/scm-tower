@@ -6,6 +6,7 @@ import {
   type InventorySnapshotRow, type WarehouseOption, type SkuOption,
 } from '@/app/(app)/inventory/snapshot/actions'
 import { Trash2 } from 'lucide-react'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 
 type Props = {
   row: InventorySnapshotRow | null
@@ -100,7 +101,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">
@@ -123,14 +124,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
               {row ? (
                 <div className="inp bg-gray-50 text-gray-700 font-mono">{row.warehouse_code}</div>
               ) : (
-                <select value={form.warehouse_code} onChange={e => up('warehouse_code', e.target.value)} className="inp" disabled={optLoading}>
-                  <option value="">-- Pilih gudang --</option>
-                  {warehouses.map(w => (
-                    <option key={w.warehouse_code} value={w.warehouse_code}>
-                      {w.warehouse_code} — {w.warehouse_name}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect value={form.warehouse_code} onChange={value => up('warehouse_code', value)} disabled={optLoading} placeholder="-- Pilih gudang --" options={warehouses.map(w => ({ value: w.warehouse_code, label: `${w.warehouse_code} — ${w.warehouse_name}` }))} />
               )}
             </Field>
           </div>
@@ -140,14 +134,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
             {row ? (
               <div className="inp bg-gray-50 text-gray-700 font-mono">{row.sku_code} — {row.item_name}</div>
             ) : (
-              <select value={form.sku_code} onChange={e => up('sku_code', e.target.value)} className="inp" disabled={optLoading}>
-                <option value="">-- Pilih SKU --</option>
-                {skus.map(s => (
-                  <option key={s.sku_code} value={s.sku_code}>
-                    {s.sku_code} — {s.item_name} ({s.uom})
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect value={form.sku_code} onChange={value => up('sku_code', value)} disabled={optLoading} placeholder="-- Pilih SKU --" options={skus.map(s => ({ value: s.sku_code, label: `${s.sku_code} — ${s.item_name} (${s.uom})` }))} />
             )}
           </Field>
 

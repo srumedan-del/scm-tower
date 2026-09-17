@@ -22,6 +22,7 @@ type Shipment = {
   pod_status: string | null
   delay_reason: string | null
   notes: string | null
+  fleet_type: string | null
 }
 
 function StatusBadge({status}:{status:string|null}){

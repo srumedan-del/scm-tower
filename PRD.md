@@ -1,11 +1,15 @@
 # Product Requirements Document (PRD)
 ## SCM Control Tower
 
-**Versi:** 1.7
-**Tanggal:** 09 September 2026
+**Versi:** 1.9
+**Tanggal:** 13 September 2026
 **Status:** In Development  
 
-**Catatan perubahan v1.7:** Shipment menjadi pusat perencanaan dan monitoring pengiriman. Menu Trip Control tidak lagi ditampilkan pada sidebar karena penetapan transporter, kendaraan, driver, helper, rute, dan Trip ID dilakukan langsung saat membuat atau mengedit Shipment. Pencatatan biaya dilakukan terpisah melalui menu Shipment Cost.
+**Catatan perubahan v1.9:** Menambahkan Section 4.11 (Struktur Navigasi & Menu Sidebar) hasil audit halaman orphan. Ditemukan `/shipment/budget-request` (modul Pengajuan Dana, 4.5.5) tidak punya link dari UI manapun — belum tercatat di revisi sebelumnya. Menu sidebar direvisi jadi berkelompok (Operasional / Monitoring / Data & Sistem) alih-alih flat list 12 item. Status `/trips` ditandai menunggu keputusan eksplisit karena bertentangan dengan keputusan 4.5.6. Koreksi juga dicatat di Section 10: klaim bahwa `proxy.ts` adalah dead code (dari draft analisis eksternal) tidak akurat — Next.js 16 justru menjadikan `proxy.ts` sebagai konvensi resmi pengganti `middleware.ts`.
+
+**Catatan perubahan v1.8:** Menetapkan standar tampilan tabel database berdasarkan implementasi terbaru Master Rate Card, serta menambahkan standardisasi dan rencana perhitungan volume/tonase dari workbook manual. Workbook `data/61 2026-09-04 KLINIK AYAH BUNDA.xlsx` sudah tersedia dan dianalisis. Biaya `2.500` pada template dikonfirmasi sebagai biaya TKBM, dengan nilai yang berbeda-beda berdasarkan tujuan; implementasinya ditunda ke tahap berikutnya.
+
+**Status implementasi saat ini:** Fondasi aplikasi, modul master data, upload data NAV, shipment/TMS, shipment cost, inventory, receiving, outbound, crossdocking, issue log, dan dashboard telah berjalan dalam bentuk bertahap. Detail fitur yang sudah selesai dicatat pada Section 12. Item yang masih berupa rencana tetap ditandai pada Section 9.
 
 ---
 
@@ -374,6 +378,77 @@ Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-m
 | **Rate Card** | Referensi tarif untuk estimasi/proyeksi biaya (biaya aktual dicatat langsung per shipment — lihat 4.5.4) |
 | **Warehouses** | Data gudang: kode lokasi, alamat |
 
+#### 4.7.1 Standar Tampilan Database dan Tabel
+
+**Keputusan UI v1.8:** Tampilan Master Rate Card menjadi template visual untuk seluruh halaman master data dan daftar database operasional. Standardisasi dilakukan bertahap per halaman, dengan mempertahankan fungsi dan kontrak data yang sudah ada.
+
+**Standar yang wajib digunakan:**
+- Judul halaman berada pada toolbar utama dengan ukuran, ketebalan, dan jarak yang konsisten.
+- Kontrol filter berada sejajar dengan judul pada desktop dan turun secara responsif pada layar yang lebih kecil.
+- Filter menggunakan kontrol dengan tinggi, border, radius, padding, dan state focus yang konsisten; label filter yang berulang tidak ditampilkan bila placeholder sudah cukup jelas.
+- Jumlah hasil filter ditampilkan sebagai badge/status ringkas di toolbar.
+- Tombol aksi utama berada pada toolbar yang sama dan menggunakan gaya tombol yang konsisten.
+- Tabel menggunakan header yang jelas, row density yang seragam, alignment berdasarkan tipe data, serta wrapping untuk teks panjang.
+- Header tabel tetap terlihat saat record di-scroll; scrolling dilakukan pada area tabel, bukan pada keseluruhan halaman database.
+- Horizontal overflow tidak boleh muncul pada viewport desktop normal; lebar kolom harus dikelola dengan layout tabel fixed, wrapping, atau prioritas kolom.
+- Tabel database boleh menggunakan vertical scroll internal untuk dataset besar, dengan tinggi mengikuti area viewport yang tersedia.
+- State kosong, loading, error, filter aktif, dan hasil nol harus memiliki tampilan yang konsisten.
+- Font, ukuran teks, warna border, warna surface, status badge, spacing, dan radius mengikuti token global pada `app/globals.css`; halaman baru tidak boleh membuat style tabel sendiri tanpa alasan.
+
+**Urutan penerapan:**
+1. Inventarisasi seluruh halaman database: Master Data, Receiving, Outbound, Shipment, Shipment Cost, Crossdocking, Issues, dan Inventory.
+2. Pisahkan komponen reusable untuk database toolbar, filter field, result badge, table shell, table header, status badge, empty state, dan pagination/scroll container bila diperlukan.
+3. Migrasikan satu halaman per kelompok risiko, mulai dari Master Data, lalu operasional.
+4. Verifikasi desktop minimum 1280px dan viewport yang lebih kecil sebelum halaman dinyatakan selesai.
+
+#### 4.7.2 Perhitungan Volume dan Tonase
+
+**Tujuan:** Menjadikan perhitungan volume dan tonase sebagai data terstruktur yang dapat dipakai untuk validasi muatan, pemilihan kendaraan, rate card, estimasi biaya, dan analitik utilisasi.
+
+**Status saat ini:** Workbook `data/61 2026-09-04 KLINIK AYAH BUNDA.xlsx` sudah tersedia dan menjadi referensi awal implementasi. Workbook memiliki tiga sheet: `TEMPLATE HITUNG VOLUME`, `MASTER VOLUME`, dan `HARGA VENDOR`. `MASTER VOLUME` berisi master dimensi/kemasan dan berat produk; template menghitung kebutuhan kiriman per dokumen/order; `HARGA VENDOR` berisi rate code, vendor, jenis truck, tujuan, jenis kendaraan, dan harga.
+
+**Rencana aturan data:**
+- Volume item dihitung dari dimensi dan kuantitas bila dimensi tersedia, dengan satuan dan konversi yang eksplisit.
+- Tonase item dihitung dari berat satuan dan kuantitas bila berat tersedia, dengan satuan dan pembulatan yang eksplisit.
+- Total volume dan total tonase dihitung pada level dokumen/order, shipment/stop, dan trip sesuai kebutuhan bisnis.
+- Kapasitas kendaraan menyimpan batas volume dan berat secara terpisah; validasi muatan tidak boleh membandingkan volume dengan tonase.
+- Nilai hasil perhitungan menyimpan sumber, versi formula, satuan dasar, dan status validasi agar perubahan formula tidak mengubah histori tanpa jejak.
+- Data yang tidak cukup untuk menghitung tidak boleh diam-diam dianggap nol; sistem menampilkan status `Data tidak lengkap` dan menjelaskan field yang kurang.
+- Perhitungan manual dari workbook harus dapat direkonsiliasi baris demi baris sebelum dijadikan formula produksi.
+
+**Formula yang terverifikasi dari workbook:**
+- `Kubik outer box (m3) = P outer (cm) x L outer (cm) x T outer (cm) / 1.000.000`.
+- `Pcs per outer box = Pcs per inner box x Inner box per outer box`.
+- `Outer box per pallet = Outer box per layer x Jumlah tumpukan`.
+- `Pcs per pallet = Pcs per outer box x Outer box per pallet`.
+- `Koli = ROUNDUP(QTY / Pcs per outer box, 0)`.
+- `Berat (KG) = (Berat outer box / Pcs per outer box) x QTY`.
+- `Berat volumetrik darat/laut (KG) = (P outer x L outer x T outer / 4.000) x (QTY / Pcs per outer box)`.
+- `Berat volumetrik udara (KG) = (P outer x L outer x T outer / 6.000) x (QTY / Pcs per outer box)`.
+- `Kubikasi (m3) = Kubik outer box x Koli`.
+- Total dokumen menjumlahkan QTY, berat, volumetrik darat/laut, volumetrik udara, kubikasi, dan koli.
+- Template workbook memiliki `estimasi biaya TKBM = total koli x tarif TKBM tujuan`; contoh tarif pada workbook adalah `2.500`, tetapi tarif aktual berbeda-beda berdasarkan tujuan dan harus disimpan sebagai master/rate per tujuan.
+
+**Rencana implementasi berbasis workbook:**
+1. Normalisasi `MASTER VOLUME` menjadi master SKU/packaging: kode item, deskripsi, dimensi inner/outer, isi kemasan, berat outer box, status aktif, dan klasifikasi HD/NHD.
+2. Normalisasi angka dengan pemisah ribuan/desimal dan simpan unit dasar secara eksplisit: cm, m3, kg, pcs, dan koli.
+3. Tambahkan atribut perhitungan pada detail outbound/crossdocking atau tabel kalkulasi shipment: QTY, UoM, berat aktual, volumetrik darat/laut, volumetrik udara, kubikasi, dan koli.
+4. Ambil parameter kemasan dari master SKU secara versioned; snapshot parameter pada kalkulasi agar histori tidak berubah ketika master packaging diperbarui.
+5. Agregasikan hasil pada level dokumen, stop, dan trip; tampilkan kapasitas berat dan volume kendaraan sebagai dua validasi terpisah.
+6. Tambahkan status hasil: `Valid`, `Data tidak lengkap`, atau `Melebihi kapasitas`, serta alasan field yang belum tersedia.
+7. Rekonsiliasi hasil aplikasi dengan sheet template untuk contoh `SOP-2609-0741` dan `SOP-2609-0781` sebelum rollout.
+8. Tahap berikutnya: buat master tarif TKBM per tujuan, hubungkan `total koli x tarif TKBM tujuan` dengan estimasi biaya/rate card, dan jangan mencampurkannya dengan biaya aktual shipment.
+
+**Input yang harus diverifikasi dari workbook:** nama sheet dan baris header, kode item/SKU, dimensi kemasan, kuantitas per kemasan, berat satuan/kotor, faktor konversi, pembulatan, aturan pallet/kubikasi, dan contoh hasil yang dianggap benar oleh pengguna bisnis.
+
+**Output yang direncanakan:**
+- Volume per detail outbound/crossdocking.
+- Tonase per detail outbound/crossdocking.
+- Total volume dan tonase per stop/trip.
+- Utilisasi kendaraan berdasarkan volume dan tonase secara terpisah.
+- Warning kapasitas: aman, mendekati kapasitas, atau melebihi kapasitas.
+- Export hasil perhitungan dengan formula/version dan nilai input utama.
+
 ### 4.8 Issues / Issue Log
 - Pencatatan masalah operasional (damaged goods, keterlambatan, dll.)
 - Status issue: open, in progress, resolved
@@ -385,6 +460,41 @@ Cabang menggunakan kombinasi armada internal dan transporter eksternal, masing-m
 ### 4.10 Settings
 - Konfigurasi sistem
 - Manajemen user dan akses (planned)
+
+### 4.11 Struktur Navigasi & Menu Sidebar (v1.9)
+
+**Latar belakang:** Audit terhadap `components/sidebar.tsx` dan `app/(app)/master-data/page.tsx` menemukan dua halaman yang sudah punya kode lengkap tapi tidak reachable dari UI normal (orphan page): `/master-data/transporters` dan `/shipment/budget-request` (modul Pengajuan Dana, lihat 4.5.5, tidak punya link dari mana pun). Selain itu sidebar saat ini berupa 12 item sejajar tanpa pengelompokan, dan `hidden md:flex` tanpa pengganti navigasi untuk layar mobile.
+
+**Struktur menu yang ditetapkan** (dikelompokkan per fungsi, bukan flat list):
+
+```
+Dashboard                                    (berdiri sendiri)
+
+OPERASIONAL
+  Workflow
+  Receiving
+  Outbound
+  Crossdocking
+  Shipment
+  Shipment Cost
+  Pengajuan Dana          [BARU — link ke /shipment/budget-request, sebelumnya orphan]
+
+MONITORING
+  Service Level
+  Inventory
+  Issue Log
+
+DATA & SISTEM
+  Master Data             [DIPERBARUI — tambah kartu Transporter ke grid, sebelumnya orphan]
+  Settings
+```
+
+**Item dengan status khusus (belum masuk struktur di atas):**
+- **Trips** (`/trips`) — TIDAK ditambahkan ke sidebar. Ini bertentangan dengan keputusan 4.5.6 yang sudah menetapkan Trip Control bukan workflow terpisah. Halaman ini tetap ada di kode (dilindungi auth yang sama seperti halaman lain) tapi statusnya menunggu keputusan eksplisit: dibiarkan tidak ter-link, dihapus, atau diaktifkan ulang (yang berarti membatalkan keputusan 4.5.6).
+
+**Navigasi mobile:** `components/sidebar.tsx` memakai `hidden md:flex` tanpa drawer/hamburger pengganti di `app/(app)/layout.tsx` — di bawah breakpoint `md`, aplikasi saat ini tidak bisa dinavigasi. Perlu ditambahkan toggle drawer untuk `md:hidden`.
+
+**Aturan urutan item dalam grup:** item yang paling sering dipakai harian (Dashboard, Shipment, Receiving/Outbound) ditempatkan di posisi teratas grup masing-masing; item administratif (Settings, Pengajuan Dana yang sifatnya bulanan) di posisi bawah.
 
 ---
 
@@ -640,12 +750,15 @@ notes
 
 - [ ] Konsolidasikan `vendors` dan `master_transporter` menjadi satu master resmi, lalu perbaiki seluruh FK dan laporan.
 - [ ] Implementasikan model `Trip`, `Trip Stop`, `Trip Expense`, dan `Expense Allocation`; migrasikan biaya yang saat ini tersimpan per shipment agar total biaya tidak berlipat pada multi-drop.
-- [ ] Ubah dashboard OTD agar hanya memakai `delivery_time` aktual + POD; tampilkan Overdue/Open Shipment terpisah.
+- [x] Ubah dashboard OTD agar hanya memakai `delivery_time` aktual + POD; tampilkan Overdue/Open Shipment terpisah.
 - [ ] Implementasikan event log append-only serta exception delivery dan alasan koreksi. Status operasional saat ini tetap `Draft`, `Dispatched`, `In Transit`, dan `Delivered`.
-- [ ] Tambahkan trip stop line untuk qty planned/actual sebelum mengaktifkan KPI OTIF.
-- [ ] Perbaiki model snapshot HD dan buat view/trigger kalkulasi yang valid di PostgreSQL.
+- [x] Tambahkan trip stop line untuk qty planned/actual sebelum mengaktifkan KPI OTIF.
+- [x] Perbaiki model snapshot HD dan buat view/trigger kalkulasi yang valid di PostgreSQL.
 - [ ] Tambahkan rekonsiliasi inventory NAV vs snapshot/opname/in-transit serta upload batch audit.
 - [ ] Terapkan verifikasi session/role pada seluruh Server Action dan audit field pada mutasi data.
+- [ ] Tambahkan link ke `/shipment/budget-request` (Pengajuan Dana) dan `/master-data/transporters` di navigasi — keduanya orphan page saat ini (lihat 4.11).
+- [ ] Tambahkan hamburger/drawer navigasi untuk layar mobile (`md:hidden`) di `app/(app)/layout.tsx` (lihat 4.11).
+- [ ] Putuskan status `/trips`: dibiarkan tidak ter-link, dihapus, atau diaktifkan ulang sebagai menu (lihat 4.11 dan 4.5.6).
 
 - [ ] Autentikasi dan role-based access control (admin, operator, viewer)
 - [ ] Dashboard KPI real-time dengan refresh otomatis
@@ -654,6 +767,17 @@ notes
 - [ ] Mobile view untuk operator gudang
 - [ ] Update LOT dan Expiry Date via upload ulang (script `update_lot_expiry.py` tersedia)
 - [ ] Paginasi pada tabel outbound dan receiving untuk dataset besar
+- [ ] Standardisasi template visual seluruh halaman database berdasarkan Master Rate Card: toolbar, filter, result badge, table shell, density, status badge, empty state, dan viewport scroll.
+- [ ] Uji responsivitas seluruh tabel database pada desktop minimum 1280px dan viewport lebih kecil; pastikan tidak ada outer page scrollbar yang tidak diperlukan dan tidak ada horizontal overflow pada viewport normal.
+- [ ] Implementasikan formula volume dan tonase yang sudah diverifikasi dari workbook; lakukan rekonsiliasi baris demi baris sebelum rollout.
+- [ ] Jalankan migrasi `supabase/migration_v28_sku_volume_and_pss_load.sql` di Supabase dan import `MASTER VOLUME` setelah dry-run diverifikasi.
+- [ ] Tahap berikutnya: implementasikan biaya TKBM per tujuan dengan formula `total koli x tarif TKBM tujuan`; nilai tarif berbeda-beda per tujuan.
+- [ ] Tambahkan master data dimensi/berat dan satuan bila belum tersedia pada SKU; tambahkan versioning formula dan status kelengkapan data.
+- [ ] Tambahkan kalkulasi volume/tonase pada detail order/shipment/stop/trip serta validasi terhadap kapasitas kendaraan.
+- [ ] Tambahkan warning utilisasi kendaraan berdasarkan volume dan tonase secara terpisah, termasuk kondisi data tidak lengkap dan overload.
+- [x] Atur pemilihan armada berdasarkan default dan opsi: PSS DK default Internal tetapi Eksternal tetap tersedia untuk Retail/Trucking; PSS LK dan Crossdocking juga dapat diproses melalui Eksternal.
+- [x] Tambahkan saran ekspedisi eksternal berdasarkan tujuan, kecukupan kapasitas tonase/volume, dan urutan harga rate card termurah; pilihan tetap dapat diubah user.
+- [ ] Tambahkan test fixture dari workbook manual dan regression test untuk konversi satuan, pembulatan, kuantitas, dan hasil agregasi.
 
 **TMS (Transport Management System):**
 - [x] Master data Driver/Helper (`master_driver`) — CRUD dasar, dengan field role
@@ -664,21 +788,21 @@ notes
 - [x] Update status shipment dan waktu aktual melalui form Shipment/POD
 - [x] Perhitungan otomatis `is_on_time` berbasis `Promised Delivery Date` dan `delivery_time`
 - [x] Modul input biaya pada Shipment Cost dengan formula Internal, Eksternal-Retail, dan Eksternal-Trucking
-- [ ] Setup `master_rate_card` dengan struktur per kg per tujuan (Retail) dan per rute (Trucking)
-- [ ] Notifikasi/alert saat shipment melewati Promised Delivery Date tapi status masih Draft/Dispatched
+- [x] Setup `master_rate_card` dengan struktur per kg per tujuan (Retail) dan per rute (Trucking)
+- [x] Notifikasi/alert saat shipment melewati Promised Delivery Date tapi status masih Draft/Dispatched
 - [ ] (Jangka panjang) Integrasi GPS tracking kendaraan real-time, jika budget/hardware tersedia
 
 **Cost Tracking & Budget Request:**
 - [ ] Tambahkan `psi_no` ke `outbound_header` dan `region_type` (DK/LK) ke `customers` — termasuk import awal ~94 pelanggan yang sudah dipetakan DK/LK dari spreadsheet eksisting
 - [x] Form input biaya shipment sesuai rincian komponen riil (BBM, bongkar muat, hotel, uang makan driver/helper, tol, parkir, kirim paket, biaya lain-lain) untuk Internal; No. Invoice + Total Biaya untuk Eksternal
 - [x] Master data Driver & Helper dengan field `role`
-- [ ] Modul Pengajuan Dana & Realisasi Biaya (4.5.5): form proyeksi, kalkulasi otomatis subtotal, export ke format dokumen yang sesuai dengan proses submit ke finance saat ini
+- [x] Modul Pengajuan Dana & Realisasi Biaya (4.5.5): form proyeksi, kalkulasi otomatis subtotal, export ke format dokumen yang sesuai dengan proses submit ke finance saat ini
 - [ ] Dashboard/laporan Cost Ratio (biaya kirim vs invoice value) per shipment, per bulan, per DK/LK
 
 **HD Machine Utilization & Replenishment Support:**
-- [ ] Tambahkan `is_hd_customer` dan `hd_machine_count` ke `customers`, termasuk import data ~26 customer HD yang sudah ada di dashboard existing
-- [ ] Modul `hd_stock_monitoring` (4.4.1): CRUD snapshot per customer, kalkulasi otomatis daily usage/DOI/estimasi habis/FU-PO
-- [ ] Dashboard dengan badge status (Aman/Mendekati FU-PO/Lewat FU-PO) dan filter per kota/wilayah
+- [x] Tambahkan `is_hd_customer` dan `hd_machine_count` ke `customers`, termasuk import data ~26 customer HD yang sudah ada di dashboard existing
+- [x] Modul `hd_stock_monitoring` (4.4.1): CRUD snapshot per customer, kalkulasi otomatis daily usage/DOI/estimasi habis/FU-PO
+- [x] Dashboard dengan badge status (Aman/Mendekati FU-PO/Lewat FU-PO) dan filter per kota/wilayah
 - [ ] Notifikasi ke tim marketing/sales saat customer mendekati atau melewati tanggal FU-PO
 - [ ] Export laporan snapshot untuk dibagikan ke tim marketing
 - [ ] (Catatan: field terkait Nomor PSI/Invoice Value untuk Cost Ratio — lihat 4.5.4 — ditunda ke update berikutnya)
@@ -693,6 +817,7 @@ notes
 - Kolom `is_sale` dan `delivery_delay_days` adalah generated columns di Supabase — tidak boleh di-insert manual
 - Next.js versi yang digunakan: **16.3.3** (Turbopack) — ada breaking changes dari versi sebelumnya
 - Konvensi autentikasi Next.js 16 sudah menggunakan `proxy.ts`; `middleware.ts` telah dihapus.
+- (13 Sep 2026) Dikonfirmasi ulang: `proxy.ts` di root project sudah sesuai konvensi resmi Next.js 16 (named export `proxy`, `config.matcher` ada) — bukan dead code. Sebelum ada perubahan pada file ini, verifikasi dulu secara empiris (akses `/dashboard` tanpa login harus redirect ke `/login`) daripada berasumsi dari nama file.
 
 ---
 
@@ -849,6 +974,50 @@ File berikut dihapus dan kontennya diarsipkan ke **PRD section 11**:
 - `WORKFLOW-SCM-MAP.md` → PRD 11.2 (Workflow customer map log)
 - `DUMMY_DATA_LOG.md` → PRD 11.3 (Log data dummy + SQL hapus)
 - `build.md` → dihapus tanpa backup (brainstorming obsolete)
+
+### 12.12 Standardisasi Tampilan Database dan Rencana Volume/Tonase
+
+**Status:** Template awal diimplementasikan pada Master Rate Card; penerapan lintas halaman masih direncanakan. Formula volume/tonase dari workbook Klinik Ayah Bunda sudah dipelajari dan ditetapkan sebagai basis implementasi, tetapi belum diterapkan ke database produksi.
+
+**Sudah dilakukan:**
+- Toolbar Master Rate Card menyatukan judul halaman, filter kota/vendor, jumlah hasil, dan tombol tambah rate.
+- Label filter berulang dihapus; placeholder digunakan sebagai penjelas kontrol.
+- Tabel Master Rate Card menggunakan density, font, alignment, status badge, wrapping, dan pembagian kolom yang lebih konsisten.
+- Dataset rate card tidak lagi dipotong pada 200 baris saat query halaman.
+- Tabel memiliki vertical scroll internal dengan header sticky; outer page scroll khusus halaman Rate Card dinonaktifkan agar area kerja tidak memiliki scrollbar ganda.
+- Build aplikasi sudah diverifikasi setelah perubahan UI.
+
+**Akan dilakukan:**
+- Menjadikan pola Master Rate Card sebagai reusable template untuk semua halaman database.
+- Menginventarisasi perbedaan font, ukuran teks, spacing, filter, tabel, badge, modal, empty state, dan overflow pada halaman lain.
+- Membuat/menyesuaikan komponen bersama tanpa mengubah perilaku bisnis atau kontrak database.
+- Menetapkan test visual/responsif untuk memastikan toolbar, tabel, scroll internal, dan wrapping konsisten.
+- Workbook `data/61 2026-09-04 KLINIK AYAH BUNDA.xlsx` sudah dibaca; sheet, master field, formula, dan contoh hasil sudah dipetakan ke Section 4.7.2.
+- Membuat rekonsiliasi contoh `SOP-2609-0741` dan `SOP-2609-0781`, lalu migrasikan formula ke aplikasi setelah hasilnya disetujui.
+- Menambahkan field, formula, validasi kapasitas, dan test volume/tonase hanya setelah aturan workbook disetujui.
+
+**Batasan yang diketahui:** Workbook Klinik Ayah Bunda sudah tersedia dan formula di atas telah diekstrak. Workbook PO NHD RSUD Puri Husada yang disebut pada pembaruan sebelumnya belum tersedia di workspace, sehingga variasi aturan untuk dokumen NHD tersebut belum dapat dibandingkan. Biaya TKBM sudah dikonfirmasi sebagai biaya per koli berdasarkan tujuan, tetapi implementasi master tarif TKBM ditunda ke tahap berikutnya.
+
+### 12.13 SKU Packaging dan Ringkasan Muatan PSS
+
+**Status:** Kode aplikasi dan migrasi sudah disiapkan; aktivasi database production menunggu eksekusi SQL dan importer.
+
+**Sudah dilakukan:**
+- Menambahkan migrasi additive `supabase/migration_v28_sku_volume_and_pss_load.sql` untuk atribut dimensi inner/outer, kubikasi, parameter kemasan, berat outer box, sumber data, dan status packaging pada `master_sku`.
+- Menambahkan view `vw_pss_load_summary` yang menghitung per PSS: total quantity, koli, berat kilogram, tonase, volumetrik darat/laut, volumetrik udara, dan volume CBM.
+- Menambahkan `scripts/import_master_volume.js` dengan mode dry-run default dan mode `--apply` untuk upsert data sheet `MASTER VOLUME` secara idempotent.
+- Dry-run workbook menemukan 478 SKU: 84 sudah cocok dengan `master_sku` dan 394 belum ada; tidak ada data yang ditulis ke database pada tahap dry-run.
+- Menambahkan ringkasan muatan ke daftar `For Transport Planning` dan total gabungan PSS terpilih pada modal `Buat Shipment`.
+- PSS dengan SKU atau atribut packaging yang belum lengkap ditandai sebagai data belum lengkap, bukan dianggap nol secara diam-diam.
+- Aturan planning diperbarui: seluruh PSS tetap dapat menampilkan ringkasan muatan; PSS DK default ke Internal tetapi mode Eksternal tetap tersedia untuk Retail/Trucking.
+- Modal pembuatan Shipment menampilkan hingga tiga kandidat rate card eksternal termurah yang memenuhi tujuan, tonase, dan volume; klik kandidat mengisi vendor dan tipe kendaraan.
+
+**Langkah aktivasi berikutnya:**
+1. Jalankan migration v28 di Supabase SQL Editor.
+2. Jalankan ulang `node scripts/import_master_volume.js` dan periksa hasil dry-run.
+3. Jalankan `node scripts/import_master_volume.js --apply` setelah mapping SKU disetujui.
+4. Rekonsiliasi contoh `SOP-2609-0741` dan `SOP-2609-0781` dengan hasil aplikasi.
+5. Setelah hasil disetujui, gunakan total volume/tonase/koli sebagai dasar pemilihan tipe truck dan vendor; validasi kapasitas kendaraan menjadi tahap lanjutan.
 
 
 ---

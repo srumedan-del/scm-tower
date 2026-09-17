@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import * as XLSX from 'xlsx'
+import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
 import { ReactNode } from 'react'
 import { Modal } from '@/components/ui/Modal'
@@ -11,8 +11,16 @@ import {
   getOutboundHeadersByPssNos,
   getExistingOutboundDetailEntryNos,
   insertOutboundDetailRows,
+  getOutboundDetailHeaderIds,
+  getOutboundHeadersForPaoMatching,
+  updateOutboundDetailDocumentLinks,
   updateOutboundDetailCreatedTimes,
+  updateOutboundHeaderCreatedTimes,
 } from '@/app/(app)/outbound/actions'
+
+// Load SheetJS only for an actual upload instead of while this page is compiled.
+let XLSX: typeof XLSXModule
+const loadXlsx = async () => XLSX ??= await import('xlsx')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared utilities
@@ -162,8 +170,9 @@ function UploadButtonShell({
 // PAO → PSS Normalization
 // Runs entirely in the browser before data is sent to the server.
 // Strategy: for each row where document_no starts with "PAO", look for a
-// PSS in the same project, branch, and location. Prefer the closest preceding
-// PSS; fall back to the first following PSS only within that same context.
+// PSS in the same project, branch, and location. Prefer the PSS with the same
+// document_created_at / document date time; if no exact match exists, use the
+// closest preceding PSS within that context.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PSS_PREFIXES = ['PSS']
@@ -179,7 +188,20 @@ function isPao(val: string): boolean {
   return PAO_PREFIXES.some((p) => v.startsWith(p))
 }
 
-function normalizePaoToPss(rows: Record<string, any>[]): { normalized: string[]; remappedCount: number; unmappedPaos: string[] } {
+function normalizeDocumentTime(value: unknown): string | null {
+  if (value == null || value === '') return null
+  const raw = String(value).trim()
+  if (!raw) return null
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)
+  const date = new Date(hasTimezone ? raw : `${raw}+07:00`)
+  if (Number.isNaN(date.getTime())) return raw
+  return new Date(Math.floor(date.getTime() / 60000) * 60000).toISOString()
+}
+
+function normalizePaoToPss(
+  rows: Record<string, any>[],
+  existingHeaders: Record<string, any>[] = []
+): { normalized: string[]; remappedCount: number; unmappedPaos: string[] } {
   const result = rows.map((row) => String(row.document_no ?? '').trim())
   let remappedCount = 0
   const unmappedPaos: string[] = []
@@ -190,24 +212,72 @@ function normalizePaoToPss(rows: Record<string, any>[]): { normalized: string[];
     row.location_code,
   ].map((value) => String(value ?? '').trim()).join('\u001f')
 
-  const pssByContext = new Map<string, { index: number; documentNo: string }[]>()
+  const contextMatches = (detailRow: Record<string, any>, header: Record<string, any>) => {
+    const requiredFields = ['project', 'location_code']
+    const optionalFields = ['branch_representative']
+    const matches = (field: string, headerRequired: boolean) => {
+      const detailValue = String(detailRow[field] ?? '').trim().toUpperCase()
+      const headerValue = String(header[field] ?? '').trim().toUpperCase()
+      if (!detailValue || !headerValue) return !headerRequired
+      return detailValue === headerValue
+    }
+
+    return requiredFields.every((field) => matches(field, true))
+      && optionalFields.every((field) => matches(field, false))
+  }
+
+  const pssByContext = new Map<string, { index: number; documentNo: string; documentTime: string | null }[]>()
   rows.forEach((row, index) => {
     const documentNo = result[index]
     if (!isPss(documentNo)) return
     const context = contextFor(row)
     const candidates = pssByContext.get(context) ?? []
-    candidates.push({ index, documentNo })
+    candidates.push({
+      index,
+      documentNo,
+      documentTime: normalizeDocumentTime(row.document_created_at ?? row.document_date ?? null),
+    })
     pssByContext.set(context, candidates)
+  })
+
+  existingHeaders.forEach((header) => {
+    const documentNo = String(header.pss_no ?? header.shipment_no ?? '').trim()
+    if (!isPss(documentNo)) return
+    rows.forEach((row, index) => {
+      if (!contextMatches(row, header)) return
+      const context = contextFor(row)
+      const candidates = pssByContext.get(context) ?? []
+      candidates.push({
+        index: Number.MAX_SAFE_INTEGER,
+        documentNo,
+        documentTime: normalizeDocumentTime(header.document_created_at ?? header.document_date ?? null),
+      })
+      pssByContext.set(context, candidates)
+    })
   })
 
   for (let i = 0; i < result.length; i++) {
     if (!isPao(result[i])) continue
 
-    const candidates = pssByContext.get(contextFor(rows[i])) ?? []
-    const preceding = candidates.filter((candidate) => candidate.index <= i)
-    const replacement = preceding.length > 0
-      ? preceding[preceding.length - 1].documentNo
-      : candidates[0]?.documentNo ?? null
+    const currentRow = rows[i]
+    const currentTime = normalizeDocumentTime(currentRow.document_created_at ?? currentRow.document_date ?? null)
+    const candidates = pssByContext.get(contextFor(currentRow)) ?? []
+
+    const sameTime = candidates.filter((candidate) => {
+      const candidateTime = candidate.documentTime
+      return candidateTime && currentTime && candidateTime === currentTime
+    })
+
+    const replacement = sameTime.length > 0
+      ? sameTime[sameTime.length - 1].documentNo
+      : currentTime || candidates.some((candidate) => candidate.documentTime)
+        ? null
+        : (() => {
+            const preceding = candidates.filter((candidate) => candidate.index <= i)
+            return preceding.length > 0
+              ? preceding[preceding.length - 1].documentNo
+              : candidates[0]?.documentNo ?? null
+          })()
 
     if (replacement) {
       result[i] = replacement
@@ -310,6 +380,7 @@ export function OutboundHeaderUploadButton() {
     closeAlert()
 
     try {
+      await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -390,6 +461,7 @@ export function OutboundHeaderUploadButton() {
 const DETAIL_ALLOWED_FIELDS = [
   'outbound_header_id',
   'posting_date',
+  'document_created_at',
   'entry_type',
   'document_no',
   'item_no',
@@ -416,7 +488,7 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
 
   const record: Record<string, any> = {
     posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date'])) || now.slice(0, 10),
-    document_created_at: toISODateTime(pickValue(row, ['document_created_date_time', 'document_created_datetime', 'document_created_at', 'created_date'])),
+    document_created_at: toISODateTime(pickValue(row, ['document_date_time', 'document_created_date_time', 'document_created_datetime', 'document_created_at', 'created_date'])),
     entry_type: pickValue(row, ['entry_type']) ?? null,
     document_no: pickValue(row, ['document_no', 'doc_no', 'no']) ?? null,
     item_no: pickValue(row, ['item_no', 'sku', 'item']) ?? null,
@@ -458,6 +530,7 @@ export function OutboundDetailUploadButton() {
     closeAlert()
 
     try {
+      await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -474,7 +547,9 @@ export function OutboundDetailUploadButton() {
         throw new Error('Tidak ada baris valid. Pastikan kolom Document No. terisi.')
 
       // Step 2: Normalisasi PAO → PSS (client-side, sebelum kirim ke DB)
-      const { normalized, remappedCount, unmappedPaos } = normalizePaoToPss(mappedRows)
+      const { data: matchingHeaders, error: matchingHeadersError } = await getOutboundHeadersForPaoMatching()
+      if (matchingHeadersError) throw matchingHeadersError
+      const { normalized, remappedCount, unmappedPaos } = normalizePaoToPss(mappedRows, matchingHeaders ?? [])
 
       // Apply hasil normalisasi kembali ke rows
       const normalizedRows = mappedRows.map((row, i) => ({
@@ -504,8 +579,27 @@ export function OutboundDetailUploadButton() {
         outbound_header_id: headerMap.get(String(row.document_no).trim()) ?? null,
       }))
 
+      const unmatchedHeaderPss = [...new Set(
+        rowsWithHeaderId
+          .filter((row) => row.outbound_header_id == null)
+          .map((row) => String(row.document_no ?? '').trim())
+          .filter(Boolean)
+      )]
+
+      if (unmappedPaos.length > 0) {
+        throw new Error(`Upload dibatalkan. PAO tidak dapat dipetakan ke PSS pada Document Data Time yang sama: ${[...new Set(unmappedPaos)].join(', ')}`)
+      }
+      if (unmatchedHeaderPss.length > 0) {
+        throw new Error(`Upload dibatalkan. PSS tidak memiliki header yang cocok di database: ${unmatchedHeaderPss.join(', ')}`)
+      }
+
+      const { updated: documentLinksUpdated } = await updateOutboundDetailDocumentLinks(rowsWithHeaderId)
+
       // File yang di-upload ulang juga melengkapi timestamp NAV pada detail lama.
       const { updated: timestampsBackfilled } = await updateOutboundDetailCreatedTimes(rowsWithHeaderId)
+
+      // Propagate the NAV document creation time to the matching PSS header.
+      const { updated: headersUpdated } = await updateOutboundHeaderCreatedTimes(rowsWithHeaderId)
 
       // Step 5: Deduplicate berdasarkan entry_no
       const entryNos = rowsWithHeaderId
@@ -534,18 +628,34 @@ export function OutboundDetailUploadButton() {
       const skipped = rowsWithHeaderId.length - toInsert.length
 
       if (!toInsert.length) {
-        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp Document Created Date/Time dilengkapi.` : ''}`)
+        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}`)
         return
       }
 
       await insertOutboundDetailRows(toInsert)
 
+      // Verifikasi akhir: setiap header yang terdampak harus memiliki detail.
+      const affectedHeaderIds = [...new Set(
+        toInsert
+          .map((row) => Number(row.outbound_header_id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      )]
+      const { data: detailLinks, error: detailLinksError } = await getOutboundDetailHeaderIds(affectedHeaderIds)
+      if (detailLinksError) throw detailLinksError
+      const detailHeaderIds = new Set(
+        (detailLinks ?? []).map((row: any) => Number(row.outbound_header_id))
+      )
+      const headersWithoutDetail = affectedHeaderIds.filter((id) => !detailHeaderIds.has(id))
+      if (headersWithoutDetail.length > 0) {
+        throw new Error(`Verifikasi gagal. Header/PSS berikut tidak mempunyai detail: ${headersWithoutDetail.join(', ')}`)
+      }
+
       const remapNote = remappedCount > 0 ? ` (${remappedCount} nomor PAO diremap ke PSS)` : ''
-      const unmapNote = unmappedPaos.length > 0 ? ` ⚠ ${unmappedPaos.length} PAO tidak bisa diremap.` : ''
+
       showAlert(
         'success',
         'Upload Berhasil',
-        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp lama dilengkapi.` : ''}${remapNote}${unmapNote}`
+        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail lama dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${remapNote}`
       )
     } catch (error: any) {
       showAlert('error', 'Upload Gagal', formatError(error))

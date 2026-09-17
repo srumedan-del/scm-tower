@@ -35,6 +35,7 @@ export default function PssDetailModal({ pssNo }: Props) {
   const [header, setHeader] = useState<Record<string, any> | null>(null)
   const [details, setDetails] = useState<DetailRow[]>([])
   const [customer, setCustomer] = useState<CustomerInfo | null>(null)
+  const [excludedItems, setExcludedItems] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -47,9 +48,10 @@ export default function PssDetailModal({ pssNo }: Props) {
       setHeader(null)
       setDetails([])
       setCustomer(null)
+      setExcludedItems([])
 
       try {
-        const { header: h, details: d, customer: c, error } = await getOutboundFullData(pssNo)
+        const { header: h, details: d, customer: c, excludedItems: ex, error } = await getOutboundFullData(pssNo)
         if (cancelled) return
         if (error) {
           setErrorMsg((error as any)?.message || 'Gagal memuat data.')
@@ -58,6 +60,7 @@ export default function PssDetailModal({ pssNo }: Props) {
         setHeader(h as Record<string, any>)
         setDetails((d ?? []) as unknown as DetailRow[])
         setCustomer(c as CustomerInfo | null)
+        setExcludedItems(ex ?? [])
       } catch (err: any) {
         if (cancelled) return
         setErrorMsg(err?.message || 'Gagal memuat data.')
@@ -75,6 +78,7 @@ export default function PssDetailModal({ pssNo }: Props) {
     setHeader(null)
     setDetails([])
     setCustomer(null)
+    setExcludedItems([])
     setErrorMsg(null)
   }
 
@@ -96,7 +100,7 @@ export default function PssDetailModal({ pssNo }: Props) {
           onClick={handleClose}
         >
           <div
-            className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden"
+            className="relative flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Modal title bar ─────────────────────── */}
@@ -131,7 +135,7 @@ export default function PssDetailModal({ pssNo }: Props) {
             </div>
 
             {/* ── Modal body ──────────────────────────── */}
-            <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
+            <div className="min-h-0 flex-1 overflow-y-auto">
 
               {/* Loading */}
               {loading && (
@@ -172,9 +176,16 @@ export default function PssDetailModal({ pssNo }: Props) {
                   {/* Detail items */}
                   <div className="p-6">
                     {details.length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">
-                        Belum ada data detail untuk PSS ini.
-                      </p>
+                      excludedItems.length > 0 ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                          Data detail ada di upload, tetapi item yang masuk adalah non-SKU / assembly dan tidak ditampilkan di daftar ini:
+                          <div className="mt-2 font-mono text-xs break-all">{excludedItems.join(', ')}</div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 py-4 text-center">
+                          Belum ada data detail untuk PSS ini.
+                        </p>
+                      )
                     ) : (
                       <div className="overflow-x-auto rounded-lg border border-gray-200">
                         <table className="w-full text-xs">

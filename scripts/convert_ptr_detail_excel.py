@@ -49,6 +49,17 @@ def map_excel_to_receiving_detail(excel_path: str, output_path: str):
     print("\nFirst 5 rows:")
     print(df.head().to_string())
 
+    # --- Filter: hanya ambil baris dengan Document Type = 'Sales Shipment' atau 'Posted Assembly' ---
+    doc_type_col = pick_column(df, ["Document Type", "document_type"])
+    if doc_type_col:
+        allowed_types = {"sales shipment", "posted assembly"}
+        before_count = len(df)
+        df = df[df[doc_type_col].astype(str).str.strip().str.lower().isin(allowed_types)].copy()
+        after_count = len(df)
+        print(f"\n🔍 Filter Document Type: {before_count} → {after_count} rows (hanya 'Sales Shipment' & 'Posted Assembly')")
+    else:
+        print("\n⚠️  Kolom 'Document Type' tidak ditemukan — tidak ada filter diterapkan")
+
     # Mapping: db column  →  candidate Excel header aliases
     # All columns that exist in receiving_detail table
     mapping = {

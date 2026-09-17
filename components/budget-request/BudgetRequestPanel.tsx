@@ -193,7 +193,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">

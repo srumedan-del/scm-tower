@@ -156,7 +156,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
           onClick={handleClose}
         >
           <div
-            className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden"
+            className="relative flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
@@ -171,7 +171,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
               </button>
             </div>
 
-            <div className="overflow-y-auto max-h-[calc(90vh-73px)]">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {loading && (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />

@@ -106,13 +106,13 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">
           <div className="flex items-center gap-2">
             <PackageCheck className="h-5 w-5 text-green-600" />
-            <h3 className="font-bold text-lg uppercase">Proof of Delivery</h3>
+          <h3 className="font-bold uppercase">Proof of Delivery</h3>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
@@ -156,9 +156,9 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
         </div>
 
         {podLoading ? (
-          <div className="p-6 text-center text-gray-400 text-sm">Memuat data POD...</div>
+          <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-sm text-gray-400">Memuat data POD...</div>
         ) : (
-          <div className="p-4 space-y-4 overflow-y-auto">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
 
             {/* Sudah ada POD sebelumnya */}
             {pod && (

@@ -3,6 +3,30 @@
 import { Fragment, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 
+function isNumericTableValue(value: unknown) {
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed !== '' && /^-?(\d+([.,]\d+)?|\d{1,3}(\.\d{3})+([.,]\d+)?)$/.test(trimmed)
+  }
+  return false
+}
+
+function formatNumericTableValue(value: unknown): string {
+  if (!isNumericTableValue(value)) return String(value ?? '-')
+
+  const raw = typeof value === 'number' ? String(value) : String(value).trim().replace(/\s+/g, '')
+  const normalized = raw.replace(/\./g, '').replace(',', '.')
+  const numeric = Number(normalized)
+
+  if (!Number.isFinite(numeric)) return String(value ?? '-')
+
+  return numeric.toLocaleString('id-ID', {
+    minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 export type DataTableColumn<T> = {
   key: keyof T
   label: string
@@ -24,6 +48,7 @@ type Props<T> = {
   emptyMessage?: string
   loading?: boolean
   compact?: boolean
+  noWrap?: boolean
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -35,6 +60,7 @@ export function DataTable<T extends Record<string, any>>({
   emptyMessage = 'Tidak ada data',
   loading = false,
   compact = false,
+  noWrap = false,
 }: Props<T>) {
   const [expandedRows, setExpandedRows] = useState<Set<any>>(() => {
     if (!expandable?.defaultOpen) return new Set()
@@ -85,8 +111,8 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div className="bg-white border border-border rounded-xl overflow-hidden">
       {/* Desktop View */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="data-list-scroll hidden md:block overflow-x-auto">
+        <table className={`w-full text-sm ${noWrap ? 'whitespace-nowrap' : ''}`}>
           <thead className="bg-gray-50 border-b border-border sticky top-0 z-10">
             <tr>
               {expandable && <th className="px-4 py-3 text-left"></th>}
@@ -130,10 +156,15 @@ export function DataTable<T extends Record<string, any>>({
                     {visibleCols.map(col => (
                       <td
                         key={String(col.key)}
-                        className="px-4 py-3 text-sm text-gray-700"
+                        className={`px-4 py-3 text-sm ${isNumericTableValue(row[col.key]) ? 'text-right font-medium tabular-nums text-gray-700 numeric-cell' : 'text-gray-700'}`}
                         style={{ width: col.width }}
+                        data-numeric={isNumericTableValue(row[col.key]) ? 'true' : 'false'}
                       >
-                        {col.render ? col.render(row[col.key], row) : row[col.key] ?? '-'}
+                        {col.render
+                          ? col.render(row[col.key], row)
+                          : isNumericTableValue(row[col.key])
+                            ? formatNumericTableValue(row[col.key])
+                            : String(row[col.key] ?? '-')}
                       </td>
                     ))}
                   </tr>

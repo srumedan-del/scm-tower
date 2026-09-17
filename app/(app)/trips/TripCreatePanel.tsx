@@ -7,6 +7,7 @@ import {
   type ShipmentOption,
   type VendorOption,
 } from './actions'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 
 type Props = { onClose: () => void }
 
@@ -59,7 +60,7 @@ export function TripCreatePanel({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         <header className="flex items-start justify-between border-b border-border p-5">
           <div>
             <h2 className="text-lg font-bold">Buat Trip</h2>
@@ -72,10 +73,9 @@ export function TripCreatePanel({ onClose }: Props) {
           {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
           <label className="block text-sm font-medium text-gray-700">
             Transporter
-            <select value={vendorId} onChange={(event) => setVendorId(event.target.value)} className="mt-1 w-full rounded-lg border border-border p-2.5 text-sm">
-              <option value="">Pilih transporter</option>
-              {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.vendor_name}</option>)}
-            </select>
+            <div className="mt-1">
+              <SearchableSelect value={vendorId} onChange={setVendorId} placeholder="Pilih transporter" options={vendors.map(vendor => ({ value: vendor.id, label: vendor.vendor_name }))} />
+            </div>
           </label>
           <label className="block text-sm font-medium text-gray-700">
             Catatan trip (opsional)

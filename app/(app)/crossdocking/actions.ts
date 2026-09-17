@@ -5,11 +5,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 export type CrossdockingHeader = {
   id: number
   crossdocking_no: string
+  pts_id: number | null
   customer_code: string | null
   customer_name: string | null
   destination_address: string | null
+  destination_city: string | null
   pss_no: string | null
   psi_no: string | null
+  document_created_at: string | null
   document_date: string | null
   hq_reference_no: string | null
   received_from_hq_date: string
@@ -37,7 +40,26 @@ export type CrossdockingDetail = {
 }
 
 export type SkuOption = { sku_code: string; item_name: string; uom: string | null }
-export type CustomerOption = { customer_code: string; customer_name: string; city: string | null }
+export type CustomerOption = {
+  customer_name: string
+  destination_city: string | null
+  destination_address: string | null
+}
+
+export type PtsRecord = {
+  id: number
+  pts_no: string
+  document_date: string | null
+  document_created_at: string | null
+  transfer_order_no: string | null
+  customer_name: string | null
+  destination_city: string | null
+  destination_address: string | null
+  status: 'Menunggu Crossdocking' | 'Terhubung Crossdocking'
+  crossdocking_id: number | null
+  source_file_name: string | null
+  uploaded_at: string | null
+}
 
 /* ── Header ─────────────────────────────────────────────── */
 
@@ -86,16 +108,31 @@ export async function getCrossdockingById(id: number) {
 }
 
 export async function insertCrossdocking(
-  header: Omit<CrossdockingHeader, 'id' | 'crossdocking_no' | 'created_at' | 'updated_at'>,
+  header: Omit<CrossdockingHeader, 'id' | 'crossdocking_no' | 'created_at' | 'updated_at'> & { pts_ids?: number[] },
   details: Omit<CrossdockingDetail, 'id' | 'crossdocking_id' | 'created_at' | 'item_name'>[]
 ) {
+  const { pts_ids: ptsIds = [], ...headerPayload } = header
   // Insert header
   const { data: newHeader, error: hErr } = await supabaseAdmin
     .from('crossdocking_header')
-    .insert(header)
+    .insert(headerPayload)
     .select('id, crossdocking_no')
     .single()
   if (hErr) throw hErr
+
+  const linkedPtsIds = [...new Set(ptsIds.filter(id => Number.isInteger(id) && id > 0))]
+  if (linkedPtsIds.length) {
+    const { error: linkError } = await supabaseAdmin
+      .from('crossdocking_header_pts')
+      .insert(linkedPtsIds.map(ptsId => ({ crossdocking_id: newHeader.id, pts_id: ptsId })))
+    if (linkError) throw linkError
+
+    const { error: ptsError } = await supabaseAdmin
+      .from('crossdocking_pts')
+      .update({ crossdocking_id: newHeader.id, status: 'Terhubung Crossdocking' })
+      .in('id', linkedPtsIds)
+    if (ptsError) throw ptsError
+  }
 
   // Insert details kalau ada
   if (details.length > 0) {
@@ -149,23 +186,205 @@ export async function deleteCrossdockingDetail(id: number) {
   if (error) throw error
 }
 
+/* â”€â”€ PTS staging â”€â”€ */
+
+export async function getPtsRecords() {
+  const { data, error } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .select('*')
+    .order('uploaded_at', { ascending: false })
+    .limit(500)
+  if (error) throw error
+  return (data ?? []) as PtsRecord[]
+}
+
+type PtsUploadRow = {
+  pts_no: string
+  document_date?: string | null
+  document_created_at?: string | null
+  transfer_order_no?: string | null
+  details: Array<{
+    nav_entry_no?: number | null
+    document_line_no?: number | null
+    item_no?: string | null
+    variant_code?: string | null
+    description?: string | null
+    quantity?: number | null
+    lot_no?: string | null
+    expiration_date?: string | null
+    source_location_code?: string | null
+  }>
+}
+
+export async function uploadPtsRecords(rows: PtsUploadRow[], sourceFileName: string) {
+  const uniqueRows = [...new Map(
+    rows
+      .map(row => ({
+        pts_no: String(row.pts_no ?? '').trim().toUpperCase(),
+        document_date: row.document_date || null,
+        document_created_at: row.document_created_at || null,
+        transfer_order_no: row.transfer_order_no ? String(row.transfer_order_no).trim().toUpperCase() : null,
+        details: row.details ?? [],
+      }))
+      .filter(row => row.pts_no)
+      .map(row => [row.pts_no, row])
+  ).values()]
+
+  if (uniqueRows.length === 0) throw new Error('Tidak ditemukan nomor PTS pada file.')
+
+  const ptsNos = uniqueRows.map(row => row.pts_no)
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .select('pts_no')
+    .in('pts_no', ptsNos)
+  if (existingError) throw existingError
+  const existingNos = new Set((existing ?? []).map(row => row.pts_no))
+  const newRows = uniqueRows.filter(row => !existingNos.has(row.pts_no))
+  if (newRows.length === 0) return { inserted: 0, total: uniqueRows.length }
+
+  const { data, error } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .insert(newRows.map(({ details: _details, ...row }) => ({ ...row, source_file_name: sourceFileName })))
+    .select('id, pts_no')
+  if (error) throw error
+  const idByPts = new Map((data ?? []).map(row => [row.pts_no, row.id]))
+  const detailRows = newRows.flatMap(row => row.details.map(detail => ({
+    ...detail,
+    crossdocking_pts_id: idByPts.get(row.pts_no),
+  }))).filter(row => row.crossdocking_pts_id)
+  if (detailRows.length) {
+    const { error: detailError } = await supabaseAdmin.from('crossdocking_pts_detail').insert(detailRows)
+    if (detailError) throw detailError
+  }
+  return { inserted: data?.length ?? 0, total: uniqueRows.length }
+}
+
+export async function updatePtsDestination(
+  id: number,
+  destination: { customer_name: string; destination_city?: string | null; destination_address: string; promised_delivery_date: string }
+) {
+  const customerName = destination.customer_name.trim()
+  const address = destination.destination_address.trim()
+  if (!customerName) throw new Error('Customer wajib diisi.')
+  if (!address) throw new Error('Alamat kirim wajib diisi.')
+  if (!destination.promised_delivery_date) throw new Error('Promised delivery date wajib diisi.')
+
+  const { data: pts, error: ptsError } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (ptsError) throw ptsError
+
+  if (pts.crossdocking_id) {
+    const { error: headerError } = await supabaseAdmin.from('crossdocking_header').update({
+      customer_name: customerName,
+      destination_city: destination.destination_city?.trim() || null,
+      destination_address: address,
+      promised_delivery_date: destination.promised_delivery_date,
+    }).eq('id', pts.crossdocking_id)
+    if (headerError) throw headerError
+  } else {
+    const { data: details, error: detailsError } = await supabaseAdmin
+      .from('crossdocking_pts_detail')
+      .select('*')
+      .eq('crossdocking_pts_id', id)
+      .order('document_line_no')
+    if (detailsError) throw detailsError
+
+    const { data: crossdocking, error: headerError } = await supabaseAdmin
+      .from('crossdocking_header')
+      .insert({
+        customer_name: customerName,
+        destination_city: destination.destination_city?.trim() || null,
+        destination_address: address,
+        hq_reference_no: pts.pts_no,
+        document_date: pts.document_date,
+        document_created_at: pts.document_created_at,
+        received_from_hq_date: pts.document_date ?? new Date().toISOString().slice(0, 10),
+        promised_delivery_date: destination.promised_delivery_date,
+        status: 'Draft',
+        notes: `Dibuat otomatis dari PTS ${pts.pts_no}`,
+      })
+      .select('id')
+      .single()
+    if (headerError) throw headerError
+
+    const crossdockingDetails = (details ?? []).map(detail => ({
+      crossdocking_id: crossdocking.id,
+      item_no: detail.item_no,
+      description: detail.description || detail.item_no,
+      quantity: Math.abs(Number(detail.quantity) || 0),
+      lot_no: detail.lot_no,
+      expiration_date: detail.expiration_date,
+      notes: [detail.variant_code && `Variant: ${detail.variant_code}`, detail.source_location_code && `Source: ${detail.source_location_code}`].filter(Boolean).join(' | ') || null,
+    }))
+    if (crossdockingDetails.length) {
+      const { error: detailInsertError } = await supabaseAdmin.from('crossdocking_detail').insert(crossdockingDetails)
+      if (detailInsertError) throw detailInsertError
+    }
+
+    const { error: ptsLinkError } = await supabaseAdmin.from('crossdocking_pts').update({ crossdocking_id: crossdocking.id }).eq('id', id)
+    if (ptsLinkError) throw ptsLinkError
+  }
+
+  const { error } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .update({
+      customer_name: customerName,
+      destination_city: destination.destination_city?.trim() || null,
+      destination_address: address,
+      status: 'Crossdocking Dibuat',
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
 /* ── Options ─────────────────────────────────────────────── */
 
 export async function getCrossdockingOptions() {
-  const [skus, customers] = await Promise.all([
+  const [{ data: skus, error: skuError }, { data: customers, error: customerError }, { data: pts, error: ptsError }, { data: linkedPts, error: linkedPtsError }] = await Promise.all([
     supabaseAdmin
       .from('master_sku')
       .select('sku_code, item_name, uom')
       .eq('is_active', true)
       .order('sku_code'),
     supabaseAdmin
-      .from('customers')
-      .select('customer_code, customer_name, city')
-      .eq('is_active', true)
+      .from('crossdocking_customer')
+      .select('customer_name, destination_city, destination_address')
       .order('customer_name'),
+    supabaseAdmin
+      .from('crossdocking_pts')
+      .select('id, pts_no, document_date')
+      .order('document_date', { ascending: false }),
+    supabaseAdmin.from('crossdocking_header_pts').select('pts_id'),
   ])
+  if (skuError) throw skuError
+  if (customerError) throw customerError
+  if (ptsError) throw ptsError
+  if (linkedPtsError) throw linkedPtsError
+  const linkedIds = new Set((linkedPts ?? []).map(row => Number(row.pts_id)))
   return {
-    skus:      (skus.data      ?? []) as SkuOption[],
-    customers: (customers.data ?? []) as CustomerOption[],
+    skus:      (skus ?? []) as SkuOption[],
+    customers: (customers ?? []) as CustomerOption[],
+    pts:       (pts ?? []).filter(row => !linkedIds.has(Number(row.id))) as Array<{ id: number; pts_no: string; document_date: string | null }>,
   }
+}
+
+export async function getPtsDetailsForCrossdocking(ptsId: number) {
+  const { data, error } = await supabaseAdmin
+    .from('crossdocking_pts_detail')
+    .select('item_no, description, quantity, lot_no, expiration_date, variant_code, source_location_code')
+    .eq('crossdocking_pts_id', ptsId)
+    .order('document_line_no')
+  if (error) throw error
+  return (data ?? []).map((detail: any) => ({
+    item_no: detail.item_no,
+    description: detail.description || detail.item_no,
+    quantity: Math.abs(Number(detail.quantity) || 0),
+    uom: null,
+    lot_no: detail.lot_no,
+    expiration_date: detail.expiration_date,
+    notes: [detail.variant_code && `Variant: ${detail.variant_code}`, detail.source_location_code && `Source: ${detail.source_location_code}`].filter(Boolean).join(' | ') || null,
+  }))
 }

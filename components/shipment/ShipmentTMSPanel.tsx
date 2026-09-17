@@ -8,17 +8,19 @@ import {
   type TransporterOption, type VehicleOption,
   type DriverOption, type RouteOption,
 } from '@/app/(app)/shipment/actions'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 
 const STATUS_OPTS = ['Draft', 'Dispatched', 'In Transit', 'Delivered'] as const
 
 type Props = {
   shipment: ShipmentTrackingRow | null
+  relatedShipments?: ShipmentTrackingRow[]
   prefillPss?: import('@/app/(app)/shipment/actions').UntrackedPssRow | null
   onClose: () => void
   onSaved: () => void
 }
 
-export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSaved }: Props) {
+export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPss, onClose, onSaved }: Props) {
   const [transporters, setTransporters] = useState<TransporterOption[]>([])
   const [vehicles,     setVehicles]     = useState<VehicleOption[]>([])
   const [allCrew,      setAllCrew]      = useState<DriverOption[]>([])
@@ -51,10 +53,6 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
     setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
-    if (shipment) {
-      setOptLoading(false)
-      return
-    }
     getShipmentTMSOptions().then(opts => {
       setTransporters(opts.transporters)
       setVehicles(opts.vehicles)
@@ -64,6 +62,12 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
       setOptLoading(false)
     }).catch(() => setOptLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!shipment || form.transporter_id || form.cost_model !== 'Internal' || !transporters.length) return
+    const internalSru = transporters.find(t => t.type === 'Internal' && /sru\s*[-—]?\s*medan/i.test(t.name))
+    if (internalSru) up('transporter_id', internalSru.id)
+  }, [shipment, form.transporter_id, form.cost_model, transporters])
 
   // Auto-lookup DK/LK dari customer jika masih kosong (untuk record lama)
   useEffect(() => {
@@ -79,12 +83,13 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
   const drivers = allCrew.filter(d => d.role === 'Driver' || !d.role)
   const helpers = allCrew.filter(d => d.role === 'Helper')
 
-  // Auto-set cost_model saat transporter berubah
+  // Auto-set cost_model & fleet_type saat transporter berubah
   useEffect(() => {
     if (!form.transporter_id) return
     const t = transporters.find(t => t.id === form.transporter_id)
     if (t) {
       up('cost_model', t.type === 'Internal' ? 'Internal' : (t.service_model as any ?? null))
+      up('fleet_type', t.type === 'Internal' ? 'Internal' : 'Eksternal')
     }
   }, [form.transporter_id, transporters])
 
@@ -107,13 +112,29 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
     }
   }
 
-  const selectedTransporter = transporters.find(t => t.id === form.transporter_id)
+  const noteTransporterName = form.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim() ?? ''
+  const noteTransporter = transporters.filter(t => {
+    const optionName = t.name.trim().toLowerCase()
+    const noteName = noteTransporterName.toLowerCase()
+    return noteName && (optionName === noteName || optionName.includes(noteName) || noteName.includes(optionName))
+  }).sort((first, second) => {
+    const firstRetail = form.cost_model === 'Retail' && first.service_model === 'Retail' ? 1 : 0
+    const secondRetail = form.cost_model === 'Retail' && second.service_model === 'Retail' ? 1 : 0
+    return secondRetail - firstRetail
+  })[0]
+  const effectiveTransporterId = form.transporter_id ?? noteTransporter?.id ?? ''
+  const selectedTransporter = transporters.find(t => t.id === Number(effectiveTransporterId))
   const isInternal = selectedTransporter?.type === 'Internal'
   const transporterName = selectedTransporter?.name
     ?? form.transporter_name
     ?? form.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim()
     ?? ''
   const isIndahLogistik = /indah\s+logistik/i.test(transporterName)
+
+  useEffect(() => {
+    if (form.transporter_id || !noteTransporter) return
+    up('transporter_id', noteTransporter.id)
+  }, [form.transporter_id, noteTransporter?.id])
 
   function del() {
     if (!shipment) return
@@ -129,7 +150,26 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
       setErr(null)
       if (!form.status) { setErr('Status wajib diisi'); return }
       try {
-        await upsertShipmentTracking({ ...form, id: shipment?.id })
+        const selectedVendor = transporters.find(t => t.id === Number(effectiveTransporterId))
+        const sharedFields = {
+          transporter_id: effectiveTransporterId ? Number(effectiveTransporterId) : null,
+          transporter_name: selectedVendor?.name ?? form.transporter_name,
+          vehicle_id: form.vehicle_id ?? null,
+          driver_id: form.driver_id ?? null,
+          helper_id: form.helper_id ?? null,
+          route_id: form.route_id ?? null,
+          trip_id: form.trip_id ?? null,
+          cost_model: form.cost_model ?? null,
+          fleet_type: form.fleet_type ?? (isInternal ? 'Internal' : 'Eksternal'),
+          status: form.trip_id ? 'In Transit' : form.status,
+          dispatch_time: form.dispatch_time ?? null,
+        }
+        const rowsToUpdate = shipment ? (relatedShipments?.length ? relatedShipments : [shipment]) : [null]
+        await Promise.all(rowsToUpdate.map(row => upsertShipmentTracking({
+          ...(row ?? form),
+          ...sharedFields,
+          id: row?.id,
+        })))
         onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
@@ -137,32 +177,31 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <h3 className="font-bold text-lg uppercase">
+          <h3 className="font-bold uppercase">
             {shipment ? 'Edit Shipment TMS' : 'Tambah Shipment TMS'}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
 
-        <div className="p-4 space-y-5 overflow-y-auto">
+        <div className="min-h-0 flex-1 content-start space-y-3 overflow-y-auto p-4">
           {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat opsi...</p>}
 
           {/* ── Source — read-only saat edit ── */}
           <Section title="Sumber Shipment">
             {shipment ? (
               // EDIT MODE: tampilkan info, tidak bisa diubah
-              <div className="grid grid-cols-2 gap-3">
-                <InfoField label="Tipe Sumber">
-                  <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${
-                    shipment.source_type === 'PSS' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'
-                  }`}>{shipment.source_type}</span>
-                </InfoField>
-                <InfoField label="PSS / CD No.">
-                  <span className="font-mono text-sm font-bold text-indigo-700">
-                    {shipment.pss_no ?? (shipment.crossdocking_id ? `CD-${shipment.crossdocking_id}` : '-')}
-                  </span>
+              <div>
+                <InfoField label={relatedShipments && relatedShipments.length > 1 ? `PSS / CD No. (${relatedShipments.length} dalam 1 Trip)` : 'PSS / CD No.'}>
+                  <div className="space-y-1">
+                    {(relatedShipments?.length ? relatedShipments : [shipment]).map(row => (
+                      <div key={row.id} className="font-bold text-indigo-700">
+                        {row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : '-')}
+                      </div>
+                    ))}
+                  </div>
                 </InfoField>
               </div>
             ) : (
@@ -176,14 +215,7 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
                 </Field>
                 {form.source_type === 'PSS' ? (
                   <Field label="PSS No.">
-                    <select value={form.pss_no ?? ''} onChange={e => onPssChange(e.target.value)} className="inp">
-                      <option value="">-- Pilih PSS --</option>
-                      {pssOptions.map((p: any) => (
-                        <option key={p.pss_no} value={p.pss_no}>
-                          {p.pss_no} — {p.customer_name}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect value={form.pss_no ?? ''} onChange={onPssChange} placeholder="-- Pilih PSS --" options={pssOptions.map((p: any) => ({ value: p.pss_no, label: `${p.pss_no} — ${p.customer_name}` }))} />
                   </Field>
                 ) : (
                   <Field label="Crossdocking ID">
@@ -217,7 +249,7 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
                 </>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3 mt-3">
+            <div className="mt-2 grid grid-cols-3 gap-3">
               <InfoField label="Document Date">
                 <span className="text-sm">{form.document_date?.slice(0,10) ?? '-'}</span>
               </InfoField>
@@ -237,66 +269,34 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
             </div>
           </Section>
 
-          {/* Data vendor, armada, dan driver ditetapkan saat buat shipment. */}
-          {!shipment && (
-            <Section title="Transporter & Armada">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Transporter">
-                <select value={form.transporter_id ?? ''} onChange={e => up('transporter_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                  <option value="">-- Pilih transporter --</option>
-                  {transporters.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}{t.service_model ? ` · ${t.service_model}` : ''}
-                    </option>
-                  ))}
-                </select>
+          <Section title={isInternal ? 'Transporter & Armada' : 'Transporter & Rute'}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Model / Transporter">
+                <SearchableSelect value={effectiveTransporterId} onChange={value => up('transporter_id', value ? Number(value) : null)} placeholder={isInternal ? 'Internal' : '-- Pilih transporter --'} options={transporters.map(t => ({ value: t.id, label: t.name }))} disabled={optLoading} />
+              </Field>
+              <Field label="Rute">
+                <SearchableSelect value={form.route_id ?? ''} onChange={value => up('route_id', value ? Number(value) : null)} placeholder="-- Opsional --" options={routes.map(r => ({ value: r.id, label: `${r.route_code} — ${r.origin} → ${r.destination}` }))} />
+              </Field>
+            </div>
+            {isInternal && (
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <Field label="Armada">
+                  <SearchableSelect value={form.vehicle_id ?? ''} onChange={value => up('vehicle_id', value ? Number(value) : null)} placeholder="-- Pilih --" options={vehicles.map(v => ({ value: v.id, label: `${v.vehicle_no}${v.vehicle_type ? ` (${v.vehicle_type})` : ''}` }))} />
                 </Field>
-                <Field label="Rute">
-                <select value={form.route_id ?? ''} onChange={e => up('route_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                  <option value="">-- Opsional --</option>
-                  {routes.map(r => (
-                    <option key={r.id} value={r.id}>{r.route_code} — {r.origin} → {r.destination}</option>
-                  ))}
-                </select>
+                <Field label="Driver">
+                  <SearchableSelect value={form.driver_id ?? ''} onChange={value => up('driver_id', value ? Number(value) : null)} placeholder="-- Pilih Driver --" options={drivers.map(d => ({ value: d.id, label: d.driver_name }))} />
+                </Field>
+                <Field label="Helper">
+                  <SearchableSelect value={form.helper_id ?? ''} onChange={value => up('helper_id', value ? Number(value) : null)} placeholder="-- Pilih Helper --" options={helpers.map(d => ({ value: d.id, label: d.driver_name }))} />
                 </Field>
               </div>
-              {isInternal && (
-                <div className="grid grid-cols-3 gap-3 mt-3">
-                  <Field label="Kendaraan">
-                  <select value={form.vehicle_id ?? ''} onChange={e => up('vehicle_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                    <option value="">-- Pilih --</option>
-                    {vehicles.map(v => (
-                      <option key={v.id} value={v.id}>{v.vehicle_no}{v.vehicle_type ? ` (${v.vehicle_type})` : ''}</option>
-                    ))}
-                  </select>
-                  </Field>
-                  <Field label="Driver">
-                  <select value={form.driver_id ?? ''} onChange={e => up('driver_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                    <option value="">-- Pilih Driver --</option>
-                    {drivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.driver_name}</option>
-                    ))}
-                  </select>
-                  </Field>
-                  <Field label="Helper">
-                  <select value={form.helper_id ?? ''} onChange={e => up('helper_id', e.target.value ? Number(e.target.value) : null)} className="inp">
-                    <option value="">-- Pilih Helper --</option>
-                    {helpers.map(d => (
-                      <option key={d.id} value={d.id}>{d.driver_name}</option>
-                    ))}
-                  </select>
-                  </Field>
-                </div>
-              )}
-              <div className="mt-3">
-                <Field label="Trip ID">
-                  <div className="inp bg-gray-50 text-gray-600 font-mono">
-                    {form.trip_id ?? '-'}
-                  </div>
-                </Field>
-              </div>
-            </Section>
-          )}
+            )}
+            <div className="mt-3">
+              <Field label="Trip ID">
+                <div className="inp bg-gray-50 text-gray-600 font-mono">{form.trip_id ?? '-'}</div>
+              </Field>
+            </div>
+          </Section>
 
           {/* ── Status & Timeline ── */}
           <Section title="Status & Timeline">
@@ -306,12 +306,14 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
                   {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </Field>
+            </div>
+            <div className="mt-2">
               <Field label="Waktu Dispatch">
-				<DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
+                <DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
               </Field>
             </div>
             {isIndahLogistik && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-2 grid grid-cols-2 gap-3">
                 <Field label="Nomor Resi Indah Logistik">
                   <input
                     value={form.no_resi ?? ''}
@@ -369,7 +371,7 @@ export default function ShipmentTMSPanel({ shipment, prefillPss, onClose, onSave
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 border-b pb-1">{title}</div>
+      <div className="mb-1 border-b pb-0.5 text-xs font-bold uppercase tracking-wide text-gray-400">{title}</div>
       {children}
     </section>
   )
@@ -378,7 +380,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
+      <span className="mb-0.5 block text-xs font-bold text-gray-700">{label}</span>
       {children}
     </label>
   )
@@ -387,18 +389,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function InfoField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="block">
-      <span className="text-xs font-bold text-gray-500 mb-1 block">{label}</span>
-      <div className="py-1.5">{children}</div>
+      <span className="mb-0.5 block text-xs font-bold text-gray-500">{label}</span>
+      <div className="py-0.5">{children}</div>
     </div>
   )
 }
 
 function DateTimeInput({ value, onChange }: { value: string | null; onChange: (value: string | null) => void }) {
-	const [time, setTime] = useState(value?.slice(11, 16) ?? '')
-	const date = value?.slice(0, 10) ?? ''
+  const [time, setTime] = useState(value ? new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date(value)) : '')
+  const date = value ? new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(value)) : ''
 
 	useEffect(() => {
-		setTime(value?.slice(11, 16) ?? '')
+    setTime(value ? new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).format(new Date(value)) : '')
 	}, [value])
 
 	function save(dateValue: string, timeValue: string) {
@@ -407,7 +415,7 @@ function DateTimeInput({ value, onChange }: { value: string | null; onChange: (v
 			return
 		}
 		if (!dateValue || !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) return
-		onChange(new Date(`${dateValue}T${timeValue}:00`).toISOString())
+    onChange(new Date(`${dateValue}T${timeValue}:00+07:00`).toISOString())
 	}
 
 	return (

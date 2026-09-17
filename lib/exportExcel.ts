@@ -3,7 +3,7 @@
  * Pakai xlsx library yang sudah ada di project.
  * Harus dipanggil dari client component (browser only).
  */
-import * as XLSX from 'xlsx'
+import type * as XLSXModule from 'xlsx'
 
 export interface ExportSheetConfig {
   sheetName: string
@@ -21,7 +21,9 @@ export interface ExportSheetConfig {
  * @param sheets Array config per sheet
  * @param fileName Nama file tanpa ekstensi
  */
-export function exportToExcel(sheets: ExportSheetConfig[], fileName: string) {
+export async function exportToExcel(sheets: ExportSheetConfig[], fileName: string) {
+  // Do not include SheetJS in every route that merely renders an export button.
+  const XLSX: typeof XLSXModule = await import('xlsx')
   const wb = XLSX.utils.book_new()
 
   for (const sheet of sheets) {

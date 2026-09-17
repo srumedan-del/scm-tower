@@ -17,7 +17,7 @@ export default async function WarehousesPage() {
       </header>
 
       <section className="bg-white border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="data-list-scroll overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-border">
               <tr>

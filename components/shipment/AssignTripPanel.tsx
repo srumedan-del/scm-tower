@@ -8,6 +8,7 @@ import {
   type DriverOption, type RouteOption,
 } from '@/app/(app)/shipment/actions'
 import { Truck, CheckCircle2, Users } from 'lucide-react'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 
 type Props = {
   shipments: ShipmentTrackingRow[]   // shipment yang sudah dipilih
@@ -108,7 +109,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">
@@ -167,36 +168,12 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
 
           {/* Transporter */}
           <Field label="Transporter *">
-            <select
-              value={form.transporter_id}
-              onChange={e => up('transporter_id', e.target.value)}
-              className="inp"
-              disabled={optLoading}
-            >
-              <option value="">-- Pilih transporter --</option>
-              {transporters.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name}{t.service_model ? ` · ${t.service_model}` : ''}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect value={form.transporter_id} onChange={value => up('transporter_id', value)} placeholder="-- Pilih transporter --" options={transporters.map(t => ({ value: t.id, label: `${t.name}${t.service_model ? ` · ${t.service_model}` : ''}` }))} disabled={optLoading} />
           </Field>
 
           {/* Rute */}
           <Field label="Rute (opsional)">
-            <select
-              value={form.route_id}
-              onChange={e => up('route_id', e.target.value)}
-              className="inp"
-              disabled={optLoading}
-            >
-              <option value="">-- Opsional --</option>
-              {routes.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.route_code} — {r.origin} → {r.destination}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect value={form.route_id} onChange={value => up('route_id', value)} placeholder="-- Opsional --" options={routes.map(r => ({ value: r.id, label: `${r.route_code} — ${r.origin} → ${r.destination}` }))} disabled={optLoading} />
           </Field>
 
           {/* Kendaraan, Driver, Helper — hanya Internal */}
@@ -207,30 +184,13 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Kendaraan">
-                  <select value={form.vehicle_id} onChange={e => up('vehicle_id', e.target.value)} className="inp">
-                    <option value="">-- Pilih --</option>
-                    {vehicles.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.vehicle_no}{v.vehicle_type ? ` (${v.vehicle_type})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableSelect value={form.vehicle_id} onChange={value => up('vehicle_id', value)} placeholder="-- Pilih --" options={vehicles.map(v => ({ value: v.id, label: `${v.vehicle_no}${v.vehicle_type ? ` (${v.vehicle_type})` : ''}` }))} />
                 </Field>
                 <Field label="Driver *">
-                  <select value={form.driver_id} onChange={e => up('driver_id', e.target.value)} className="inp">
-                    <option value="">-- Pilih --</option>
-                    {drivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.driver_name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect value={form.driver_id} onChange={value => up('driver_id', value)} placeholder="-- Pilih --" options={drivers.map(d => ({ value: d.id, label: d.driver_name }))} />
                 </Field>
                 <Field label="Helper">
-                  <select value={form.helper_id} onChange={e => up('helper_id', e.target.value)} className="inp">
-                    <option value="">-- Opsional --</option>
-                    {helpers.map(d => (
-                      <option key={d.id} value={d.id}>{d.driver_name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect value={form.helper_id} onChange={value => up('helper_id', value)} placeholder="-- Opsional --" options={helpers.map(d => ({ value: d.id, label: d.driver_name }))} />
                 </Field>
               </div>
             </div>
