@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* UI/UX Pro Max: typography stack (Inter + JetBrains Mono). Falls back gracefully offline. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @theme {
   --color-canvas: #FFFFFF;
@@ -10,11 +12,39 @@
   --color-green: #39B7D2;
   --color-orange: #F2A85A;
   --color-red: #EF6378;
+
+  /* ── UI/UX Pro Max: Design tokens (additive, non-destructive) ── */
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;   /* 4px  */
+  --space-sm: 0.5rem;    /* 8px  */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+  --space-3xl: 4rem;     /* 64px */
+
+  /* Shadow depths */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 25px rgba(0,0,0,0.12);
+
+  /* Focus ring (uses existing --color-blue) */
+  --focus-ring: 0 0 0 3px rgba(46, 79, 141, 0.25);
+
+  /* Transition presets */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-smooth: 250ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root{scroll-behavior:smooth}
 html{scroll-snap-type:y proximity}
-body{background:#F9F8F7;color:#2C2C2B;font-family:ui-sans-serif,system-ui,sans-serif}
+body{background:#F9F8F7;color:#2C2C2B;font-family:var(--font-sans),ui-sans-serif,system-ui,sans-serif}
 .login-art{
   background:
     radial-gradient(circle at 16% 18%, rgb(255 255 255 / 92%) 0 12%, transparent 12.5%),
@@ -136,7 +166,49 @@ main:has(.rate-card-page){overflow:hidden}
 .animate-rise-delay{animation:rise .9s cubic-bezier(.22,1,.36,1) .18s both}
 .animate-drift{animation:drift 9s ease-in-out infinite}
 
+/* ── UI/UX Pro Max: Pre-delivery checklist utility classes ── */
+/* Focus-visible ring (keyboard nav accessibility) */
+.focus-ring:focus-visible{
+  outline:none;
+  box-shadow:var(--focus-ring);
+}
+
+/* Hover lift (subtle, layout-safe) */
+.hover-lift{
+  transition:transform var(--transition-smooth), box-shadow var(--transition-smooth);
+}
+.hover-lift:hover{
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-md);
+}
+
+/* Cursor pointer on all interactive */
+.cursor-interactive{cursor:pointer}
+
+/* Smooth transitions for interactive elements */
+.transition-interactive{
+  transition:background-color var(--transition-normal),
+             border-color var(--transition-normal),
+             color var(--transition-normal),
+             opacity var(--transition-normal),
+             transform var(--transition-smooth),
+             box-shadow var(--transition-smooth);
+}
+
+/* Font utility (monospace for numbers) */
+.font-mono-enhanced{
+  font-family:var(--font-mono),ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
+
+/* Reduced motion (already exists above, extended) */
 @media (prefers-reduced-motion: reduce){
   :root{scroll-behavior:auto}
-  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+  .hover-lift:hover{transform:none;box-shadow:none}
 }
