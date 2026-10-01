@@ -185,8 +185,9 @@ export async function updateShipmentDate(headerId: string | number, newDate: str
 export async function updateReceivingTransportDetails(
   headerId: string | number,
   payload: {
-    transport_mode: 'LAND' | 'AIR' | 'MULTIMODAL' | null
+    transport_mode: 'DARAT' | 'LAUT' | 'UDARA' | null
     land_vendor_code: string | null
+    sea_vendor_code: string | null
     air_vendor_code: string | null
     container_no: string | null
   }

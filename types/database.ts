@@ -54,7 +54,29 @@ export type Database = {
 				fleet_type: string | null
 				cost_model: string | null
 			}>
-			receiving_header: Table<Record<string, unknown>>
+			receiving_header: Table<{
+			id: number
+			ptr_no: string | null
+			transfer_order_no: string | null
+			transfer_from_code: string | null
+			transfer_to_code: string | null
+			posting_date: string | null
+			shipment_date: string | null
+			receipt_date: string | null
+			shipping_agent_code: string | null
+			ship_to_receipt_days: number | null
+			receipt_to_posting_days: number | null
+			ship_to_posting_days: number | null
+			transport_mode: 'DARAT' | 'LAUT' | 'UDARA' | null
+			land_vendor_code: string | null
+			sea_vendor_code: string | null
+			air_vendor_code: string | null
+			container_no: string | null
+			source_file: string | null
+			import_period: string | null
+			created_at: string | null
+			updated_at: string | null
+		}>
 			outbound_detail: Table<Record<string, unknown>>
 			shipment_status_logs: Table<Record<string, unknown>>
 			routes: Table<{
