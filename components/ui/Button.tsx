@@ -14,10 +14,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-blue text-white hover:bg-blue/90 active:bg-blue/80',
+  primary: 'bg-blue text-white hover:bg-blue/90 active:bg-blue/80 hover-lift',
   secondary: 'border border-border bg-white text-text hover:bg-gray-50 active:bg-gray-100',
   ghost: 'text-text hover:bg-gray-50 active:bg-gray-100',
-  danger: 'bg-red text-white hover:bg-red/90 active:bg-red/80',
+  danger: 'bg-red text-white hover:bg-red/90 active:bg-red/80 hover-lift',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -43,11 +43,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       disabled={disabled || isLoading}
-      className={`inline-flex items-center justify-center gap-2 transition-all
+      className={`inline-flex items-center justify-center gap-2 transition-interactive
         ${variantStyles[variant]}
         ${sizeStyles[size]}
         disabled:opacity-50 disabled:cursor-not-allowed
-        focus:outline-none focus:ring-2 focus:ring-blue/30
+        focus-ring
         ${className ?? ''}
       `}
       {...props}

@@ -85,8 +85,8 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border-0 border-b border-white/70 bg-white/45 pl-10 pr-4 py-2.5 text-sm text-text shadow-sm
-                focus:outline-none focus:ring-2 focus:ring-blue/25 focus:border-blue
-                transition-all duration-200 placeholder:text-muted/60"
+                focus-ring focus:border-blue
+                transition-interactive placeholder:text-muted/60"
               placeholder="nama@email.com"
             />
           </div>
@@ -107,8 +107,8 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border-0 border-b border-white/70 bg-white/45 pl-10 pr-4 py-2.5 text-sm text-text shadow-sm
-                focus:outline-none focus:ring-2 focus:ring-blue/25 focus:border-blue
-                transition-all duration-200 placeholder:text-muted/60"
+                focus-ring focus:border-blue
+                transition-interactive placeholder:text-muted/60"
               placeholder="••••••••"
             />
           </div>
@@ -135,10 +135,10 @@ function LoginForm() {
           disabled={loading}
           type="submit"
           className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue py-2.5 text-sm
-            font-semibold text-white shadow-md shadow-blue/25
-            hover:bg-blue/90 active:scale-[0.98]
+            font-semibold text-white shadow-[var(--shadow-md)]
+            hover:bg-blue/90 hover-lift
             disabled:opacity-60 disabled:cursor-not-allowed
-            transition-all duration-200"
+            transition-interactive focus-ring"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.3 }}

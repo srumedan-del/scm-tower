@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react'
 
 interface ModalProps {
   isOpen: boolean
@@ -42,36 +42,18 @@ export function Modal({ isOpen, onClose, title, message, type = 'info' }: ModalP
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-md bg-white sm:rounded-xl shadow-xl sm:m-0 m-0 border-t-4 border-t-indigo-600 sm:border-t-0"
+        className="relative w-full sm:max-w-md bg-white sm:rounded-xl shadow-[var(--shadow-xl)] sm:m-0 m-0 border-t-4 border-t-blue sm:border-t-0 transition-interactive"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div className={`mt-0.5 flex-shrink-0 ${cfg.icon}`}>
               {type === 'success' ? (
-                <svg className="h-6 w-6 fill-current" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 12.586 7.707 11.293a1 1 0 10-1.414 1.414l2 2a1 1 0 001.414 0L12.707 8.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <CheckCircle2 className="h-6 w-6" />
               ) : type === 'error' ? (
-                <svg className="h-6 w-6 fill-current" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <AlertCircle className="h-6 w-6" />
               ) : (
-                <svg className="h-6 w-6 fill-current" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <Info className="h-6 w-6" />
               )}
             </div>
             <div className="flex-1">
@@ -81,7 +63,7 @@ export function Modal({ isOpen, onClose, title, message, type = 'info' }: ModalP
             <button
               type="button"
               onClick={onClose}
-              className={`flex-shrink-0 rounded-md p-1 ${cfg.text} hover:bg-gray-100 transition-colors`}
+              className={`flex-shrink-0 rounded-md p-1 ${cfg.text} hover:bg-gray-100 transition-interactive focus-ring`}
               aria-label="Tutup"
             >
               <X className="h-4 w-4" />
