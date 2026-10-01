@@ -92,9 +92,10 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
   function onVendorChange(id: string) {
     const vid = id ? Number(id) : null
     const v = vendors.find(v => v.id === vid)
+    const vendorText = `${v?.vendor_type ?? ''} ${v?.vendor_name ?? ''}`.toUpperCase()
     up('vendor_id', vid)
     up('vendor_name', v?.vendor_name ?? '')
-    if (v?.vendor_type?.toUpperCase().includes('RETAIL') || /indah\s+logistik/i.test(v?.vendor_name ?? '')) {
+    if (vendorText.includes('RETAIL') || vendorText.includes('INDAH LOGISTIK') || vendorText.includes('JNE')) {
       up('cost_model', 'Retail')
     } else {
       up('cost_model', 'Trucking')
@@ -283,7 +284,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
 
           {/* ── Rute ── */}
           <Section icon={<Route className="h-4 w-4" />} title="Rute">
-            <Field label="RUTE">
+            <div>
 				<input
 					list="bulk-shipment-routes"
 					value={routeQuery}
@@ -301,7 +302,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
                   <option key={r.id} value={r.id}>{r.route_code} · {r.origin} → {r.destination}</option>
                 ))}
               </select>
-            </Field>
+            </div>
           </Section>
 
           {/* ── Status Awal ── */}

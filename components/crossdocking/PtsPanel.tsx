@@ -145,13 +145,13 @@ export default function PtsPanel() {
       </div>
 
       <div className="data-list-scroll overflow-auto rounded-xl border border-border bg-white">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead className="sticky top-0 z-10 border-b bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">PTS No.</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Document Date</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Transfer Order</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Sumber File</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Alamat</th>
               <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
               <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-600">Item</th>
             </tr>
@@ -165,8 +165,8 @@ export default function PtsPanel() {
               <tr key={row.id} className="hover:bg-blue-50">
                 <td className="px-4 py-2.5 font-mono text-xs font-semibold text-indigo-600">{row.pts_no}</td>
                 <td className="px-4 py-2.5 text-xs whitespace-nowrap">{row.document_date ?? '-'}</td>
-                <td className="px-4 py-2.5 font-mono text-xs">{row.transfer_order_no ?? '-'}</td>
-                <td className="max-w-[280px] px-4 py-2.5 text-xs text-gray-600"><div className="truncate">{row.source_file_name ?? '-'}</div></td>
+                <td className="max-w-[220px] px-4 py-2.5 text-xs"><div className="truncate" title={row.customer_name ?? undefined}>{row.customer_name ?? '-'}</div></td>
+                <td className="max-w-[320px] px-4 py-2.5 text-xs text-gray-600"><div className="truncate" title={[row.destination_address, row.destination_city].filter(Boolean).join(', ') || undefined}>{[row.destination_address, row.destination_city].filter(Boolean).join(', ') || '-'}</div></td>
                 <td className="px-4 py-2.5 text-center">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     row.status === 'Terhubung Crossdocking' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Trash, Calendar, Check, X as XIcon } from 'lucide-react'
+import { Calendar, Check, X as XIcon } from 'lucide-react'
 import PtrDetailModal from '@/components/receiving/PtrDetailModal'
 import { updateShipmentDate } from '@/app/(app)/receiving/actions'
 
@@ -71,40 +71,6 @@ export default function ReceivingTable({ rows, details }: Props) {
     setEditDate('')
   }
 
-  const handleDeleteHeader = async (row: HeaderRow) => {
-    const ptr = String(row.ptr_no ?? '').trim().toUpperCase()
-    if (!ptr) {
-      alert('PTR tidak valid.')
-      return
-    }
-
-    if (!confirm(`Hapus PTR ${ptr} beserta semua item detailnya?`)) return
-
-    startTransition(async () => {
-      try {
-        const headerId = Number(row.id)
-        const { error: detailError } = await supabase
-          .from('receiving_detail')
-          .delete()
-          .eq('receiving_header_id', headerId)
-
-        const { error: headerError } = await supabase
-          .from('receiving_header')
-          .delete()
-          .eq('id', headerId)
-
-        if (detailError || headerError) {
-          alert(`Gagal hapus PTR: ${detailError?.message ?? headerError?.message ?? 'Unknown error'}`)
-          return
-        }
-
-        router.refresh()
-      } catch (error: any) {
-        alert(`Gagal hapus PTR: ${error?.message ?? 'Unknown error'}`)
-      }
-    })
-  }
-
   const handleDeleteDetail = async (detail: DetailRow) => {
     const detailId = Number(detail.id)
     if (!detailId || Number.isNaN(detailId)) {
@@ -147,7 +113,6 @@ export default function ReceivingTable({ rows, details }: Props) {
             <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">SHIPPING AGENT</th>
             <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">SHIP DATE</th>
             <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LEAD TIME</th>
-             <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ACTION</th>
            </tr>
          </thead>
         <tbody className="divide-y divide-border">
@@ -221,28 +186,17 @@ export default function ReceivingTable({ rows, details }: Props) {
                   <td className="px-4 py-2.5 text-right">
                   <span className={`text-xs px-2 py-0.5 rounded font-bold ${ltColor}`}>{lt} HARI</span>
                    </td>
-                   <td className="px-4 py-2.5 text-center">
-                     <button
-                       type="button"
-                       onClick={() => handleDeleteHeader(r)}
-                       disabled={pendingAction}
-                       title={`Hapus PTR ${ptr}`}
-                       className="inline-flex items-center justify-center rounded-md p-0.5 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                     >
-                       <Trash className="h-4 w-4" />
-                     </button>
-                   </td>
                  </tr>
             )
           })}
 
           {rows.length === 0 && (
-             <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">BELUM ADA DATA RECEIVING</td></tr>
+             <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">BELUM ADA DATA RECEIVING</td></tr>
           )}
 
           {rows.length > 0 && rows.length < 21 && (
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7}>
                 <div style={{ height: `${(21 - rows.length) * 32}px` }} />
               </td>
             </tr>

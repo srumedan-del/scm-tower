@@ -1,6 +1,7 @@
 "use server"
 
 import { supabaseAdmin as supabase } from './supabaseAdmin'
+import { calculateReceivingLoad, type ReceivingDetailForAnalytics, type ReceivingPackaging } from './receiving-analytics'
 
 export async function getLandingPageData() {
   const today = new Date().toISOString().slice(0, 10)
@@ -23,6 +24,9 @@ export async function getLandingPageData() {
     { data: activeShipments },
     { data: otdData },
     { data: lateShipments },
+    { data: receivingTrendRows },
+    { data: receivingDetails },
+    { data: receivingPackaging },
     // Add inventory query if table exists
     // { count: inventoryCount },
   ] = await Promise.all([
@@ -55,6 +59,16 @@ export async function getLandingPageData() {
       .not('promised_delivery_date', 'is', null)
       .order('promised_delivery_date', { ascending: true })
       .limit(20),
+    supabase.from('receiving_header')
+      .select('ptr_no, posting_date, ship_to_posting_days, transfer_from_code')
+      .gte('posting_date', fromDate)
+      .order('posting_date', { ascending: true }),
+    supabase.from('receiving_detail')
+      .select('document_no, item_no, description, quantity')
+      .limit(20000),
+    supabase.from('master_sku')
+      .select('sku_code, pcs_per_outer_box, outer_box_cbm, outer_box_weight_kg, pcs_per_pallet')
+      .limit(20000),
   ])
 
   // Calculate OTD rate
@@ -81,6 +95,84 @@ export async function getLandingPageData() {
   }
 
   const otd = computeOtd(otdData ?? [])
+
+  const receivingTrendMap = new Map<string, { count: number; details: ReceivingDetailForAnalytics[] }>()
+  for (const row of receivingTrendRows ?? []) {
+    const month = row.posting_date?.slice(0, 7) ?? 'Tanpa tanggal'
+    receivingTrendMap.set(month, { count: (receivingTrendMap.get(month)?.count ?? 0) + 1, details: [] })
+  }
+  const receivingHeaderMonthMap = new Map((receivingTrendRows ?? []).map(row => [String(row.ptr_no ?? '').trim().toUpperCase(), row.posting_date?.slice(0, 7) ?? 'Tanpa tanggal']))
+  const receivingDetailsForAnalytics = (receivingDetails ?? []) as (ReceivingDetailForAnalytics & { document_no?: string | null })[]
+  for (const detail of receivingDetailsForAnalytics) {
+    const month = receivingHeaderMonthMap.get(String(detail.document_no ?? '').trim().toUpperCase())
+    if (month && receivingTrendMap.has(month)) receivingTrendMap.get(month)?.details.push(detail)
+  }
+  const receivingPackagingForAnalytics = (receivingPackaging ?? []) as ReceivingPackaging[]
+  const receivingLoad = calculateReceivingLoad(receivingDetailsForAnalytics, receivingPackagingForAnalytics)
+  const receivingTrend = [...receivingTrendMap.entries()].slice(-6).map(([month, value]) => ({
+    month,
+    count: value.count,
+    ...(() => {
+      const load = calculateReceivingLoad(value.details, receivingPackagingForAnalytics)
+      return {
+        quantity: load.quantity,
+        volumeCbm: load.volumeCbm,
+        tonnage: load.tonnage,
+        pallets: load.pallets,
+      }
+    })(),
+  }))
+  const receivingMonthlyAverage = {
+    quantity: receivingTrend.length ? receivingTrend.reduce((sum, point) => sum + point.quantity, 0) / receivingTrend.length : 0,
+    volumeCbm: receivingTrend.length ? receivingTrend.reduce((sum, point) => sum + point.volumeCbm, 0) / receivingTrend.length : 0,
+    tonnage: receivingTrend.length ? receivingTrend.reduce((sum, point) => sum + point.tonnage, 0) / receivingTrend.length : 0,
+    pallets: receivingTrend.length ? receivingTrend.reduce((sum, point) => sum + point.pallets, 0) / receivingTrend.length : 0,
+  }
+  const receivingLeadTimeGroups = { nij: { count: 0, totalDays: 0 }, other: { count: 0, totalDays: 0 } }
+  for (const row of receivingTrendRows ?? []) {
+    const days = Number(row.ship_to_posting_days)
+    if (!Number.isFinite(days)) continue
+    const group = days >= 1 && days <= 3 ? receivingLeadTimeGroups.nij : receivingLeadTimeGroups.other
+    group.count += 1
+    group.totalDays += days
+  }
+  const receivingLeadTime = {
+    nij: { count: receivingLeadTimeGroups.nij.count, averageDays: receivingLeadTimeGroups.nij.count ? receivingLeadTimeGroups.nij.totalDays / receivingLeadTimeGroups.nij.count : 0 },
+    other: { count: receivingLeadTimeGroups.other.count, averageDays: receivingLeadTimeGroups.other.count ? receivingLeadTimeGroups.other.totalDays / receivingLeadTimeGroups.other.count : 0 },
+  }
+  const receivingFastPtrs = (receivingTrendRows ?? [])
+    .filter(row => Number(row.ship_to_posting_days) < 3)
+    .map(row => ({ ptrNo: String(row.ptr_no ?? '-'), leadTime: Number(row.ship_to_posting_days) }))
+  const receivingLeadTimeAfterFast = (receivingTrendRows ?? [])
+    .map(row => Number(row.ship_to_posting_days))
+    .filter(days => Number.isFinite(days) && days >= 3)
+  const receivingAverageAfterFast = receivingLeadTimeAfterFast.length
+    ? receivingLeadTimeAfterFast.reduce((sum, days) => sum + days, 0) / receivingLeadTimeAfterFast.length
+    : 0
+  const leadTimeTrendMap = new Map<string, { nij: { total: number; count: number }; other: { total: number; count: number } }>()
+  for (const row of receivingTrendRows ?? []) {
+    const days = Number(row.ship_to_posting_days)
+    if (!Number.isFinite(days)) continue
+    const month = row.posting_date?.slice(0, 7) ?? 'Tanpa tanggal'
+    const point = leadTimeTrendMap.get(month) ?? { nij: { total: 0, count: 0 }, other: { total: 0, count: 0 } }
+    const group = days >= 1 && days <= 3 ? point.nij : point.other
+    group.total += days
+    group.count += 1
+    leadTimeTrendMap.set(month, point)
+  }
+  const leadTimeTrend = [...leadTimeTrendMap.entries()].slice(-6).map(([month, point]) => ({
+    month,
+    nij: point.nij.count ? point.nij.total / point.nij.count : 0,
+    other: point.other.count ? point.other.total / point.other.count : 0,
+  }))
+  const receivingItemMap = new Map<string, number>()
+  for (const detail of receivingDetailsForAnalytics) {
+    const item = String(detail.item_no ?? detail.description ?? 'Item tidak diketahui').trim() || 'Item tidak diketahui'
+    receivingItemMap.set(item, (receivingItemMap.get(item) ?? 0) + (Number(detail.quantity) || 0))
+  }
+  const receivingTopItems = [...receivingItemMap.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
 
   return {
     // SCM Pulse metrics
@@ -184,5 +276,15 @@ export async function getLandingPageData() {
     totalMachineHD: (customers as any[]).reduce((s, r) => s + (Number(r.machine_count) || 0), 0),
     locationCoverage: customers?.length ? Math.round(((customers as any[]).filter((r) => r.latitude != null && r.longitude != null).length) * 100 / customers.length) : 0,
     lateShipmentsCount: lateShipments?.length ?? 0,
+    receivingAI: {
+      trend: receivingTrend,
+      load: receivingLoad,
+      monthlyAverage: receivingMonthlyAverage,
+      leadTime: receivingLeadTime,
+      leadTimeTrend,
+      fastPtrs: receivingFastPtrs,
+      averageAfterFast: receivingAverageAfterFast,
+      topItems: receivingTopItems,
+    },
   }
 }

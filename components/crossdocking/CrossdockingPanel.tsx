@@ -198,11 +198,11 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
           const documentDateTime = normalizeDocumentDateTime(header.document_created_at ?? header.document_date)
           const { customer_code, customer_name, destination_address, destination_city, pts_id,
                   pss_no, psi_no, hq_reference_no, received_from_hq_date, promised_delivery_date,
-                  status, notes, created_by } = header as any
+              notes, created_by } = header as any
           await insertCrossdocking(
             { customer_code, customer_name, destination_address, destination_city, pts_id,
               pss_no, psi_no, ...documentDateTime, hq_reference_no, received_from_hq_date, promised_delivery_date,
-              status: status ?? 'Draft', notes, created_by, pts_ids: selectedPtsIds },
+              status: 'Dispatched', notes, created_by, pts_ids: selectedPtsIds },
             validDetails.map(({ _key, id, item_name, ...rest }) => rest)
           )
         } else {
@@ -239,7 +239,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
         <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
           <div>
             <h2 className="font-bold text-lg">
-              {isEdit ? `Edit Crossdocking — ${(header as any).crossdocking_no ?? ''}` : 'Tambah Crossdocking'}
+              {isEdit ? `Edit Crossdocking — ${(header as any).crossdocking_no ?? ''}` : 'TAMBAH CROSSDOCKING'}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Shipment dari Kantor Pusat via Medan — input manual

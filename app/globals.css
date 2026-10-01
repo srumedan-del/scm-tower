@@ -2,19 +2,33 @@
 
 @theme {
   --color-canvas: #FFFFFF;
-  --color-surface: #F9F8F7;
-  --color-border: #E6E5E3;
-  --color-text: #2C2C2B;
-  --color-muted: #7D7A75;
-  --color-blue: #2783DE;
-  --color-green: #46A171;
-  --color-orange: #D5803B;
-  --color-red: #E56458;
+  --color-surface: #F3FBFD;
+  --color-border: #D7E9EE;
+  --color-text: #173B73;
+  --color-muted: #68809E;
+  --color-blue: #2E4F8D;
+  --color-green: #39B7D2;
+  --color-orange: #F2A85A;
+  --color-red: #EF6378;
 }
 
 :root{scroll-behavior:smooth}
 html{scroll-snap-type:y proximity}
 body{background:#F9F8F7;color:#2C2C2B;font-family:ui-sans-serif,system-ui,sans-serif}
+.login-art{
+  background:
+    radial-gradient(circle at 16% 18%, rgb(255 255 255 / 92%) 0 12%, transparent 12.5%),
+    radial-gradient(circle at 85% 78%, rgb(255 255 255 / 28%) 0 18%, transparent 18.5%),
+    linear-gradient(145deg, #edfafd 0%, #bfeaf3 48%, #38b7d3 100%);
+}
+.login-art::after{
+  content:'';
+  position:absolute;
+  inset:10% -18% -24% 20%;
+  border-radius:50% 50% 0 0;
+  background:linear-gradient(135deg, rgb(255 255 255 / 88%), rgb(255 255 255 / 20%));
+  transform:rotate(-12deg);
+}
 table{font-family:ui-sans-serif,system-ui,sans-serif}
 table th,table td{font-family:inherit;font-size:.875rem}
 table .font-mono{font-family:inherit}

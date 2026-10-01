@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertShipmentTracking, deleteShipmentTracking,
+  updateShipmentRetailCost,
   getShipmentTMSOptions, lookupCustomerDkLk,
   type ShipmentTrackingRow,
   type TransporterOption, type VehicleOption,
@@ -44,6 +45,30 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     }
     return { source_type: 'PSS', status: 'Draft', cost_model: null }
   })
+
+  useEffect(() => {
+    if (shipment) {
+      setForm(shipment)
+      return
+    }
+
+    if (prefillPss) {
+      setForm({
+        source_type: 'PSS',
+        status: 'Draft',
+        cost_model: null,
+        pss_no: prefillPss.pss_no,
+        outbound_header_id: prefillPss.id,
+        customer_name: prefillPss.customer_name ?? undefined,
+        destination_city: prefillPss.destination_city ?? undefined,
+        promised_delivery_date: prefillPss.promised_delivery_date ?? undefined,
+        document_date: prefillPss.document_date ?? undefined,
+      })
+      return
+    }
+
+    setForm({ source_type: 'PSS', status: 'Draft', cost_model: null })
+  }, [shipment, prefillPss])
 
   const [saving,   startSaving]   = useTransition()
   const [deleting, startDeleting] = useTransition()
@@ -129,7 +154,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     ?? form.transporter_name
     ?? form.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim()
     ?? ''
-  const isIndahLogistik = /indah\s+logistik/i.test(transporterName)
+  const isRetailCourier = /indah\s+logistik|jne/i.test(transporterName) || Boolean(String(form.no_resi ?? '').trim())
 
   useEffect(() => {
     if (form.transporter_id || !noteTransporter) return
@@ -151,6 +176,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
       if (!form.status) { setErr('Status wajib diisi'); return }
       try {
         const selectedVendor = transporters.find(t => t.id === Number(effectiveTransporterId))
+        const retailFields = Boolean(String(form.no_resi ?? '').trim()) || form.cost_model === 'Retail' || isRetailCourier
         const sharedFields = {
           transporter_id: effectiveTransporterId ? Number(effectiveTransporterId) : null,
           transporter_name: selectedVendor?.name ?? form.transporter_name,
@@ -159,10 +185,14 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
           helper_id: form.helper_id ?? null,
           route_id: form.route_id ?? null,
           trip_id: form.trip_id ?? null,
-          cost_model: form.cost_model ?? null,
+          cost_model: retailFields ? 'Retail' : (form.cost_model ?? null),
           fleet_type: form.fleet_type ?? (isInternal ? 'Internal' : 'Eksternal'),
-          status: form.trip_id ? 'In Transit' : form.status,
+          status: retailFields || form.trip_id ? 'In Transit' : form.status,
           dispatch_time: form.dispatch_time ?? null,
+          no_resi: form.no_resi?.trim() || null,
+          total_biaya_eksternal: form.total_biaya_eksternal == null
+            ? null
+            : Number(form.total_biaya_eksternal),
         }
         const rowsToUpdate = shipment ? (relatedShipments?.length ? relatedShipments : [shipment]) : [null]
         await Promise.all(rowsToUpdate.map(row => upsertShipmentTracking({
@@ -170,6 +200,15 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
           ...sharedFields,
           id: row?.id,
         })))
+        await Promise.all(rowsToUpdate
+          .filter((row): row is ShipmentTrackingRow => row != null && row.id != null)
+          .map(row => updateShipmentRetailCost({
+            id: row.id,
+            no_resi: form.no_resi?.trim() || null,
+            total_biaya_eksternal: form.total_biaya_eksternal == null
+              ? null
+              : Number(form.total_biaya_eksternal),
+          })))
         onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
@@ -312,9 +351,9 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 <DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
               </Field>
             </div>
-            {isIndahLogistik && (
+            {isRetailCourier && (
               <div className="mt-2 grid grid-cols-2 gap-3">
-                <Field label="Nomor Resi Indah Logistik">
+                <Field label="Nomor Resi Retail / Courier">
                   <input
                     value={form.no_resi ?? ''}
                     onChange={e => up('no_resi', e.target.value || null)}
@@ -324,10 +363,13 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 </Field>
                 <Field label="Biaya Kirim per Resi (Rp)">
                   <input
-                    type="number"
-                    min={0}
-                    value={form.total_biaya_eksternal ?? ''}
-                    onChange={e => up('total_biaya_eksternal', e.target.value === '' ? null : Number(e.target.value))}
+                    type="text"
+                    inputMode="numeric"
+                    value={form.total_biaya_eksternal == null ? '' : String(form.total_biaya_eksternal)}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/[^0-9]/g, '')
+                      up('total_biaya_eksternal', raw === '' ? null : Number(raw))
+                    }}
                     className="inp"
                     placeholder="0"
                   />

@@ -76,9 +76,6 @@ export type VehicleOption     = { id: number; vehicle_no: string; vehicle_type: 
 export type DriverOption      = { id: number; driver_name: string; phone: string | null; role: string }
 export type RouteOption       = { id: number; route_code: string; origin: string; destination: string; distance_km: number | null }
 
-// Cut-off: hanya tampilkan shipment dari PSS/dokumen tanggal 01 Sep 2026 ke atas
-const CUTOFF_DATE = '2026-09-01'
-
 /** Strict normalized-name match only; ambiguity or no match stays null. */
 export async function resolveTransporterFromVendor(vendorId: number | null): Promise<number | null> {
   if (!vendorId) return null
@@ -117,7 +114,6 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
   let q = supabaseAdmin
     .from('shipment_tracking')
     .select('*')
-    .gte('document_date', CUTOFF_DATE)
     .order('pss_no', { ascending: false, nullsFirst: false })
     .order('document_date', { ascending: false, nullsFirst: false })
     .limit(200)
@@ -175,7 +171,7 @@ export async function getShipmentTrackings(filters?: { status?: string }) {
 
   return enrichedShipments.filter(shipment => {
     const fallbackVendorName = shipment.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]
-    return !isIndahLogistik(shipment.transporter_name) && !isIndahLogistik(fallbackVendorName)
+    return !isRetailCourier(shipment.transporter_name) && !isRetailCourier(fallbackVendorName)
   })
 }
 
@@ -405,17 +401,15 @@ export async function getServiceLevelShipments(startDate: string, endDate: strin
 
 /** Retail shipments handed to a vendor with a resi, but not yet received by customer. */
 export async function getRetailInTransitShipments() {
-  const { data, error } = await supabaseAdmin
-    .from('vw_shipment_tms')
-    .select('*')
-    .eq('status', 'In Transit')
-    .not('no_resi', 'is', null)
-    .or('cost_model.eq.Retail,notes.ilike.%INDAH LOGISTIK%')
-    .order('document_date', { ascending: false, nullsFirst: false })
-    .order('pss_no', { ascending: true, nullsFirst: false })
-    .limit(200)
-  if (error) throw error
-  return (data ?? []) as ShipmentTrackingRow[]
+  const rows = await getShipmentTrackings({ status: 'all' })
+  return rows
+    .filter(row =>
+      row.status === 'In Transit'
+      && Boolean(row.no_resi?.trim())
+      && (row.cost_model === 'Retail' || isRetailCourier(row.transporter_name) || isRetailCourier(row.notes))
+    )
+    .sort((first, second) => String(second.document_date ?? '').localeCompare(String(first.document_date ?? '')))
+    .slice(0, 200)
 }
 
 export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> & { id?: number }) {
@@ -430,6 +424,7 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     hotel_cost, uang_makan_driver, uang_makan_helper, toll_cost,
     parkir_cost, kirim_paket_cost, misc_cost, misc_cost_notes,
     invoice_no_eksternal,
+    no_resi, total_biaya_eksternal,
     biaya_trucking, biaya_tkbm, invoice_value,
     // Kolom legacy/tidak ada di tabel baru
     trip_cost,
@@ -437,6 +432,11 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     created_at, updated_at, document_created_at,
     ...payload
   } = row as any
+
+  payload.no_resi = no_resi == null ? null : String(no_resi).trim() || null
+  payload.total_biaya_eksternal = total_biaya_eksternal == null || total_biaya_eksternal === ''
+    ? null
+    : Number(total_biaya_eksternal)
 
   // Crossdocking selalu diklasifikasikan sebagai Luar Kota, tanpa bergantung
   // pada pengaturan DK/LK customer master.
@@ -449,8 +449,9 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
 
   // Resi Retail means the shipment has been handed to the vendor. It is in
   // transit until the customer receipt is confirmed through the POD form.
-  const isRetail = payload.cost_model === 'Retail' || /indah\s+logistik/i.test(String(payload.notes ?? ''))
-  if (isRetail && String(payload.no_resi ?? '').trim() && payload.status !== 'Delivered') {
+  const hasRetailResi = Boolean(String(payload.no_resi ?? '').trim())
+  const isRetail = payload.cost_model === 'Retail' || /indah\s+logistik/i.test(String(payload.notes ?? '')) || hasRetailResi
+  if (isRetail && payload.status !== 'Delivered') {
     payload.cost_model = 'Retail'
     payload.status = 'In Transit'
   }
@@ -464,6 +465,33 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     const { error } = await supabaseAdmin.from('shipment_tracking').insert(payload)
     if (error) throw new Error(error.message)
   }
+}
+
+export async function updateShipmentRetailCost(input: {
+  id: number
+  no_resi: string | null
+  total_biaya_eksternal: number | null
+}) {
+  await requireAuthenticatedUser()
+  const amount = input.total_biaya_eksternal == null ? null : Number(input.total_biaya_eksternal)
+  if (amount !== null && !Number.isFinite(amount)) {
+    throw new Error('Biaya kirim harus berupa angka yang valid')
+  }
+
+  const normalizedNoResi = input.no_resi?.trim() || null
+  const { data, error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .update({
+      no_resi: normalizedNoResi,
+      total_biaya_eksternal: amount,
+      cost_model: normalizedNoResi || amount != null ? 'Retail' : 'Retail',
+      status: 'In Transit',
+    })
+    .eq('id', input.id)
+    .select('id, no_resi, total_biaya_eksternal, cost_model, status')
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(`Shipment dengan ID ${input.id} tidak ditemukan`)
 }
 
 export async function deleteShipmentTracking(id: number) {
@@ -551,8 +579,9 @@ function normalizeText(value: unknown) {
   return String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
-function isIndahLogistik(value: unknown) {
-  return normalizeText(value).includes('INDAH LOGISTIK')
+function isRetailCourier(value: unknown) {
+  const text = normalizeText(value)
+  return text.includes('INDAH LOGISTIK') || text.includes('JNE') || text.includes('RETAIL')
 }
 
 function positiveNumber(value: unknown) {
@@ -573,6 +602,24 @@ function normalizeLoadSummary(row: any): PssLoadSummary {
     incomplete_load_count: Number(row.incomplete_load_count ?? 0),
     products: [],
   }
+}
+
+function dedupeDetailRows(rows: any[] = []) {
+  const seen = new Set<string>()
+  return rows.filter((row) => {
+    const entryNo = Number(row?.entry_no)
+    const key = Number.isFinite(entryNo)
+      ? `entry:${entryNo}`
+      : [
+          String(row?.document_no ?? '').trim(),
+          String(row?.outbound_header_id ?? '').trim(),
+          String(row?.item_no ?? '').trim(),
+          String(row?.qty_out ?? row?.quantity ?? '').trim(),
+        ].join('|')
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /** Returns active external rate cards that can carry the selected load, cheapest first. */
@@ -614,9 +661,7 @@ export async function getExternalRateSuggestions(input: {
   const candidates = capacityCandidates.filter((rate: any) => {
     const vendor = rate.vendor_id ? vendorById.get(Number(rate.vendor_id)) : null
     const vendorText = normalizeText(`${vendor?.type ?? ''} ${vendor?.name ?? ''}`)
-    const serviceModel: 'Retail' | 'Trucking' = vendorText.includes('RETAIL') || vendorText.includes('INDAH LOGISTIK')
-      ? 'Retail'
-      : 'Trucking'
+    const serviceModel: 'Retail' | 'Trucking' = isRetailCourier(vendorText) ? 'Retail' : 'Trucking'
     if (serviceModel === 'Retail') return true
 
     const tonnageCapacity = Number(rate.tonnage)
@@ -639,7 +684,7 @@ export async function getExternalRateSuggestions(input: {
     tonnage: rate.tonnage == null ? null : Number(rate.tonnage),
     cbm: rate.cbm == null ? null : Number(rate.cbm),
     price: Number(rate.price),
-    service_model: vendorText.includes('RETAIL') || vendorText.includes('INDAH LOGISTIK') ? 'Retail' : 'Trucking',
+    service_model: isRetailCourier(vendorText) ? 'Retail' : 'Trucking',
   }
   }) as ExternalRateSuggestion[]
 }
@@ -736,7 +781,7 @@ export async function getUntrackedPss(): Promise<UntrackedPssRow[]> {
         : Promise.resolve({ data: [] }),
       supabaseAdmin.from('master_sku').select('sku_code, item_name, pcs_per_outer_box, outer_box_cbm, outer_box_weight_kg, outer_length_cm, outer_width_cm, outer_height_cm'),
     ])
-    const detailRows = [...(directDetailRows ?? []), ...(linkedDetailRows ?? [])]
+    const detailRows = dedupeDetailRows([...(directDetailRows ?? []), ...(linkedDetailRows ?? [])])
     const packagingBySku = new Map((packagingRows ?? []).map(row => [String(row.sku_code).trim().toUpperCase(), row as any]))
     const detailsByPss = new Map<string, any[]>()
     for (const row of detailRows ?? []) {
@@ -969,10 +1014,9 @@ export async function getShipmentTMSOptions() {
     supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').order('vehicle_no'),
     supabaseAdmin.from('master_driver').select('id, driver_name, phone, role').eq('is_active', true).order('role').order('driver_name'),
     supabaseAdmin.from('routes').select('id, route_code, origin, destination, distance_km').order('route_code'),
-    // Semua PSS mulai cut-off — join dk_lk dari customers via customer_no
+    // Semua PSS yang tersedia — join dk_lk dari customers via customer_no
     supabaseAdmin.from('outbound_header')
       .select('id, pss_no, customer_name, customer_no, destination_city: ship_to_city, promised_delivery_date, document_date')
-      .gte('document_date', CUTOFF_DATE)
       .order('document_date', { ascending: false })
       .limit(500),
     // PSS yang sudah punya tracking — untuk filter dropdown agar tidak duplikat

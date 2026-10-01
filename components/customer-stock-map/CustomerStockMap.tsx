@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Check, Map as MapIcon, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
+import { Check, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getLatestCustomerOrders, type LatestCustomerOrder } from './actions'
 import 'leaflet/dist/leaflet.css'
@@ -256,8 +256,6 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 			return reorderDate ? reorderDate < today : false
 		})
 		: visibleCustomers, [latestOrders, stockFilter, visibleCustomers])
-	const criticalCount = visibleCustomers.filter((customer) => statusFor(customer).label === 'Critical').length
-
 	function startEdit(customer?: Customer) {
 		setEditing(customer ?? null)
 		setFormOpen(true)
@@ -301,14 +299,7 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 	const showControls = !publicOnly || maintenanceOpen
 
 	return <section className={`overflow-hidden rounded-xl border border-border ${publicOnly && !maintenanceOpen ? 'bg-gradient-to-br from-[#EAF5FA] via-white to-[#F4F0E8] shadow-[0_24px_80px_rgba(44,44,43,.10)]' : 'bg-white'}`}>
-		{showControls && <div className="flex flex-col gap-4 border-b border-border p-6 lg:flex-row lg:items-center lg:justify-between">
-			<div><div className="flex items-center gap-2 text-sm font-medium text-blue"><span className="h-2 w-2 rounded-full bg-blue" />Supabase realtime</div><h2 className="mt-2 text-lg font-semibold">Customer Stock Map</h2><p className="mt-1 text-sm text-muted">{customers.length} customer terhubung, {criticalCount} perlu perhatian segera.</p></div>
-			<div className="flex flex-wrap items-center gap-2">
-				<select aria-label="Filter provinsi" value={province} onChange={(event) => setProvince(event.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option>All</option><option>Aceh</option><option>Sumatera Utara</option></select>
-				<button onClick={() => { setMode('map'); setEditing(null) }} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${mode === 'map' ? 'bg-text text-white' : 'border border-border'}`}><MapIcon size={16} />Peta</button>
-				<button onClick={() => setMode('maintain')} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${mode === 'maintain' ? 'bg-text text-white' : 'border border-border'}`}><Pencil size={16} />Maintain data</button>
-			</div>
-		</div>}
+
 
 		{message && showControls && <div className="border-b border-border bg-orange/10 px-6 py-3 text-sm text-orange">{message}</div>}
 
@@ -389,22 +380,22 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 			{loading && <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted"><span className="rounded-full border border-white/70 bg-white/75 px-4 py-2 shadow-sm backdrop-blur">Memuat data customer...</span></div>}
 		</div>}
 		{(mode === 'maintain' || showMaintainBelow) && <div className="p-6">
-			<div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h3 className="font-semibold">DASHBOARD MONITOR STOK HD</h3><p className="mt-1 text-xs text-muted">Updated : masukkan tanggal terakhir upload data outbound</p></div><div className="flex flex-wrap items-center gap-2"><select id="customer-stock-filter" aria-label="Filter customer stock" value={pendingStockFilter} onChange={(event) => setPendingStockFilter(event.target.value as 'all' | 'reorder')} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="all">Semua customer</option><option value="reorder">Perlu reorder</option></select><button type="button" onClick={() => setStockFilter(pendingStockFilter)} className="rounded-lg bg-text px-3 py-2 text-sm font-medium text-white">Terapkan</button><button type="button" onClick={() => { setPendingStockFilter('all'); setStockFilter('all') }} className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Reset</button></div></div>
+			<div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h3 className="font-semibold">DASHBOARD MONITOR STOK HD</h3></div><div className="flex flex-wrap items-center gap-2"><select id="customer-stock-filter" aria-label="Filter customer stock" value={pendingStockFilter} onChange={(event) => setPendingStockFilter(event.target.value as 'all' | 'reorder')} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="all">Semua customer</option><option value="reorder">Perlu reorder</option></select><button type="button" onClick={() => setStockFilter(pendingStockFilter)} className="rounded-lg bg-text px-3 py-2 text-sm font-medium text-white">Terapkan</button><button type="button" onClick={() => { setPendingStockFilter('all'); setStockFilter('all') }} className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Reset</button></div></div>
 			{formOpen ? <form onSubmit={saveCustomer} className="mb-6 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3"><div className="rounded-lg border border-blue/20 bg-blue/5 p-3 text-xs text-muted md:col-span-3">Cara mengambil koordinat: buka Google Maps, klik kanan pada lokasi customer, lalu klik angka koordinat untuk menyalin. Tempel format seperti <strong>1.28895440385333, 97.61411017362235</strong> pada kolom koordinat; sistem otomatis memisahkan Latitude dan Longitude.</div>{([['customer_name','Nama customer'],['city','Kabupaten/kota'],['province','Provinsi'],['latitude','Latitude'],['longitude','Longitude'],['machine_count','Jumlah mesin HD']] as [keyof FormState,string][]).map(([field,label]) => <label key={field} className="text-xs font-medium text-muted">{label}<input required min={field === 'latitude' ? -90 : field === 'longitude' ? -180 : field === 'machine_count' ? 0 : undefined} max={field === 'latitude' ? 90 : field === 'longitude' ? 180 : undefined} step="any" type={field === 'province' || field === 'customer_name' || field === 'city' ? 'text' : 'number'} value={String(form[field] ?? '')} onChange={(event) => updateField(field, event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label>)}<label className="text-xs font-medium text-muted md:col-span-3">Paste koordinat Google Maps<input required type="text" inputMode="decimal" placeholder="1.28895440385333, 97.61411017362235" value={coordinateText} onChange={(event) => updateCoordinates(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label><div className="flex items-end gap-2 md:col-span-3"><button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-green px-3 py-2 text-sm font-medium text-white"><Save size={16} />{saving ? 'Menyimpan...' : 'Simpan'}</button><button type="button" onClick={() => { setEditing(null); setFormOpen(false); setForm(emptyForm); setCoordinateText('') }} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><X size={16} />Batal</button></div></form> : null}
 			<div className="overflow-x-auto">
 						<table className="w-max text-left text-sm">
 					<thead className="bg-surface text-xs uppercase tracking-wide text-muted">
 						<tr>
-							<th className="whitespace-nowrap px-2.5 py-2 text-center">Customer</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-center">Mesin HD</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Kebutuhan / hari</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Kebutuhan / bulan</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Safety Stock (6 hari)</th>
-							<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">ROP (8 hari)</th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-center">Order terakhir</th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-center">DOI</th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-center leading-tight">Stock Habis Tanggal</th>
-									<th className="whitespace-nowrap px-2.5 py-2 text-center">Reorder ideal</th>
+							<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Customer</th>
+							<th className="w-20 max-w-20 px-2.5 py-2 text-center leading-tight">Mesin HD</th>
+							<th className="w-24 max-w-24 px-2.5 py-2 text-center leading-tight">Kebutuhan / hari</th>
+							<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Kebutuhan / bulan</th>
+							<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Safety Stock (6 hari)</th>
+							<th className="w-24 max-w-24 px-2.5 py-2 text-center leading-tight">ROP (8 hari)</th>
+									<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Order terakhir</th>
+									<th className="w-20 max-w-20 px-2.5 py-2 text-center leading-tight">DOI</th>
+									<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Stock Habis Tanggal</th>
+									<th className="w-24 max-w-24 px-2.5 py-2 text-center leading-tight">Reorder ideal</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">

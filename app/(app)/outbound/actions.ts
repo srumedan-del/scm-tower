@@ -75,30 +75,47 @@ export async function insertOutboundHeaderRows(rows: Record<string, any>[]) {
 export async function getOutboundHeadersByPssNos(pssNos: string[]) {
   if (!pssNos.length) return { data: [], error: null }
 
-  // pss_no dan shipment_no selalu sama nilainya di DB kita
-  // cukup query by pss_no saja, chunk 500 untuk hindari URL limit
+  // Ambil dari kedua kolom karena data lama bisa hanya mengisi shipment_no.
   const CHUNK = 500
   const allData: any[] = []
 
   for (let i = 0; i < pssNos.length; i += CHUNK) {
     const chunk = pssNos.slice(i, i + CHUNK)
-    const { data } = await supabaseAdmin
+      const [{ data: pssData, error: pssError }, { data: shipmentData, error: shipmentError }] = await Promise.all([
+      supabaseAdmin
       .from('outbound_header')
       .select('id, pss_no, shipment_no')
-      .in('pss_no', chunk)
-    allData.push(...(data ?? []))
+        .in('pss_no', chunk),
+      supabaseAdmin
+        .from('outbound_header')
+        .select('id, pss_no, shipment_no')
+        .in('shipment_no', chunk),
+    ])
+      if (pssError) return { data: [], error: pssError }
+      if (shipmentError) return { data: [], error: shipmentError }
+    allData.push(...(pssData ?? []), ...(shipmentData ?? []))
   }
 
-  return { data: allData, error: null }
+  const uniqueData = [...new Map(allData.map(row => [row.id, row])).values()]
+  return { data: uniqueData, error: null }
 }
 
 export async function getOutboundHeadersForPaoMatching() {
-  const { data, error } = await supabaseAdmin
-    .from('outbound_header')
-    .select('id, pss_no, shipment_no, document_created_at, document_date, project, branch_representative, location_code')
-    .not('pss_no', 'is', null)
+  const PAGE_SIZE = 1000
+  const allData: any[] = []
 
-  return { data: data ?? [], error }
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabaseAdmin
+      .from('outbound_header')
+      .select('id, pss_no, shipment_no, document_created_at, document_date, project, branch_representative, location_code')
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (error) return { data: [], error }
+    allData.push(...(data ?? []))
+    if (!data || data.length < PAGE_SIZE) break
+  }
+
+  return { data: allData, error: null }
 }
 
 export async function getOutboundDetailHeaderIds(headerIds: number[]) {
@@ -129,6 +146,7 @@ export async function getExistingOutboundDetailEntryNos(entryNos: number[]) {
     .select('entry_no')
     .in('entry_no', entryNos)
 
+    if (error) return { data: [], error }
   return { data: data ?? [], error }
 }
 

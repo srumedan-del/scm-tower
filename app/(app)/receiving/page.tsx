@@ -2,7 +2,8 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { PtrHeaderUploadButton, PtrDetailUploadButton } from '@/components/receiving/ReceivingUploadButton'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
-import ReceivingVerifyButton from '@/components/receiving/ReceivingVerifyButton'
+import ReceivingAIAnalysis from '@/components/receiving/ReceivingAIAnalysis'
+import type { ReceivingPackaging } from '@/lib/receiving-analytics'
 import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
@@ -68,6 +69,15 @@ async function getReceivingDetails() {
   return data ?? []
 }
 
+async function getReceivingPackaging(itemNos: string[]) {
+  if (!itemNos.length) return [] as ReceivingPackaging[]
+  const { data } = await supabase
+    .from('master_sku')
+    .select('sku_code, pcs_per_outer_box, outer_box_cbm, outer_box_weight_kg, pcs_per_pallet')
+    .in('sku_code', itemNos)
+  return (data ?? []) as ReceivingPackaging[]
+}
+
 export default async function ReceivingPage({ searchParams }: { searchParams: Promise<{ month?: string | string[] }> }) {
   const sp = await searchParams
   const monthParam = sp.month
@@ -76,6 +86,8 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
     : (monthParam ?? [])
 
   const [rows, details, availableMonths] = await Promise.all([getReceiving(months), getReceivingDetails(), getAvailableMonths()])
+  const itemNos = [...new Set(details.map(detail => String(detail.item_no ?? '').trim()).filter(Boolean))]
+  const packaging = await getReceivingPackaging(itemNos)
 
   return (
     <div className="space-y-4">
@@ -87,7 +99,7 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
           </Suspense>
           <PtrHeaderUploadButton />
           <PtrDetailUploadButton />
-          <ReceivingVerifyButton />
+          <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />
         </div>
       </header>
 

@@ -198,6 +198,16 @@ function normalizeDocumentTime(value: unknown): string | null {
   return new Date(Math.floor(date.getTime() / 60000) * 60000).toISOString()
 }
 
+function normalizeDocumentDate(value: unknown): string | null {
+  if (value == null || value === '') return null
+  const raw = String(value).trim()
+  if (!raw) return null
+  const directDate = raw.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (directDate) return directDate[1]
+  const date = new Date(raw)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10)
+}
+
 function normalizePaoToPss(
   rows: Record<string, any>[],
   existingHeaders: Record<string, any>[] = []
@@ -226,7 +236,7 @@ function normalizePaoToPss(
       && optionalFields.every((field) => matches(field, false))
   }
 
-  const pssByContext = new Map<string, { index: number; documentNo: string; documentTime: string | null }[]>()
+  const pssByContext = new Map<string, { index: number; documentNo: string; documentTime: string | null; documentDate: string | null }[]>()
   rows.forEach((row, index) => {
     const documentNo = result[index]
     if (!isPss(documentNo)) return
@@ -236,6 +246,7 @@ function normalizePaoToPss(
       index,
       documentNo,
       documentTime: normalizeDocumentTime(row.document_created_at ?? row.document_date ?? null),
+      documentDate: normalizeDocumentDate(row.document_created_at ?? row.document_date ?? null),
     })
     pssByContext.set(context, candidates)
   })
@@ -251,6 +262,7 @@ function normalizePaoToPss(
         index: Number.MAX_SAFE_INTEGER,
         documentNo,
         documentTime: normalizeDocumentTime(header.document_created_at ?? header.document_date ?? null),
+        documentDate: normalizeDocumentDate(header.document_created_at ?? header.document_date ?? null),
       })
       pssByContext.set(context, candidates)
     })
@@ -261,12 +273,34 @@ function normalizePaoToPss(
 
     const currentRow = rows[i]
     const currentTime = normalizeDocumentTime(currentRow.document_created_at ?? currentRow.document_date ?? null)
-    const candidates = pssByContext.get(contextFor(currentRow)) ?? []
+    const currentDate = normalizeDocumentDate(currentRow.document_created_at ?? currentRow.document_date ?? null)
+    const contextualCandidates = pssByContext.get(contextFor(currentRow)) ?? []
+    const candidates = contextualCandidates.length > 0
+      ? contextualCandidates
+      : [...pssByContext.values()].flat()
 
-    const sameTime = candidates.filter((candidate) => {
+    let sameTime = candidates.filter((candidate) => {
       const candidateTime = candidate.documentTime
       return candidateTime && currentTime && candidateTime === currentTime
     })
+
+    // Some NAV exports omit project/location on one document type. The timestamp
+    // is still the authoritative PAO -> PSS relationship in that case.
+    if (sameTime.length === 0 && currentTime) {
+      sameTime = [...pssByContext.values()].flat().filter((candidate) => {
+        return candidate.documentTime === currentTime
+      })
+    }
+
+    if (sameTime.length === 0 && currentDate) {
+      sameTime = candidates.filter((candidate) => candidate.documentDate === currentDate)
+    }
+
+    if (sameTime.length === 0 && currentDate) {
+      sameTime = [...pssByContext.values()].flat().filter((candidate) => {
+        return candidate.documentDate === currentDate
+      })
+    }
 
     const replacement = sameTime.length > 0
       ? sameTime[sameTime.length - 1].documentNo
@@ -485,10 +519,13 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
     Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
   )
   const now = new Date().toISOString()
+  const documentDateValue = pickValue(row, ['document_date', 'doc_date', 'order_date'])
+  const documentDate = documentDateValue ? toISODate(documentDateValue) : null
+  const documentCreatedAt = toISODateTime(pickValue(row, ['document_data_time', 'document_date_time', 'document_created_date_time', 'document_created_datetime', 'document_created_at', 'created_date']))
 
   const record: Record<string, any> = {
     posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date'])) || now.slice(0, 10),
-    document_created_at: toISODateTime(pickValue(row, ['document_date_time', 'document_created_date_time', 'document_created_datetime', 'document_created_at', 'created_date'])),
+    document_created_at: documentCreatedAt ?? (documentDate ? `${documentDate}T00:00:00+07:00` : null),
     entry_type: pickValue(row, ['entry_type']) ?? null,
     document_no: pickValue(row, ['document_no', 'doc_no', 'no']) ?? null,
     item_no: pickValue(row, ['item_no', 'sku', 'item']) ?? null,
@@ -565,7 +602,10 @@ export function OutboundDetailUploadButton() {
       // Step 3: Cari PSS yang unik untuk link ke outbound_header
       const uniquePssNos = [...new Set(normalized.filter((d) => isPss(d)))]
 
-      const { data: headers } = await getOutboundHeadersByPssNos(uniquePssNos)
+      const { data: headers, error: headersError } = await getOutboundHeadersByPssNos(uniquePssNos)
+      if (headersError) {
+        throw new Error(`Gagal mengambil header PSS untuk pencocokan: ${formatError(headersError)}`)
+      }
       const headerMap = new Map<string, number>()
       for (const h of (headers ?? []) as any[]) {
         const id = Number(h.id)
@@ -593,13 +633,39 @@ export function OutboundDetailUploadButton() {
         throw new Error(`Upload dibatalkan. PSS tidak memiliki header yang cocok di database: ${unmatchedHeaderPss.join(', ')}`)
       }
 
-      const { updated: documentLinksUpdated } = await updateOutboundDetailDocumentLinks(rowsWithHeaderId)
+      let documentLinksUpdated = 0
+      let timestampsBackfilled = 0
+      let headersUpdated = 0
+      const maintenanceWarnings: string[] = []
+
+      try {
+        const result = await updateOutboundDetailDocumentLinks(rowsWithHeaderId)
+        documentLinksUpdated = result.updated
+      } catch (error) {
+        const message = formatError(error)
+        console.warn(`Link detail Outbound tidak diperbarui: ${message}`)
+        maintenanceWarnings.push(`Link detail tidak diperbarui: ${message}`)
+      }
 
       // File yang di-upload ulang juga melengkapi timestamp NAV pada detail lama.
-      const { updated: timestampsBackfilled } = await updateOutboundDetailCreatedTimes(rowsWithHeaderId)
+      try {
+        const result = await updateOutboundDetailCreatedTimes(rowsWithHeaderId)
+        timestampsBackfilled = result.updated
+      } catch (error) {
+        const message = formatError(error)
+        console.warn(`Timestamp detail Outbound tidak diperbarui: ${message}`)
+        maintenanceWarnings.push(`Timestamp detail tidak diperbarui: ${message}`)
+      }
 
       // Propagate the NAV document creation time to the matching PSS header.
-      const { updated: headersUpdated } = await updateOutboundHeaderCreatedTimes(rowsWithHeaderId)
+      try {
+        const result = await updateOutboundHeaderCreatedTimes(rowsWithHeaderId)
+        headersUpdated = result.updated
+      } catch (error) {
+        const message = formatError(error)
+        console.warn(`Timestamp header PSS tidak diperbarui: ${message}`)
+        maintenanceWarnings.push(`Timestamp header PSS tidak diperbarui: ${message}`)
+      }
 
       // Step 5: Deduplicate berdasarkan entry_no
       const entryNos = rowsWithHeaderId
@@ -608,7 +674,10 @@ export function OutboundDetailUploadButton() {
 
       const existingEntrySet = new Set<number>()
       if (entryNos.length > 0) {
-        const { data: existingEntries } = await getExistingOutboundDetailEntryNos(entryNos)
+        const { data: existingEntries, error: existingEntriesError } = await getExistingOutboundDetailEntryNos(entryNos)
+        if (existingEntriesError) {
+          throw new Error(`Gagal memeriksa entry_no Outbound Detail: ${formatError(existingEntriesError)}`)
+        }
         for (const e of existingEntries ?? []) {
           existingEntrySet.add(Number(e.entry_no))
         }
@@ -628,7 +697,7 @@ export function OutboundDetailUploadButton() {
       const skipped = rowsWithHeaderId.length - toInsert.length
 
       if (!toInsert.length) {
-        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}`)
+        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`)
         return
       }
 
@@ -655,7 +724,7 @@ export function OutboundDetailUploadButton() {
       showAlert(
         'success',
         'Upload Berhasil',
-        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail lama dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${remapNote}`
+        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail lama dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${remapNote}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`
       )
     } catch (error: any) {
       showAlert('error', 'Upload Gagal', formatError(error))

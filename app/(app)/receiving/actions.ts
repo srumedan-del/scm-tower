@@ -182,3 +182,23 @@ export async function updateShipmentDate(headerId: string | number, newDate: str
   }
 }
 
+export async function updateReceivingTransportDetails(
+  headerId: string | number,
+  payload: {
+    transport_mode: 'LAND' | 'AIR' | 'MULTIMODAL' | null
+    land_vendor_code: string | null
+    air_vendor_code: string | null
+    container_no: string | null
+  }
+) {
+  const { error } = await supabaseAdmin
+    .from('receiving_header')
+    .update({
+      ...payload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', headerId)
+
+  if (error) throw error
+}
+

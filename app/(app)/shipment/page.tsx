@@ -450,7 +450,7 @@ export default function ShipmentPage() {
                     <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
                     <td className="px-4 py-2.5 font-mono text-xs font-medium whitespace-nowrap">{r.no_resi ?? '-'}</td>
                     <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                    <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">{formatRupiah(r.total_biaya ?? r.total_biaya_eksternal)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">{formatRupiah(r.total_biaya_eksternal)}</td>
                     <td className="px-4 py-2.5 text-center"><span className="text-xs rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">In Transit</span></td>
                     <td className="px-4 py-2.5 text-center" onClick={e => e.stopPropagation()}><button onClick={() => setPodShipment(r)} className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"><PackageCheck className="h-3.5 w-3.5" /> Terima</button></td>
                   </tr>
@@ -468,9 +468,10 @@ export default function ShipmentPage() {
           prefillPss={prefillPss}
           onClose={() => { setSelected(null); setAdding(false); setPrefillPss(null) }}
           onSaved={() => {
+            const activeTab = mainTab
             setSelected(null); setAdding(false); setPrefillPss(null)
             loadTracking(); loadUntracked(); loadRetailInTransit()
-            setMainTab('tracking')
+            setMainTab(activeTab === 'retail-in-transit' ? 'retail-in-transit' : 'tracking')
           }}
         />
       )}

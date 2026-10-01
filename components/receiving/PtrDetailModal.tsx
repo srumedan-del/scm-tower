@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { X, Loader2, Package, FileText } from 'lucide-react'
-import { getReceivingFullData } from '@/app/(app)/receiving/actions'
+import { getReceivingFullData, updateReceivingTransportDetails } from '@/app/(app)/receiving/actions'
 
 interface HeaderData {
   id: string | number
@@ -14,6 +14,10 @@ interface HeaderData {
   shipment_date: string | null
   receipt_date: string | null
   shipping_agent_code: string | null
+  transport_mode: 'LAND' | 'AIR' | 'MULTIMODAL' | null
+  land_vendor_code: string | null
+  air_vendor_code: string | null
+  container_no: string | null
   ship_to_receipt_days: number | null
   receipt_to_posting_days: number | null
   ship_to_posting_days: number | null
@@ -96,6 +100,13 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
   const [header, setHeader] = useState<HeaderData | null>(null)
   const [details, setDetails] = useState<DetailData[]>([])
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [savingTransport, startSavingTransport] = useTransition()
+  const [transportForm, setTransportForm] = useState({
+    transport_mode: 'LAND' as 'LAND' | 'AIR' | 'MULTIMODAL',
+    land_vendor_code: '',
+    air_vendor_code: '',
+    container_no: '',
+  })
 
   useEffect(() => {
     if (!open) return
@@ -119,6 +130,13 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
 
         setHeader(h as HeaderData)
         setDetails((d ?? []) as DetailData[])
+        const headerData = h as HeaderData
+        setTransportForm({
+          transport_mode: headerData.transport_mode ?? 'LAND',
+          land_vendor_code: headerData.land_vendor_code ?? headerData.shipping_agent_code ?? '',
+          air_vendor_code: headerData.air_vendor_code ?? '',
+          container_no: headerData.container_no ?? '',
+        })
       } catch (err: any) {
         if (cancelled) return
         setErrorMsg(err?.message || 'Gagal memuat data.')
@@ -140,6 +158,29 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
     setHeader(null)
     setDetails([])
     setErrorMsg(null)
+  }
+
+  const saveTransportDetails = () => {
+    if (!header) return
+    startSavingTransport(async () => {
+      try {
+        await updateReceivingTransportDetails(header.id, {
+          transport_mode: transportForm.transport_mode,
+          land_vendor_code: transportForm.land_vendor_code.trim().toUpperCase() || null,
+          air_vendor_code: transportForm.air_vendor_code.trim().toUpperCase() || null,
+          container_no: transportForm.container_no.trim().toUpperCase() || null,
+        })
+        setHeader(current => current ? {
+          ...current,
+          transport_mode: transportForm.transport_mode,
+          land_vendor_code: transportForm.land_vendor_code.trim().toUpperCase() || null,
+          air_vendor_code: transportForm.air_vendor_code.trim().toUpperCase() || null,
+          container_no: transportForm.container_no.trim().toUpperCase() || null,
+        } : current)
+      } catch (error: any) {
+        setErrorMsg(error?.message || 'Gagal menyimpan informasi transportasi.')
+      }
+    })
   }
 
   return (
@@ -195,6 +236,38 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                       Data Header
                     </h3>
                     <InfoGrid data={header} />
+                  </div>
+
+                  <div className="border-b bg-slate-50 p-6">
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+                      <span className="h-2 w-2 rounded-full bg-indigo-600" />
+                      Informasi Pengiriman
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-gray-500">Mode pengiriman</span>
+                        <select value={transportForm.transport_mode} onChange={event => setTransportForm(current => ({ ...current, transport_mode: event.target.value as typeof current.transport_mode }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                          <option value="LAND">Darat / laut</option>
+                          <option value="AIR">Udara</option>
+                          <option value="MULTIMODAL">Multimodal</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-gray-500">Nomor container / airway reference</span>
+                        <input value={transportForm.container_no} onChange={event => setTransportForm(current => ({ ...current, container_no: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono" placeholder="CONT-... / AWB-..." />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-gray-500">Vendor darat / utama</span>
+                        <input value={transportForm.land_vendor_code} onChange={event => setTransportForm(current => ({ ...current, land_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Kode atau nama vendor" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-gray-500">Vendor udara (opsional)</span>
+                        <input value={transportForm.air_vendor_code} onChange={event => setTransportForm(current => ({ ...current, air_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Diisi jika vendor udara berbeda" />
+                      </label>
+                    </div>
+                    <button type="button" onClick={saveTransportDetails} disabled={savingTransport} className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                      {savingTransport ? 'Menyimpan...' : 'Simpan informasi pengiriman'}
+                    </button>
                   </div>
 
                   <div className="p-6">

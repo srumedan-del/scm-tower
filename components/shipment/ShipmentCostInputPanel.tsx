@@ -7,7 +7,7 @@ import { displayVendorName } from '@/lib/vendor-display'
 type Props = {
   row: ShipmentCostRow
   onClose: () => void
-  onSaved: () => void
+  onSaved: (nextRow?: ShipmentCostRow) => void
 }
 
 function rp(v: number | null | undefined) {
@@ -87,7 +87,8 @@ function CurrencyInput({
 
   function beginEditing() {
     setEditing(true)
-    setDraft(value === '' || value == null ? '' : String(value).replace('.', ','))
+    const next = value === '' || value == null ? '' : String(value).replace(/\./g, ',')
+    setDraft(next)
   }
 
   function finishEditing() {
@@ -103,7 +104,8 @@ function CurrencyInput({
       onFocus={beginEditing}
       onBlur={finishEditing}
       onChange={event => {
-        const next = event.target.value.replace(/[^0-9,.]/g, '')
+        const raw = event.target.value
+        const next = raw.replace(/[^0-9,.]/g, '')
         setDraft(next)
         onChange(parseCurrency(next))
       }}
@@ -138,6 +140,27 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     biaya_tkbm:          row.biaya_tkbm ?? '',
   })
   const [manualTkbm, setManualTkbm] = useState(String(row.biaya_tkbm ?? ''))
+
+  useEffect(() => {
+    setForm({
+      payment_voucher_no:  row.payment_voucher_no ?? '',
+      invoice_value:       row.invoice_value ?? '',
+      bbm_rupiah:          row.bbm_rupiah ?? '',
+      bongkar_muat_cost:   row.bongkar_muat_cost ?? '',
+      hotel_cost:          row.hotel_cost ?? '',
+      uang_makan_driver:   row.uang_makan_driver ?? '',
+      uang_makan_helper:   row.uang_makan_helper ?? '',
+      toll_cost:           row.toll_cost ?? '',
+      parkir_cost:         row.parkir_cost ?? '',
+      kirim_paket_cost:    row.kirim_paket_cost ?? '',
+      no_resi:             row.no_resi ?? '',
+      invoice_no_eksternal: row.invoice_no_eksternal ?? '',
+      total_biaya_eksternal: row.total_biaya_eksternal ?? '',
+      biaya_trucking:      row.biaya_trucking ?? '',
+      biaya_tkbm:          row.biaya_tkbm ?? '',
+    })
+    setManualTkbm(String(row.biaya_tkbm ?? ''))
+  }, [row])
 
   const n = (v: string | number | null | undefined) => {
     if (v === '' || v === null || v === undefined) return null
@@ -195,9 +218,10 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     startSaving(async () => {
       setErr(null)
       try {
+        const effectiveCostModel = model === 'Retail' ? 'Retail' : model === 'Trucking' ? 'Trucking' : 'Internal'
         await upsertShipmentCost({
           id: row.id,
-          cost_model: row.cost_model,
+          cost_model: effectiveCostModel,
           payment_voucher_no:   s(form.payment_voucher_no),
           invoice_value:        n(form.invoice_value),
           // Internal
@@ -217,7 +241,30 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           biaya_trucking:       n(form.biaya_trucking),
           biaya_tkbm:           biayaTkbm,
         })
-        onSaved()
+
+        const nextRow: ShipmentCostRow = {
+          ...row,
+          payment_voucher_no: s(form.payment_voucher_no),
+          invoice_value: n(form.invoice_value),
+          bbm_rupiah: n(form.bbm_rupiah),
+          bongkar_muat_cost: n(form.bongkar_muat_cost),
+          hotel_cost: n(form.hotel_cost),
+          uang_makan_driver: n(form.uang_makan_driver),
+          uang_makan_helper: n(form.uang_makan_helper),
+          toll_cost: n(form.toll_cost),
+          parkir_cost: n(form.parkir_cost),
+          kirim_paket_cost: n(form.kirim_paket_cost),
+          no_resi: s(form.no_resi),
+          invoice_no_eksternal: s(form.invoice_no_eksternal),
+          total_biaya_eksternal: n(form.total_biaya_eksternal),
+          biaya_trucking: n(form.biaya_trucking),
+          biaya_tkbm: biayaTkbm,
+          cost_model: effectiveCostModel,
+          total_biaya: previewTotal,
+          cost_ratio: invoiceValue > 0 && previewTotal > 0 ? Number(((previewTotal / invoiceValue) * 100).toFixed(2)) : null,
+        }
+
+        onSaved(nextRow)
         onClose()
       } catch (e: any) {
         setErr(e.message)

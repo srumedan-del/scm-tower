@@ -37,21 +37,20 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface p-6 relative overflow-hidden">
-      {/* Background decorative blobs */}
-      <div className="absolute top-[-80px] left-[-80px] w-80 h-80 rounded-full bg-blue/10 blur-3xl pointer-events-none animate-drift" />
-      <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 rounded-full bg-green/10 blur-3xl pointer-events-none animate-drift" style={{ animationDelay: '3s' }} />
+    <div className="relative flex min-h-screen items-end justify-end overflow-hidden bg-surface p-4 sm:p-8">
+      <div className="login-art absolute inset-0" aria-hidden="true" />
 
-      <motion.form
-        onSubmit={signIn}
-        className="w-full max-w-md rounded-2xl border border-border bg-white p-8 shadow-xl shadow-black/5 relative z-10"
-        initial={{ opacity: 0, y: 32, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      >
+      <div className="relative z-10 flex w-full max-w-sm items-center justify-center">
+        <motion.form
+          onSubmit={signIn}
+          className="w-full px-2 pb-2 pt-4 sm:px-4 sm:pb-4"
+          initial={{ opacity: 0, y: 32, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        >
         {/* Logo & Heading */}
         <motion.div
-          className="mb-8"
+          className="mb-6"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.35 }}
@@ -65,59 +64,51 @@ function LoginForm() {
               SC
             </motion.div>
             <div>
-              <p className="font-bold text-text text-base leading-tight">SCM Tower</p>
+              <p className="font-bold text-text text-base leading-tight">SCM Medan</p>
               <p className="text-xs text-muted">Control Center</p>
             </div>
           </div>
-          <h1 className="text-xl font-bold text-text">Selamat datang kembali</h1>
-          <p className="mt-1 text-sm text-muted">Masuk untuk melanjutkan ke dashboard</p>
         </motion.div>
 
-        {/* Email field */}
         <motion.div
           className="mb-4"
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.22, duration: 0.3 }}
         >
-          <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-            Email
-          </label>
           <div className="relative">
             <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               required
               type="email"
+              aria-label="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface pl-10 pr-4 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue
-                transition-all duration-200 placeholder:text-gray-300"
+              className="w-full rounded-lg border-0 border-b border-white/70 bg-white/45 pl-10 pr-4 py-2.5 text-sm text-text shadow-sm
+                focus:outline-none focus:ring-2 focus:ring-blue/25 focus:border-blue
+                transition-all duration-200 placeholder:text-muted/60"
               placeholder="nama@email.com"
             />
           </div>
         </motion.div>
 
-        {/* Password field */}
         <motion.div
           className="mb-5"
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.28, duration: 0.3 }}
         >
-          <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-            Password
-          </label>
           <div className="relative">
             <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               required
               type="password"
+              aria-label="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface pl-10 pr-4 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue
-                transition-all duration-200 placeholder:text-gray-300"
+              className="w-full rounded-lg border-0 border-b border-white/70 bg-white/45 pl-10 pr-4 py-2.5 text-sm text-text shadow-sm
+                focus:outline-none focus:ring-2 focus:ring-blue/25 focus:border-blue
+                transition-all duration-200 placeholder:text-muted/60"
               placeholder="••••••••"
             />
           </div>
@@ -159,7 +150,8 @@ function LoginForm() {
             : <><LogIn size={15} /> Masuk</>
           }
         </motion.button>
-      </motion.form>
+        </motion.form>
+      </div>
     </div>
   )
 }

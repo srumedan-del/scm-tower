@@ -54,8 +54,13 @@ export async function upsertVendor(vendor: Omit<VendorRow, 'created_at'>) {
   // `vendors` is the master. Keep the legacy TMS table in sync so existing
   // views and historical transporter_id references remain compatible.
   const vendorType = String(savedVendor.vendor_type ?? '').toUpperCase()
+  const vendorName = String(savedVendor.vendor_name ?? '').toUpperCase()
   const type = vendorType.includes('INTERNAL') ? 'Internal' : 'Eksternal'
-  const service_model = type === 'Internal' ? null : vendorType.includes('RETAIL') ? 'Retail' : 'Trucking'
+  const service_model = type === 'Internal'
+    ? null
+    : (vendorType.includes('RETAIL') || vendorName.includes('INDAH LOGISTIK') || vendorName.includes('JNE'))
+      ? 'Retail'
+      : 'Trucking'
   const { error: syncError } = await supabaseAdmin.from('master_transporter').upsert({
     transporter_code: `VENDOR-${savedVendor.id}`,
     name: savedVendor.vendor_name,

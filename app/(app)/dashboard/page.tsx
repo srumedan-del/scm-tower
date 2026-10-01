@@ -59,7 +59,7 @@ async function getDashboardData(period: string) {
   ] = await Promise.all([
     supabase.from('vendors').select('*', { count: 'exact', head: true }),
     supabase.from('issue_log').select('*', { count: 'exact', head: true }).in('status', ['Open', 'In Progress']),
-    supabase.from('customers').select('id, customer_name, city, is_active, machine_count, latitude, longitude').eq('is_active', true).limit(200),
+    supabase.from('customers').select('id, customer_name, city, is_active, is_hd_customer, machine_count, latitude, longitude').eq('is_active', true).limit(200),
     supabase.from('issue_log').select('issue_no, title, status, category, due_date').in('status', ['Open', 'In Progress']).order('due_date', { ascending: true }).limit(5),
     // Shipment aktif dari shipment_tracking (bukan tabel shipments lama)
     supabase.from('shipment_tracking')
@@ -182,9 +182,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.period ?? '') ? params.period as string : defaultPeriod
   const { counts, customers, openIssues, activeShipments, otdRaw, lateShipments } = await getDashboardData(period)
 
-  const customerActive  = customers.length
-  const totalMesinHD    = (customers as any[]).reduce((s: number, r: any) => s + (Number(r.machine_count) || 0), 0)
-  const withLokasi      = (customers as any[]).filter((r: any) => r.latitude != null && r.longitude != null).length
+  const hdCustomers     = (customers as any[]).filter((customer: any) => customer.is_hd_customer === true)
+  const customerActive  = hdCustomers.length
+  const totalMesinHD    = hdCustomers.reduce((sum: number, customer: any) => sum + (Number(customer.machine_count) || 0), 0)
+  const withLokasi      = hdCustomers.filter((customer: any) => customer.latitude != null && customer.longitude != null).length
   const lokasiCoverage  = customerActive ? Math.round(withLokasi * 100 / customerActive) : 0
 
   const otd        = computeOtd(otdRaw)
@@ -476,7 +477,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <MapPin size={18} /> Customer Map
+            <MapPin size={18} /> MAPPING DASHBOARD MONITOR STOK HD
           </h2>
           <div className="text-xs text-gray-500">
             {customerActive} customer aktif · {totalMesinHD.toLocaleString('id-ID')} MESIN HD ·{' '}

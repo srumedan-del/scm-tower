@@ -227,9 +227,16 @@ export type UpsertCostPayload = {
 
 export async function upsertShipmentCost(payload: UpsertCostPayload) {
   const { id, ...data } = payload
-  const normalizedData = (!payload.cost_model || payload.cost_model === 'Internal')
+  const costModel = payload.cost_model === 'Retail' || Boolean(payload.no_resi)
+    ? 'Retail'
+    : payload.cost_model === 'Trucking'
+      ? 'Trucking'
+      : 'Internal'
+
+  const normalizedData = costModel === 'Internal'
     ? {
         ...data,
+        cost_model: 'Internal',
         invoice_value: null,
         no_resi: null,
         invoice_no_eksternal: null,
@@ -237,7 +244,24 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
         biaya_trucking: null,
         biaya_tkbm: null,
       }
-    : data
+    : costModel === 'Trucking'
+      ? {
+          ...data,
+          cost_model: 'Trucking',
+          no_resi: null,
+          invoice_no_eksternal: data.invoice_no_eksternal ?? null,
+          total_biaya_eksternal: null,
+        }
+      : {
+          ...data,
+          cost_model: 'Retail',
+          no_resi: data.no_resi ?? null,
+          invoice_no_eksternal: data.invoice_no_eksternal ?? null,
+          total_biaya_eksternal: data.total_biaya_eksternal ?? null,
+          biaya_trucking: null,
+          biaya_tkbm: null,
+        }
+
   const { error } = await supabaseAdmin
     .from('shipment_tracking')
     .update(normalizedData)

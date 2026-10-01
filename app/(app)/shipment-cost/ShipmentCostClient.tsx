@@ -13,8 +13,9 @@ function rp(value: number | null | undefined) {
   return value ? `Rp ${value.toLocaleString('id-ID')}` : '-'
 }
 
-export default function ShipmentCostTable({ rows }: { rows: ShipmentCostRow[] }) {
+export default function ShipmentCostTable({ rows: initialRows }: { rows: ShipmentCostRow[] }) {
   const router = useRouter()
+  const [rows, setRows] = useState<ShipmentCostRow[]>(initialRows)
   const [subMenu, setSubMenu] = useState<'maintain' | 'analysis'>('maintain')
   const [activeRow, setActiveRow] = useState<ShipmentCostRow | null>(null)
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null)
@@ -42,7 +43,11 @@ export default function ShipmentCostTable({ rows }: { rows: ShipmentCostRow[] })
 
   return (
     <>
-      {activeRow && <ShipmentCostInputPanel row={activeRow} onClose={() => setActiveRow(null)} onSaved={() => { setActiveRow(null); router.refresh() }} />}
+      {activeRow && <ShipmentCostInputPanel row={activeRow} onClose={() => setActiveRow(null)} onSaved={(nextRow) => {
+        setRows(current => nextRow ? current.map(row => row.id === nextRow.id ? nextRow : row) : current)
+        setActiveRow(null)
+        router.refresh()
+      }} />}
 
       <nav className="flex gap-1 border-b border-border">
         <button onClick={() => setSubMenu('maintain')} className={`px-4 py-2 text-sm font-semibold border-b-2 ${subMenu === 'maintain' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500'}`}>Maintain Biaya</button>

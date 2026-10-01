@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
-import { ArrowRight, BarChart3, Target, Boxes, ClipboardCheck, Users, Truck, ShieldAlert, Factory } from 'lucide-react'
+import { ArrowRight, BarChart3, Target, Boxes, ClipboardCheck, Users, Truck, ShieldAlert, Factory, Layers3, Weight, Activity } from 'lucide-react'
 import { getLandingPageData } from '@/lib/landing-page-data'
 
 const iconMap = {
@@ -107,6 +107,98 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      <section className="px-5 py-10 md:px-8">
+        <div className="mx-auto grid max-w-7xl gap-6 rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-6 md:grid-cols-[1.1fr_.9fr] md:p-10">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-700">
+              <Activity className="h-5 w-5" />
+              Inbound load profile
+            </div>
+            <h2 className="mt-4 max-w-xl text-3xl font-semibold tracking-[-0.03em] text-[#2C2C2B] md:text-5xl">
+              Receiving Insight
+            </h2>
+            <div className="mt-7 grid grid-cols-2 gap-3">
+              <LoadMetric icon={<Layers3 className="h-4 w-4" />} label="Quantity" value={data.receivingAI.load.quantity.toLocaleString('id-ID')} />
+              <LoadMetric icon={<Activity className="h-4 w-4" />} label="Volume" value={`${data.receivingAI.load.volumeCbm.toFixed(1)} m³`} />
+              <LoadMetric icon={<Weight className="h-4 w-4" />} label="Tonase" value={`${data.receivingAI.load.tonnage.toFixed(1)} ton`} />
+            </div>
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                <span>Rata-rata load / bulan</span>
+                <span>{data.receivingAI.trend.length} bulan</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div><div className="text-xs text-slate-500">Quantity</div><div className="font-bold text-slate-900">{data.receivingAI.monthlyAverage.quantity.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div></div>
+                <div><div className="text-xs text-slate-500">Volume</div><div className="font-bold text-slate-900">{data.receivingAI.monthlyAverage.volumeCbm.toFixed(1)} m³</div></div>
+                <div><div className="text-xs text-slate-500">Tonase</div><div className="font-bold text-slate-900">{data.receivingAI.monthlyAverage.tonnage.toFixed(1)} ton</div></div>
+                <div><div className="text-xs text-slate-500">Pallet</div><div className="font-bold text-slate-900">{data.receivingAI.monthlyAverage.pallets.toFixed(0)}</div></div>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-white/70 p-4">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-indigo-700"><span>Lead time pengiriman</span><span>Rata-rata hari</span></div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-indigo-50 p-3"><div className="text-xs text-slate-500">NIJ · 1–3 hari</div><div className="mt-1 font-bold text-slate-900">{data.receivingAI.leadTime.nij.count} PTR</div><div className="text-xs text-slate-500">Rata-rata {data.receivingAI.leadTime.nij.averageDays.toFixed(1)} hari</div></div>
+                <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">From lainnya</div><div className="mt-1 font-bold text-slate-900">{data.receivingAI.leadTime.other.count} PTR</div><div className="text-xs text-slate-500">Rata-rata {data.receivingAI.leadTime.other.averageDays.toFixed(1)} hari</div></div>
+              </div>
+              <div className="mt-4 border-t border-slate-100 pt-3">
+                <div className="mb-2 flex items-center gap-3 text-[10px] text-slate-500"><span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-indigo-500" /> NIJ</span><span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-slate-400" /> From lainnya</span></div>
+                <div className="grid grid-cols-6 items-end gap-2">
+                  {data.receivingAI.leadTimeTrend.map(point => {
+                    const maxDays = Math.max(...data.receivingAI.leadTimeTrend.map(item => Math.max(item.nij, item.other)), 1)
+                    return <div key={point.month} className="flex flex-col items-center gap-1"><div className="flex h-16 w-full items-end gap-0.5"><div className="w-1/2 rounded-t bg-indigo-500" style={{ height: `${Math.max(point.nij ? 8 : 0, (point.nij / maxDays) * 100)}%` }} /><div className="w-1/2 rounded-t bg-slate-400" style={{ height: `${Math.max(point.other ? 8 : 0, (point.other / maxDays) * 100)}%` }} /></div><span className="text-[10px] text-slate-500">{point.month.slice(5)}</span><span className="text-[9px] font-semibold text-slate-700">{point.nij.toFixed(1)} / {point.other.toFixed(1)}</span></div>
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                <span>PTR lead time &lt; 3 hari</span>
+                <span>{data.receivingAI.fastPtrs.length} PTR</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data.receivingAI.fastPtrs.length ? data.receivingAI.fastPtrs.map(ptr => <span key={ptr.ptrNo} className="rounded-md bg-white px-2 py-1 font-mono text-xs font-semibold text-slate-700 shadow-sm">{ptr.ptrNo} · {ptr.leadTime} hari</span>) : <span className="text-xs text-slate-500">Tidak ada PTR dengan lead time di bawah 3 hari.</span>}
+              </div>
+              <div className="mt-3 border-t border-emerald-100 pt-3 text-sm text-slate-600">
+                Rata-rata setelah PTR &lt; 3 hari dikeluarkan: <strong className="text-slate-900">{data.receivingAI.averageAfterFast.toFixed(1)} hari</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/80 bg-white/85 p-5 shadow-sm backdrop-blur">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Receiving load trend</p>
+              <span className="text-xs font-semibold text-indigo-600">6 bulan</span>
+            </div>
+            <div className="mt-5 space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs text-slate-500">Volume</div><div className="mt-1 text-lg font-bold text-slate-900">{data.receivingAI.load.volumeCbm.toFixed(1)} m³</div></div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs text-slate-500">Tonase</div><div className="mt-1 text-lg font-bold text-slate-900">{data.receivingAI.load.tonnage.toFixed(1)} ton</div></div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs text-slate-500">Pallet</div><div className="mt-1 text-lg font-bold text-slate-900">{data.receivingAI.load.pallets.toLocaleString('id-ID')}</div></div>
+              </div>
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-400"><span>Inbound trend / bulan</span><span>{data.receivingAI.trend.reduce((sum, point) => sum + point.count, 0)} PTR</span></div>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-500"><span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-indigo-500" /> PTR</span><span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-500" /> Volume</span><span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-500" /> Pallet</span><span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-amber-500" /> Tonase</span></div>
+                <div className="mt-3 grid grid-cols-6 items-end gap-2">
+                  {data.receivingAI.trend.map(point => {
+                    const maxCount = Math.max(...data.receivingAI.trend.map(item => item.count), 1)
+                    const maxVolume = Math.max(...data.receivingAI.trend.map(item => item.volumeCbm), 1)
+                    const maxPallets = Math.max(...data.receivingAI.trend.map(item => item.pallets), 1)
+                    const maxTonnage = Math.max(...data.receivingAI.trend.map(item => item.tonnage), 1)
+                    return <div key={point.month} className="flex flex-col items-center gap-1"><div className="flex h-12 w-full items-end gap-0.5"><div className="w-1/4 rounded-t bg-indigo-500" style={{ height: `${Math.max(10, (point.count / maxCount) * 100)}%` }} /><div className="w-1/4 rounded-t bg-cyan-500" style={{ height: `${Math.max(10, (point.volumeCbm / maxVolume) * 100)}%` }} /><div className="w-1/4 rounded-t bg-emerald-500" style={{ height: `${Math.max(10, (point.pallets / maxPallets) * 100)}%` }} /><div className="w-1/4 rounded-t bg-amber-500" style={{ height: `${Math.max(10, (point.tonnage / maxTonnage) * 100)}%` }} /></div><span className="text-[10px] text-slate-500">{point.month.slice(5)}</span><span className="text-[9px] font-semibold text-slate-700">{point.count} / {point.volumeCbm.toFixed(0)}m³</span><span className="text-[9px] text-slate-500">{point.pallets}P / {point.tonnage.toFixed(1)}T</span></div>
+                  })}
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Top item receiving</div>
+                <div className="mt-2 space-y-2">
+                  {data.receivingAI.topItems.slice(0, 3).map(([item, quantity]) => <div key={item} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-slate-600" title={item}>{item}</span><span className="shrink-0 font-semibold text-slate-900">{quantity.toLocaleString('id-ID')}</span></div>)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="top" className="scroll-mt-24 px-5 py-10 md:px-8">
         <div className="mx-auto max-w-7xl">
           <CustomerStockMapClient publicOnly />
@@ -163,4 +255,8 @@ export default async function LandingPage() {
       </section>
     </main>
   )
+}
+
+function LoadMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <div className="rounded-xl border border-slate-200 bg-white/80 p-3"><div className="flex items-center gap-2 text-xs text-slate-500">{icon}{label}</div><div className="mt-1 text-xl font-bold text-slate-900">{value}</div></div>
 }

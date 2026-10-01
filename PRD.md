@@ -1,9 +1,11 @@
 # Product Requirements Document (PRD)
 ## SCM Control Tower
 
-**Versi:** 1.9
-**Tanggal:** 13 September 2026
+**Versi:** 2.0
+**Tanggal:** 17 September 2026
 **Status:** In Development  
+
+**Catatan perubahan v2.0:** Menambahkan rencana modul Warehouse Capacity pada Section 4.4.3 dengan tiga ukuran kapasitas: CBM, pallet position, dan tonase. Rencana mencakup konfigurasi kapasitas per warehouse, perhitungan utilisasi dari `inventory_snapshot` dan atribut packaging `master_sku`, view dashboard, status Normal/Warning/Critical/Incomplete, serta kebutuhan data dan tahapan aktivasi. Changelog Section 12 diperbarui untuk mencatat perbaikan upload Outbound Detail, penyempurnaan Crossdocking PTS, dashboard Customer Stock Map/HD, dan Shipment Tracking Retail.
 
 **Catatan perubahan v1.9:** Menambahkan Section 4.11 (Struktur Navigasi & Menu Sidebar) hasil audit halaman orphan. Ditemukan `/shipment/budget-request` (modul Pengajuan Dana, 4.5.5) tidak punya link dari UI manapun — belum tercatat di revisi sebelumnya. Menu sidebar direvisi jadi berkelompok (Operasional / Monitoring / Data & Sistem) alih-alih flat list 12 item. Status `/trips` ditandai menunggu keputusan eksplisit karena bertentangan dengan keputusan 4.5.6. Koreksi juga dicatat di Section 10: klaim bahwa `proxy.ts` adalah dead code (dari draft analisis eksternal) tidak akurat — Next.js 16 justru menjadikan `proxy.ts` sebagai konvensi resmi pengganti `middleware.ts`.
 
@@ -199,6 +201,81 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 - Halaman rekonsiliasi membandingkan stok NAV, stock opname bila tersedia, barang inbound yang belum posted, serta barang outbound/crossdock yang belum selesai.
 - Selisih tidak mengubah saldo NAV; selisih dibuat sebagai Issue Log dengan PIC, alasan, tindakan koreksi, dan status penyelesaian.
 - Data NAV yang telah dipakai dalam shipment, POD, atau laporan biaya tidak boleh dihapus. Koreksi dilakukan melalui batch koreksi/audit event, bukan edit diam-diam.
+
+### 4.4.3 Warehouse Capacity Dashboard (Planned)
+
+**Tujuan:** Menampilkan kapasitas gudang dan tingkat utilisasi aktual berdasarkan tiga ukuran operasional: volume CBM, pallet position, dan tonase. Modul ini menjadi dasar monitoring ruang gudang, perencanaan inbound/outbound, dan peringatan overload.
+
+**Status:** Rencana database dan dashboard. Belum diaktifkan di production.
+
+**Sumber data:**
+- Master gudang: `warehouses`
+- Stok terbaru per SKU dan gudang: `inventory_snapshot`
+- Pergerakan stok untuk rekonsiliasi: `inventory_movement`
+- Jumlah unit per karton/pallet dan berat/volume kemasan: `master_sku`
+
+**Konfigurasi kapasitas:** Tambahkan tabel `warehouse_capacity_config` dengan field minimum:
+
+| Field | Keterangan |
+|---|---|
+| `warehouse_code` | FK ke `warehouses.warehouse_code` |
+| `capacity_cbm` | Kapasitas fisik maksimum dalam CBM |
+| `usable_capacity_cbm` | Kapasitas operasional yang benar-benar dapat digunakan |
+| `capacity_pallet` | Kapasitas maksimum pallet position |
+| `usable_capacity_pallet` | Pallet position yang dapat digunakan |
+| `capacity_ton` | Kapasitas maksimum tonase |
+| `usable_capacity_ton` | Tonase operasional yang dapat digunakan |
+| `utilization_warning_pct` | Default 80% |
+| `utilization_critical_pct` | Default 90% |
+| `effective_from`, `effective_to` | Masa berlaku konfigurasi kapasitas |
+| `is_active`, `notes` | Status dan catatan audit |
+
+Satu warehouse hanya boleh memiliki satu konfigurasi aktif. Riwayat kapasitas tetap disimpan melalui `effective_from`/`effective_to`, bukan overwrite tanpa jejak.
+
+**Formula utilisasi:**
+
+| Ukuran | Formula stok terpakai |
+|---|---|
+| CBM | `CEIL(qty_on_hand / pcs_per_outer_box) x outer_box_cbm` |
+| Pallet | `CEIL(qty_on_hand / pcs_per_pallet)` |
+| Tonase | `(qty_on_hand / pcs_per_outer_box) x outer_box_weight_kg / 1000` |
+
+Perhitungan menggunakan snapshot stok terbaru per kombinasi `warehouse_code` dan `sku_code`. SKU tanpa data packaging lengkap tidak boleh dianggap nol secara diam-diam; harus dihitung dalam `incomplete_sku_count` dan diberi status `Incomplete`.
+
+**View yang direncanakan:** `vw_warehouse_capacity`, dengan output:
+- `capacity_cbm`, `used_capacity_cbm`, `available_capacity_cbm`, `utilization_cbm_pct`
+- `capacity_pallet`, `used_capacity_pallet`, `available_capacity_pallet`, `utilization_pallet_pct`
+- `capacity_ton`, `used_capacity_ton`, `available_capacity_ton`, `utilization_ton_pct`
+- `incomplete_sku_count`, `latest_snapshot_date`
+
+**Status dashboard:**
+- `Normal`: utilisasi tertinggi di bawah 80%
+- `Warning`: utilisasi tertinggi 80% sampai kurang dari 90%
+- `Critical`: utilisasi tertinggi 90% atau lebih
+- `Incomplete`: terdapat SKU dengan data CBM, berat, atau konversi pallet yang belum lengkap
+
+**Tampilan dashboard:**
+- KPI total kapasitas, kapasitas terpakai, dan kapasitas tersedia per ukuran
+- Tabel per warehouse: kapasitas, terpakai, tersedia, utilisasi, status, tanggal snapshot
+- Progress bar terpisah untuk CBM, pallet, dan tonase
+- Filter warehouse dan status
+- Daftar SKU yang belum memiliki data packaging lengkap
+- Warning ketika salah satu ukuran melewati ambang batas
+
+**Data yang wajib disiapkan sebelum aktivasi:**
+1. Kapasitas maksimum dan kapasitas usable setiap warehouse dalam CBM, pallet, dan tonase.
+2. Data `outer_box_cbm`, `outer_box_weight_kg`, `pcs_per_outer_box`, dan `pcs_per_pallet` pada `master_sku`.
+3. Snapshot stok terbaru per warehouse dan SKU.
+4. Keputusan apakah pallet dihitung sebagai pallet position penuh atau berdasarkan stacking factor.
+5. Rekonsiliasi hasil perhitungan dengan kondisi fisik warehouse.
+
+**Tahapan implementasi:**
+1. Jalankan migrasi tabel `warehouse_capacity_config`.
+2. Tambahkan field kapasitas pada form Master Warehouses.
+3. Lengkapi data packaging SKU dan validasi kelengkapannya.
+4. Buat view `vw_warehouse_capacity` dan query Server Action dashboard.
+5. Tambahkan kartu dan tabel Warehouse Capacity ke dashboard.
+6. Uji hasil terhadap snapshot fisik sebelum mengaktifkan alert operasional.
 
 ### 4.5 Shipment Tracking & TMS (Transport Management System)
 
@@ -775,6 +852,10 @@ notes
 - [ ] Tambahkan master data dimensi/berat dan satuan bila belum tersedia pada SKU; tambahkan versioning formula dan status kelengkapan data.
 - [ ] Tambahkan kalkulasi volume/tonase pada detail order/shipment/stop/trip serta validasi terhadap kapasitas kendaraan.
 - [ ] Tambahkan warning utilisasi kendaraan berdasarkan volume dan tonase secara terpisah, termasuk kondisi data tidak lengkap dan overload.
+- [ ] Tambahkan tabel `warehouse_capacity_config` untuk kapasitas CBM, pallet position, dan tonase per warehouse.
+- [ ] Tambahkan view `vw_warehouse_capacity` berbasis snapshot stok terbaru dan data packaging SKU.
+- [ ] Tambahkan dashboard Warehouse Capacity dengan utilisasi CBM, pallet, tonase, status threshold, dan incomplete SKU warning.
+- [ ] Tambahkan input kapasitas gudang pada Master Warehouses serta riwayat konfigurasi efektif.
 - [x] Atur pemilihan armada berdasarkan default dan opsi: PSS DK default Internal tetapi Eksternal tetap tersedia untuk Retail/Trucking; PSS LK dan Crossdocking juga dapat diproses melalui Eksternal.
 - [x] Tambahkan saran ekspedisi eksternal berdasarkan tujuan, kecukupan kapasitas tonase/volume, dan urutan harga rate card termurah; pilihan tetap dapat diubah user.
 - [ ] Tambahkan test fixture dari workbook manual dan regression test untuk konversi satuan, pembulatan, kuantitas, dan hasil agregasi.
@@ -1021,6 +1102,50 @@ File berikut dihapus dan kontennya diarsipkan ke **PRD section 11**:
 
 
 ---
+
+### 12.14 Perubahan Project Terbaru (17 September 2026)
+
+**Outbound Detail / PAO ke PSS**
+
+**Status: Diimplementasikan dan sudah diverifikasi dengan build**
+
+- Parser Outbound Detail mengenali kolom `Document Data Time`/`Document Date Time` dan menggunakan `Document Date` sebagai fallback.
+- Matching PAO ke PSS memprioritaskan konteks `project`, `branch_representative`, dan `location_code`, lalu menggunakan timestamp atau tanggal kalender ketika data header PSS tidak memiliki waktu lengkap.
+- Pengambilan header PSS menggunakan pagination agar data di atas batas default Supabase tetap ikut dicari.
+- Matching dan linking mendukung nomor PSS yang tersimpan di `pss_no` maupun `shipment_no`.
+- Query validasi `entry_no` dan header PSS sekarang melaporkan error dengan konteks tahap yang jelas.
+- Kegagalan pemeliharaan metadata timestamp/link tidak membatalkan insert detail yang sudah berhasil; ditampilkan sebagai peringatan.
+
+**Crossdocking PTS**
+
+**Status: Diimplementasikan dan sudah diverifikasi dengan build**
+
+- Daftar PTS menghapus kolom `Transfer Order` dan `Sumber File`.
+- Daftar PTS menampilkan `Customer` dan `Alamat`/kota tujuan.
+- Sorting default PTS menggunakan `Document Date DESC`, kemudian `PTS No. DESC`.
+- Data customer/alamat mengambil nilai PTS dan melakukan fallback ke Crossdocking Header untuk PTS yang sudah terhubung.
+
+**Shipment Tracking Retail Indah Logistik**
+
+**Status: Diimplementasikan dan sudah diverifikasi dengan build**
+
+- Form Edit Shipment TMS mengirim `no_resi` dan `total_biaya_eksternal` secara eksplisit saat menyimpan.
+- Nilai biaya kirim dikonversi ke numeric/null sesuai schema database.
+- Setelah klik `Simpan` pada tab `Pengiriman Retail Indah Logistik`, user tetap berada di tab tersebut.
+- Label `RUTE` pada modal Bulk `Buat Shipment TMS` dihapus tanpa menghapus input rute atau aturan bisnisnya.
+
+**Dashboard Customer Stock Map / HD**
+
+**Status: Diimplementasikan dan sudah diverifikasi dengan build**
+
+- Header di atas peta dihapus agar area peta lebih luas: status realtime, judul, ringkasan, filter, tombol Peta, dan Maintain data.
+- Subtitle `Updated : masukkan tanggal terakhir upload data outbound` dihapus.
+- Judul section diubah dari `Customer Map` menjadi `MAPPING DASHBOARD MONITOR STOK HD`.
+- Ringkasan customer, mesin HD, dan lokasi hanya menghitung customer dengan `is_hd_customer = true`.
+- Query dashboard diperbaiki agar mengambil field `is_hd_customer`; sebelumnya ringkasan dapat tampil `0 customer aktif` karena field tersebut tidak diambil.
+- Judul kolom tabel monitoring stok dapat membungkus menjadi dua baris dengan lebar kolom yang lebih ringkas.
+
+**Catatan status dokumentasi:** Perubahan di atas sudah diterapkan pada working tree dan build Next.js berhasil. Deployment/push ke GitHub tetap merupakan langkah terpisah.
 
 ## 11. Archived Documentation
 

@@ -192,10 +192,62 @@ export async function getPtsRecords() {
   const { data, error } = await supabaseAdmin
     .from('crossdocking_pts')
     .select('*')
-    .order('uploaded_at', { ascending: false })
+    .order('document_date', { ascending: false, nullsFirst: false })
+    .order('pts_no', { ascending: false })
     .limit(500)
   if (error) throw error
-  return (data ?? []) as PtsRecord[]
+
+  const records = (data ?? []) as PtsRecord[]
+  const linkedHeaderIds = [...new Set(
+    records
+      .map(record => record.crossdocking_id)
+      .filter((id): id is number => id !== null)
+  )]
+
+  const ptsIds = records.map(record => record.id)
+  const { data: relationRows, error: relationError } = ptsIds.length
+    ? await supabaseAdmin
+      .from('crossdocking_header_pts')
+      .select('crossdocking_id, pts_id')
+      .in('pts_id', ptsIds)
+    : { data: [], error: null }
+  if (relationError) throw relationError
+
+  for (const relation of relationRows ?? []) {
+    if (!linkedHeaderIds.includes(Number(relation.crossdocking_id))) {
+      linkedHeaderIds.push(Number(relation.crossdocking_id))
+    }
+  }
+
+  if (!linkedHeaderIds.length) return records.map(record => ({
+    ...record,
+    status: 'Menunggu Crossdocking' as const,
+  }))
+
+  const { data: headers, error: headersError } = await supabaseAdmin
+    .from('crossdocking_header')
+    .select('id, customer_name, destination_city, destination_address')
+    .in('id', linkedHeaderIds)
+  if (headersError) throw headersError
+
+  const headerById = new Map((headers ?? []).map(header => [header.id, header]))
+  const headerIdByPtsId = new Map(
+    (relationRows ?? []).map(relation => [Number(relation.pts_id), Number(relation.crossdocking_id)])
+  )
+  return records.map(record => {
+    const headerId = record.crossdocking_id ?? headerIdByPtsId.get(record.id) ?? null
+    const header = headerId ? headerById.get(headerId) : null
+    const customerName = record.customer_name?.trim() || header?.customer_name?.trim() || null
+    const destinationCity = record.destination_city?.trim() || header?.destination_city?.trim() || null
+    const destinationAddress = record.destination_address?.trim() || header?.destination_address?.trim() || null
+    return {
+      ...record,
+      customer_name: customerName,
+      destination_city: destinationCity,
+      destination_address: destinationAddress,
+      status: header ? 'Terhubung Crossdocking' as const : 'Menunggu Crossdocking' as const,
+    }
+  })
 }
 
 type PtsUploadRow = {
