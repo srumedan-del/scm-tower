@@ -1,6 +1,7 @@
 @import "tailwindcss";
-/* UI/UX Pro Max: typography stack (Inter + JetBrains Mono). Falls back gracefully offline. */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/* UI/UX Pro Max: typography stack (Inter + JetBrains Mono) */
 
 @theme {
   --color-canvas: #FFFFFF;
@@ -44,7 +45,7 @@
 
 :root{scroll-behavior:smooth}
 html{scroll-snap-type:y proximity}
-body{background:#F9F8F7;color:#2C2C2B;font-family:var(--font-sans),ui-sans-serif,system-ui,sans-serif}
+body{background:#F9F8F7;color:#2C2C2B;font-family:'Inter', ui-sans-serif, system-ui, sans-serif}
 .login-art{
   background:
     radial-gradient(circle at 16% 18%, rgb(255 255 255 / 92%) 0 12%, transparent 12.5%),
