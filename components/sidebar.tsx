@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Activity, AlertTriangle, ArrowLeftRight, ChartNoAxesCombined, Database, DollarSign, LayoutDashboard, LogOut, Menu, Package, Settings, Truck, Warehouse, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, ChartNoAxesCombined, Database, DollarSign, LayoutDashboard, LogOut, Menu, Package, Settings, Truck, Warehouse, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 const dashboard = ['Dashboard', '/dashboard', LayoutDashboard] as const
 const groups = [
-  { label: 'Operasional', items: [['Workflow', '/workflow', Activity], ['Receiving', '/receiving', Package], ['Outbound', '/outbound', Truck], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign], ['Pengajuan Dana', '/shipment/budget-request', DollarSign]] },
+  { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', Truck], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign], ['Pengajuan Dana', '/shipment/budget-request', DollarSign]] },
   { label: 'Monitoring', items: [['Service Level', '/service-level', ChartNoAxesCombined], ['Inventory', '/inventory', Warehouse], ['Issue Log', '/issues', AlertTriangle]] },
   { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database], ['Settings', '/settings', Settings]] },
 ] as const

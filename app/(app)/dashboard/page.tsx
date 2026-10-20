@@ -564,7 +564,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <h2 className="text-sm font-semibold text-muted uppercase tracking-wide mb-3">Menu Cepat</h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            { href: '/workflow',           icon: <CheckCircle2 size={20} />, bg: 'bg-blue/10 text-blue',     label: 'Workflow Overview', sub: 'Status flow harian' },
             { href: '/master-data',        icon: <Package size={20} />,      bg: 'bg-orange/10 text-orange', label: 'Master Data',       sub: 'Vendor, Route, SKU' },
             { href: '/warehouse-checklist',icon: <CheckCircle2 size={20} />, bg: 'bg-green/10 text-green',   label: 'Warehouse Checklist', sub: 'Cek kesiapan gudang' },
             { href: '/settings',           icon: <XCircle size={20} />,      bg: 'bg-border text-muted',     label: 'Settings',          sub: 'Status Supabase' },

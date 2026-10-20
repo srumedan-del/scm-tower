@@ -79,14 +79,14 @@ function InfoGrid({ data }: { data: HeaderData }) {
   const items = Object.entries(data).filter(([key]) => !HIDDEN_FIELDS.has(key))
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
       {items.map(([key, value]) => {
         const label = fieldLabels[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
         const display = value !== null && value !== undefined && value !== '' ? String(value) : '-'
         return (
           <div key={key}>
             <dt className="text-xs font-medium text-gray-500">{label}</dt>
-            <dd className="text-sm font-mono text-gray-900 mt-0.5 break-all">{display}</dd>
+            <dd className="text-xs text-[#475569] mt-0.5 break-all">{display}</dd>
           </div>
         )
       })}
@@ -206,7 +206,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-900 font-mono">{ptrNo}</h2>
+              <h2 className="text-lg font-semibold text-text">{ptrNo}</h2>
               <button
                 type="button"
                 onClick={handleClose}
@@ -235,23 +235,23 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
 
               {!loading && !errorMsg && header && (
                 <>
-                  <div className="p-6 border-b">
-                    <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-3 flex items-center gap-2">
+                  <div className="p-4 border-b">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-text mb-2.5 flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Data Header
                     </h3>
                     <InfoGrid data={header} />
                   </div>
 
-                  <div className="border-b bg-slate-50 p-6">
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+                  <div className="border-b bg-slate-50 p-4">
+                    <h3 className="mb-2.5 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text">
                       <span className="h-2 w-2 rounded-full bg-indigo-600" />
                       Informasi Pengiriman
                     </h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Mode pengiriman</span>
-                                              <select value={transportForm.transport_mode} onChange={event => setTransportForm(current => ({ ...current, transport_mode: event.target.value as typeof current.transport_mode }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                                              <select value={transportForm.transport_mode} onChange={event => setTransportForm(current => ({ ...current, transport_mode: event.target.value as typeof current.transport_mode }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm">
                                                 <option value="DARAT">Darat</option>
                                                 <option value="LAUT">Laut</option>
                                                 <option value="UDARA">Udara</option>
@@ -259,28 +259,28 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Nomor container / airway reference</span>
-                                              <input value={transportForm.container_no} onChange={event => setTransportForm(current => ({ ...current, container_no: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono" placeholder="CONT-... / AWB-..." />
+                                              <input value={transportForm.container_no} onChange={event => setTransportForm(current => ({ ...current, container_no: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-mono" placeholder="CONT-... / AWB-..." />
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor darat / utama</span>
-                                              <input value={transportForm.land_vendor_code} onChange={event => setTransportForm(current => ({ ...current, land_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Kode atau nama vendor" />
+                                              <input value={transportForm.land_vendor_code} onChange={event => setTransportForm(current => ({ ...current, land_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm" placeholder="Kode atau nama vendor" />
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor laut (opsional)</span>
-                                              <input value={transportForm.sea_vendor_code} onChange={event => setTransportForm(current => ({ ...current, sea_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Diisi jika vendor laut berbeda" />
+                                              <input value={transportForm.sea_vendor_code} onChange={event => setTransportForm(current => ({ ...current, sea_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm" placeholder="Diisi jika vendor laut berbeda" />
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor udara (opsional)</span>
-                                              <input value={transportForm.air_vendor_code} onChange={event => setTransportForm(current => ({ ...current, air_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Diisi jika vendor udara berbeda" />
+                                              <input value={transportForm.air_vendor_code} onChange={event => setTransportForm(current => ({ ...current, air_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm" placeholder="Diisi jika vendor udara berbeda" />
                                             </label>
                     </div>
-                    <button type="button" onClick={saveTransportDetails} disabled={savingTransport} className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                    <button type="button" onClick={saveTransportDetails} disabled={savingTransport} className="mt-2.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
                       {savingTransport ? 'Menyimpan...' : 'Simpan informasi pengiriman'}
                     </button>
                   </div>
 
-                  <div className="p-6">
-                    <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-3 flex items-center gap-2">
+                  <div className="p-4">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-text mb-2.5 flex items-center gap-2">
                       <Package className="h-4 w-4" />
                       Data Detail ({details.length} item)
                     </h3>
@@ -291,25 +291,25 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                         <table className="w-full text-xs">
                           <thead className="bg-gray-50 border-b">
                             <tr>
-                              <th className="text-center px-3 py-2 font-semibold">#</th>
-                              <th className="text-left px-3 py-2 font-semibold">NOMOR URUT</th>
-                              <th className="text-left px-3 py-2 font-semibold">ITEM NO</th>
-                              <th className="text-left px-3 py-2 font-semibold">DESKRIPSI (MATERIAL MASTER)</th>
-                              <th className="text-right px-3 py-2 font-semibold">QTY</th>
-                              <th className="text-left px-3 py-2 font-semibold">LOT</th>
-                              <th className="text-left px-3 py-2 font-semibold">EXPIRED DATE</th>
+                              <th className="text-center px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">#</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">NOMOR URUT</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">ITEM NO</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">DESKRIPSI (MATERIAL MASTER)</th>
+                              <th className="text-right px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">QTY</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">LOT</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">EXPIRED DATE</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 text-center text-xs">{idx + 1}</td>
-                                <td className="px-3 py-2 font-mono">{d.entry_no ?? d.document_line_no ?? '-'}</td>
-                                <td className="px-3 py-2 font-mono">{d.item_no ?? '-'}</td>
-                                <td className="px-3 py-2">{d.item_name || d.description || '-'}</td>
-                                <td className="px-3 py-2 text-right">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
-                                <td className="px-3 py-2">{d.lot_no ?? '-'}</td>
-                                <td className="px-3 py-2">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
+                                <td className="px-3 py-1.5 text-center text-xs text-[#475569]">{idx + 1}</td>
+                                <td className="px-3 py-1.5 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
+                                <td className="px-3 py-1.5 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-3 py-1.5 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
+                                <td className="px-3 py-1.5 text-right">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
+                                <td className="px-3 py-1.5 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
+                                <td className="px-3 py-1.5 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
                               </tr>
                             ))}
                           </tbody>
