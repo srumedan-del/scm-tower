@@ -101,7 +101,7 @@ export default function ReceivingTable({ rows, details }: Props) {
   }
 
   return (
-    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-2rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-6rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
       <table className="w-full min-w-[980px] whitespace-nowrap text-xs">
               <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                 <tr>
@@ -126,8 +126,8 @@ export default function ReceivingTable({ rows, details }: Props) {
 
                   return (
                     <tr key={String(r.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
-                       <td className="whitespace-nowrap px-4 py-1 text-xs font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
-                      <td className="px-4 py-1 text-xs font-medium">
+                       <td className="whitespace-nowrap px-4 py-0.25 text-xs font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium">
                         <button
                           type="button"
                           onClick={() => setSelectedPtr(ptr)}
@@ -137,10 +137,10 @@ export default function ReceivingTable({ rows, details }: Props) {
                           {ptr || '-'}
                         </button>
                       </td>
-                      <td className="px-4 py-1 text-xs font-medium text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
-                      <td className="px-4 py-1 text-xs font-medium text-[#475569]">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
-                      <td className="px-4 py-1 text-xs font-medium text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
-                                        <td className="whitespace-nowrap px-4 py-1 text-xs font-medium text-[#475569]">
+                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
+                                        <td className="whitespace-nowrap px-4 py-0.25 text-xs font-medium text-[#475569]">
                                          {editRowId === r.id ? (
                                            <div className="flex items-center gap-1">
                                              <input
@@ -182,7 +182,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                                             </button>
                                           )}
                                         </td>
-                                        <td className="whitespace-nowrap px-4 py-1 text-right">
+                                        <td className="whitespace-nowrap px-4 py-0.5 text-right">
                                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${ltColor}`}>{lt} hari</span>
                                          </td>
                  </tr>
