@@ -96,11 +96,11 @@ export function TripCreatePanel({ onClose }: Props) {
                 {!loading && shipments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada shipment yang tersedia.</td></tr>}
                 {shipments.map((shipment) => (
                   <tr key={shipment.id} className="hover:bg-indigo-50">
-                    <td className="px-4 py-0.25 text-[#475569]"><input type="checkbox" checked={selected.has(shipment.id)} onChange={() => toggle(shipment.id)} /></td>
-                    <td className="px-4 py-0.25 font-mono text-xs text-indigo-700">{shipment.reference_no}</td>
-                    <td className="px-4 py-0.25 text-xs text-[#475569]">{shipment.customer_name ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs text-[#475569]">{shipment.destination_city ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs text-[#475569]">{shipment.promised_delivery_date ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><input type="checkbox" checked={selected.has(shipment.id)} onChange={() => toggle(shipment.id)} /></td>
+                    <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{shipment.reference_no}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{shipment.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{shipment.destination_city ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{shipment.promised_delivery_date ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

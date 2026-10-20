@@ -81,21 +81,21 @@ export default function TransportersPage() {
                 onClick={() => setSelected(r)}
                 className="hover:bg-blue-50 cursor-pointer"
               >
-                <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600">{r.transporter_code}</td>
-                <td className="px-4 py-0.25 font-medium text-[#475569]">{r.name}</td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">
+                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.transporter_code}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.name}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 font-medium ${typeColor(r.type)}`}>
                     {r.type}
                   </span>
                 </td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 font-medium ${modelColor(r.service_model)}`}>
                     {r.service_model ?? 'Operasional Aktual'}
                   </span>
                 </td>
-                <td className="px-4 py-0.25 text-xs text-[#475569]">{r.pic_name ?? '-'}</td>
-                <td className="px-4 py-0.25 text-xs text-[#475569]">{r.pic_phone ?? '-'}</td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.pic_name ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.pic_phone ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 ${
                     r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                   }`}>

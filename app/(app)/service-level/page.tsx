@@ -147,12 +147,12 @@ function PerformanceTable({ title, rows }: { title: string; rows: GroupRow[] }) 
             {rows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Belum ada data pada filter ini.</td></tr> : rows.map(row => (
               <tr key={row.name}>
                 <td className="max-w-48 truncate px-4 py-3 font-medium text-gray-700" title={row.name}>{row.name}</td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">{row.total}</td>
-                <td className="px-4 py-0.25 text-center text-green-700">{row.delivered}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{row.total}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{row.delivered}</td>
                 <td className={`px-3 py-3 text-center font-semibold ${pct(row.onTime, row.delivered) >= 95 ? 'text-green-700' : 'text-amber-700'}`}>
                   {row.delivered ? `${pct(row.onTime, row.delivered)}%` : '-'}
                 </td>
-                <td className="px-4 py-0.25 text-center text-amber-700">{row.open}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{row.open}</td>
               </tr>
             ))}
           </tbody>
@@ -320,16 +320,16 @@ export default function ServiceLevelPage() {
                       : row.document_created_at
                   const customerReceived = isUntracked ? null : row.delivery_time
                   return <tr key={`${isUntracked ? 'untracked' : 'tracked'}-${row.id}`} ref={element => { listRowRefs.current[row.pss_no ?? String(row.id)] = element }} onClick={() => { if (isUntracked) setSelectedBacklog([row]); else setSelectedShipment(row) }} className={`h-8 transition-colors ${isUntracked ? 'cursor-pointer bg-orange-50/40 hover:bg-orange-100' : 'cursor-pointer hover:bg-indigo-50'}`}>
-                    <td className="max-w-32 truncate whitespace-nowrap px-4 py-0.25 text-left font-medium text-indigo-700">{row.pss_no ?? '-'}</td>
-                    <td className="whitespace-nowrap px-4 py-0.25 text-left text-gray-600">{formatNullableDateTime(customerDateTime)}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{row.pss_no ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{formatNullableDateTime(customerDateTime)}</td>
                     <td className="max-w-64 truncate whitespace-nowrap px-2 py-1 text-left" title={row.customer_name ?? ''}>{row.customer_name ?? '-'}</td>
                     <td className="max-w-32 truncate whitespace-nowrap px-2 py-1 text-left" title={row.destination_city ?? ''}>{row.destination_city ?? '-'}</td>
-                    <td className="max-w-32 truncate whitespace-nowrap px-4 py-0.25 text-left text-gray-600">{isUntracked ? '-' : row.trip_id ?? '-'}</td>
-                    <td className="whitespace-nowrap px-4 py-0.25 text-left text-gray-600">{isUntracked ? '-' : formatNullableDateTime(row.trip_created_at)}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{isUntracked ? '-' : row.trip_id ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{isUntracked ? '-' : formatNullableDateTime(row.trip_created_at)}</td>
                     <td className="max-w-52 truncate whitespace-nowrap px-2 py-1 text-left" title={displayVendor}>{displayVendor}</td>
-                    <td className="whitespace-nowrap px-4 py-0.25 text-left text-gray-600">{formatNullableDateTime(customerReceived)}</td>
-                    <td className="whitespace-nowrap px-4 py-0.25 text-center text-gray-700">{formatDeliveryDurationDays(customerDateTime, customerReceived)}</td>
-                    <td className="px-4 py-0.25 text-left text-[#475569]">
+                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{formatNullableDateTime(customerReceived)}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-center whitespace-nowrap text-[#475569]">{formatDeliveryDurationDays(customerDateTime, customerReceived)}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-left text-[#475569]">
                       <button
                         type="button"
                         onClick={event => {
@@ -395,7 +395,7 @@ export default function ServiceLevelPage() {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Vendor</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Batas SLA</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th></tr></thead>
             <tbody className="divide-y">
-              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-0.25 font-mono text-xs text-indigo-700">{row.pss_no ?? '-'}</td><td className="px-4 py-0.25 text-[#475569]">{row.customer_name ?? '-'}</td><td className="px-4 py-0.25 text-[#475569]">{vendorName(row)}</td><td className="px-4 py-0.25 text-[#475569]"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-0.25 text-center text-[#475569]"><StatusBadge status={row.status} /></td></tr>)}
+              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pss_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.customer_name ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{vendorName(row)}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]"><StatusBadge status={row.status} /></td></tr>)}
             </tbody>
           </table>
         </div>

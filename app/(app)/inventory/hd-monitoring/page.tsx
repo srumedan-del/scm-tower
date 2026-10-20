@@ -210,34 +210,34 @@ export default function HdMonitoringPage() {
                   onClick={() => setSelected(r)}
                   className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
                 >
-                  <td className="px-4 py-0.25 text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     <div className="font-medium text-xs">{r.customer_name ?? r.customer_code}</div>
                     <div className="text-gray-400 text-xs font-mono">{r.customer_code}</div>
                   </td>
-                  <td className="px-4 py-0.25 text-xs text-[#475569]">{r.city ?? '—'}</td>
-                  <td className="px-4 py-0.25 text-center font-semibold text-xs text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.city ?? '—'}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     {r.hd_machine_count ?? '—'}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-xs text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     {r.daily_usage != null ? r.daily_usage.toLocaleString('id-ID') : '—'}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     <span className={`text-sm font-bold ${(r.estimated_stock ?? 0) < 0 ? 'text-red-600' : 'text-gray-800'}`}>
                       {r.estimated_stock != null ? r.estimated_stock.toLocaleString('id-ID') : '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     <span className={`text-sm font-bold ${(r.doi_days ?? 0) < (r.rop_days ?? 8) ? 'text-red-600' : 'text-gray-700'}`}>
                       {r.doi_days != null ? Math.round(r.doi_days) : '—'}
                     </span>
                     {r.doi_days != null && <span className="text-xs text-gray-400 ml-0.5">h</span>}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-xs text-[#475569]">{fmtDate(r.estimated_stockout_date)}</td>
-                  <td className="px-4 py-0.25 text-center text-xs font-medium text-[#475569]">{fmtDate(r.fu_po_date)}</td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{fmtDate(r.estimated_stockout_date)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{fmtDate(r.fu_po_date)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     <DaysBadge date={r.fu_po_date} />
                   </td>
-                  <td className="px-4 py-0.25 text-xs text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     {r.last_shipment_date ? (
                       <div>
                         <span className="font-medium">{fmtDate(r.last_shipment_date)}</span>
@@ -249,7 +249,7 @@ export default function HdMonitoringPage() {
                       <span className="text-red-400 font-medium">— belum ada data</span>
                     )}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     <StatusBadge status={status} />
                   </td>
                 </tr>

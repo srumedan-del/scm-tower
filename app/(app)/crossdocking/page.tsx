@@ -121,25 +121,25 @@ export default function CrossdockingPage() {
                   onClick={() => setEditId(r.id)}
                   className="hover:bg-blue-50 cursor-pointer"
                 >
-                  <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
                     {r.crossdocking_no}
                   </td>
-                  <td className="px-4 py-0.25 font-mono text-xs text-indigo-600 whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
                     {r.pss_no ?? '-'}
                   </td>
-                  <td className="px-4 py-0.25 text-xs max-w-[180px] text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     <div className="font-medium truncate">{r.customer_name ?? '-'}</div>
                   </td>
-                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                     {r.destination_city ?? '-'}
                   </td>
-                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                     {r.received_from_hq_date?.slice(0, 10) ?? '-'}
                   </td>
-                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                     {r.promised_delivery_date?.slice(0, 10) ?? '-'}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     {sisa !== null && r.status !== 'Delivered' ? (
                       <span className={`text-xs font-bold rounded-full px-2 py-0.5 ${
                         isUrgent ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
@@ -150,15 +150,15 @@ export default function CrossdockingPage() {
                       <span className="text-gray-300 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-0.25 text-xs font-mono text-gray-500">
+                  <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">
                     {r.hq_reference_no ?? '-'}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                     <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusBadge(r.status)}`}>
                       {r.status}
                     </span>
                   </td>
-                  <td className="px-4 py-0.25 text-xs text-gray-500 max-w-[120px] truncate">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     {r.notes ?? '-'}
                   </td>
                 </tr>

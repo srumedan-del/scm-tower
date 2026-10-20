@@ -303,13 +303,13 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                           <tbody className="divide-y divide-gray-200">
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="hover:bg-gray-50">
-                                <td className="px-4 py-0.25 text-center text-xs text-[#475569]">{idx + 1}</td>
-                                <td className="px-4 py-0.25 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
-                                <td className="px-4 py-0.25 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
-                                <td className="px-4 py-0.25 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
-                                <td className="px-4 py-0.25 text-right text-[#475569]">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
-                                <td className="px-4 py-0.25 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
-                                <td className="px-4 py-0.25 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{idx + 1}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.item_name || d.description || '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.lot_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
                               </tr>
                             ))}
                           </tbody>

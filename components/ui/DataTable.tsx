@@ -138,7 +138,7 @@ export function DataTable<T extends Record<string, any>>({
                       className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                     >
                       {expandable && (
-                        <td className="px-4 py-0.25 text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                           <button
                             onClick={e => {
                               e.stopPropagation()

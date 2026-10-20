@@ -259,19 +259,19 @@ export default function ShipmentPage() {
                         <input type="checkbox" checked={isChecked} onChange={() => toggleUtCheck(r.pss_no)}
                           className="rounded border-gray-300" />
                       </td>
-                      <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
-                      <td className="px-4 py-0.25 font-mono text-xs font-semibold text-indigo-600 whitespace-nowrap">{r.pss_no}</td>
-                      <td className="px-4 py-0.25 text-xs max-w-[160px] truncate text-[#475569]">{r.customer_name ?? '-'}</td>
-                      <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.destination_city ?? '-'}</td>
-                      <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.promised_delivery_date ?? '-'}</td>
-                      <td className="px-4 py-0.25 text-left text-[11px] whitespace-nowrap text-[#475569]">
+                      <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{r.pss_no}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.customer_name ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.destination_city ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.promised_delivery_date ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">
                         {r.total_koli != null ? (
                           <span className={r.incomplete_load_count > 0 ? 'text-orange-600' : 'text-gray-700'}>
                             {Number(r.total_koli).toLocaleString('id-ID')} koli · {formatLoadTonnage(r.total_tonnage)} · {Number(r.total_volume_cbm ?? 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })} m3
                           </span>
                         ) : <span className="text-gray-400">Belum dihitung</span>}
                       </td>
-                      <td className="px-4 py-0.25 text-left text-[#475569]">
+                      <td className="px-4 py-0.25 text-xs font-medium text-left text-[#475569]">
                         <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">BELUM DIBUAT SHIPMENT</span>
                       </td>
                     </tr>
@@ -367,27 +367,27 @@ export default function ShipmentPage() {
                     onClick={() => setSelected(r)}
                     className="cursor-pointer transition-colors hover:bg-blue-50"
                   >
-									<td className="px-4 py-0.25 font-mono text-xs text-gray-500 whitespace-nowrap">{r.trip_id ?? '-'}</td>
-                    <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
+									<td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{r.trip_id ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
                       {r.pss_no ?? (r.crossdocking_id != null ? `CD-${r.crossdocking_id}` : '-')}
                     </td>
-                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs max-w-[140px] truncate text-[#475569]">{r.customer_name ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs text-[#475569]">
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                       <div>{r.transporter_name ?? (r.cost_model === 'Internal' || r.fleet_type === 'Internal' ? 'SRU MEDAN' : (r.notes?.match(/Vendor: ([^|]+)/)?.[1]?.trim()) ?? '-')}</div>
                       {r.transporter_service_model && <div className="text-gray-400">{r.transporter_service_model}</div>}
                       {!r.transporter_name && r.notes?.match(/Nopol: ([^|]+)/)?.[1] && (
                         <div className="text-gray-400 font-mono text-xs">{r.notes.match(/Nopol: ([^|]+)/)?.[1]?.trim()}</div>
                       )}
                     </td>
-                    <td className="px-4 py-0.25 text-xs text-[#475569]">
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                       <div>{r.driver_name ?? (r.notes?.match(/Driver: ([^|]+)/)?.[1]?.trim()) ?? '-'}</div>
                       {(r as any).helper_name && <div className="text-gray-400">{(r as any).helper_name}</div>}
                       {!r.driver_name && r.notes?.match(/Tipe: ([^|]+)/)?.[1] && (
                         <div className="text-gray-400">{r.notes.match(/Tipe: ([^|]+)/)?.[1]?.trim()}</div>
                       )}
                     </td>
-                    <td className="px-4 py-0.25 text-center text-[#475569]">
+                    <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                       <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusBadge(r.status)}`}>
                         {r.status}
                       </span>
@@ -444,14 +444,14 @@ export default function ShipmentPage() {
                 {!loadingRetail && retailInTransit.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">Tidak ada shipment Retail yang sedang dalam perjalanan.</td></tr>}
                 {retailInTransit.map(r => (
                   <tr key={r.id} onClick={() => setSelected(r)} className="cursor-pointer transition-colors hover:bg-orange-50">
-                    <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">{r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}</td>
-                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs max-w-[180px] truncate text-[#475569]">{r.customer_name ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.destination_city ?? '-'}</td>
-                    <td className="px-4 py-0.25 font-mono text-xs font-medium whitespace-nowrap text-[#475569]">{r.no_resi ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                    <td className="px-4 py-0.25 text-right text-xs font-medium whitespace-nowrap text-[#475569]">{formatRupiah(r.total_biaya_eksternal)}</td>
-                    <td className="px-4 py-0.25 text-center text-[#475569]"><span className="text-xs rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">In Transit</span></td>
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.destination_city ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{r.no_resi ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">{formatRupiah(r.total_biaya_eksternal)}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]"><span className="text-xs rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">In Transit</span></td>
                     <td className="px-4 py-2.5 text-center" onClick={e => e.stopPropagation()}><button onClick={() => setPodShipment(r)} className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"><PackageCheck className="h-3.5 w-3.5" /> Terima</button></td>
                   </tr>
                 ))}

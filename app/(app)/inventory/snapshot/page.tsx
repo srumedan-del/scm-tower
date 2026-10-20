@@ -199,15 +199,15 @@ export default function InventorySnapshotPage() {
                   onClick={() => setSelected(r)}
                   className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
                 >
-                  <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-700">{r.sku_code}</td>
-                  <td className="px-4 py-0.25 text-xs max-w-[200px] truncate text-[#475569]">{r.item_name ?? '—'}</td>
-                  <td className="px-4 py-0.25 text-xs font-mono text-[#475569]">{r.warehouse_code}</td>
-                  <td className="px-4 py-0.25 text-right font-mono text-xs text-[#475569]">{fmtQty(r.qty_on_hand)}</td>
-                  <td className="px-4 py-0.25 text-right font-mono text-xs text-gray-500">{fmtQty(r.qty_reserved)}</td>
-                  <td className="px-4 py-0.25 text-right font-mono text-xs font-semibold text-[#475569]">{fmtQty(r.qty_available)}</td>
-                  <td className="px-4 py-0.25 text-right font-mono text-xs text-gray-500">{fmtQty(r.safety_stock)}</td>
-                  <td className="px-4 py-0.25 text-right font-mono text-xs text-[#475569]">{r.avg_daily_usage != null ? r.avg_daily_usage.toFixed(1) : '—'}</td>
-                  <td className="px-4 py-0.25 text-right text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.sku_code}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.item_name ?? '—'}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.warehouse_code}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.qty_on_hand)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.qty_reserved)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.qty_available)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.safety_stock)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{r.avg_daily_usage != null ? r.avg_daily_usage.toFixed(1) : '—'}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">
                     {r.days_of_supply != null ? (
                       <span className={`font-mono text-xs font-bold ${
                         r.days_of_supply < 3 ? 'text-red-600'
@@ -218,8 +218,8 @@ export default function InventorySnapshotPage() {
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-0.25 text-center text-[#475569]"><AlertBadge status={r.alert_status} /></td>
-                  <td className="px-4 py-0.25 text-xs text-gray-500 whitespace-nowrap">{r.snapshot_date}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]"><AlertBadge status={r.alert_status} /></td>
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.snapshot_date}</td>
                 </tr>
               )
             })}

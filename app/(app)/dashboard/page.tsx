@@ -415,30 +415,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     }
                     return (
                       <tr key={s.id} className="bg-white hover:bg-red-50 transition-colors">
-                        <td className="px-4 py-0.25 text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${urgency}`}>
                             <AlertTriangle size={10} />
                             {days} hari
                           </span>
                         </td>
-                        <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-700 whitespace-nowrap">
+                        <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
                           {s.pss_no ?? `#${s.id}`}
                         </td>
-                        <td className="px-4 py-0.25 text-xs max-w-[180px] truncate font-medium text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                           {s.customer_name ?? '—'}
                         </td>
-                        <td className="px-4 py-0.25 text-xs text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                           {s.destination_city ?? '—'}
                         </td>
-                        <td className="px-4 py-0.25 text-xs whitespace-nowrap text-gray-600">
+                        <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                           {s.promised_delivery_date}
                         </td>
-                        <td className="px-4 py-0.25 text-center text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                           <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusColor[s.status] ?? 'bg-gray-100 text-gray-600'}`}>
                             {s.status}
                           </span>
                         </td>
-                        <td className="px-4 py-0.25 text-center text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                           {s.dk_lk ? (
                             <span className={`text-xs font-bold rounded px-1.5 py-0.5 ${s.dk_lk === 'DK' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
                               {s.dk_lk}

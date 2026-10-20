@@ -91,22 +91,22 @@ export default function DriversPage() {
                 onClick={() => setSelected(r)}
                 className="hover:bg-blue-50 cursor-pointer"
               >
-                <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600">{r.driver_code}</td>
-                <td className="px-4 py-0.25 font-medium text-[#475569]">{r.driver_name}</td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">
+                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.driver_code}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.driver_name}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                   <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${roleBadge(r.role)}`}>
                     {r.role}
                   </span>
                 </td>
-                <td className="px-4 py-0.25 font-mono text-xs text-[#475569]">{r.sim_no ?? '-'}</td>
-                <td className="px-4 py-0.25 text-xs text-[#475569]">{r.phone ?? '-'}</td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">
+                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.sim_no ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.phone ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                   {r.is_active
                     ? <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 rounded-full px-2 py-0.5"><UserCheck className="h-3 w-3" /> Aktif</span>
                     : <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5"><UserX className="h-3 w-3" /> Nonaktif</span>
                   }
                 </td>
-                <td className="px-4 py-0.25 text-xs text-[#8E8E93] text-[#475569]">{r.notes ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.notes ?? '-'}</td>
               </tr>
             ))}
           </tbody>

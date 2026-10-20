@@ -137,18 +137,18 @@ export default function BudgetRequestPage() {
                   onClick={() => setSelected(r)}
                   className="hover:bg-blue-50 cursor-pointer"
                 >
-                  <td className="px-4 py-0.25 text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     <div className="font-semibold">{periodLabel(r.period)}</div>
                     <div className="text-xs text-gray-400 font-mono">{r.period}</div>
                   </td>
-                  <td className="px-4 py-0.25 text-right text-xs text-[#475569]">{fmtRp(r.dk_amount_projected)}</td>
-                  <td className="px-4 py-0.25 text-right text-xs text-[#475569]">{fmtRp(r.lk_amount_projected)}</td>
-                  <td className="px-4 py-0.25 text-right text-xs text-[#475569]">{fmtRp(r.buffer_amount)}</td>
-                  <td className="px-4 py-0.25 text-right text-xs font-medium text-[#475569]">{fmtRp(subtotal)}</td>
-                  <td className="px-4 py-0.25 text-right text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(r.dk_amount_projected)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(r.lk_amount_projected)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(r.buffer_amount)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(subtotal)}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">
                     <span className="font-bold text-indigo-700">{fmtRp(r.rounded_request_amount)}</span>
                   </td>
-                  <td className="px-4 py-0.25 text-xs text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     {r.bank_name ? (
                       <div>
                         <div className="font-medium">{r.bank_name}</div>
@@ -156,7 +156,7 @@ export default function BudgetRequestPage() {
                       </div>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-0.25 text-xs text-gray-500 max-w-[160px] truncate">{r.notes ?? '—'}</td>
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.notes ?? '—'}</td>
                 </tr>
               )
             })}

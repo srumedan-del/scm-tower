@@ -183,16 +183,16 @@ export default async function OutboundPage({
 
               return (
                 <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                     {formatDateTime(r.document_created_at)}
                   </td>
-                  <td className="px-4 py-0.25 whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                     <PssDetailModal pssNo={pssNo} />
                   </td>
-                  <td className="px-4 py-0.25 font-mono text-xs whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
                     {String(r.order_no ?? '-').toUpperCase()}
                   </td>
-                  <td className="px-4 py-0.25 text-xs text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     <div className="truncate font-medium text-text">
                       <span className="mr-1.5 text-[10px] font-normal text-text-muted">
                         {r.customer_no ?? ''}
@@ -200,10 +200,10 @@ export default async function OutboundPage({
                       {String(r.customer_name ?? '-')}
                     </div>
                   </td>
-                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                     {formatDateTime(r.mta)}
                   </td>
-                  <td className="px-4 py-0.25 text-right whitespace-nowrap text-[#475569]">
+                  <td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">
                     {delayDays !== null ? (
                       <span
                         className={`inline-block rounded-md px-2 py-0.5 text-xs font-bold ${

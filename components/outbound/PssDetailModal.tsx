@@ -202,16 +202,16 @@ export default function PssDetailModal({ pssNo }: Props) {
                           <tbody className="divide-y divide-gray-100">
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="hover:bg-blue-50">
-                                <td className="px-4 py-0.25 text-center text-gray-400">{idx + 1}</td>
-                                <td className="px-4 py-0.25 font-mono font-medium whitespace-nowrap text-[#475569]">{d.item_no ?? '-'}</td>
-                                <td className="px-4 py-0.25 text-[#475569]">{d.description || '-'}</td>
-                                <td className="px-4 py-0.25 text-right font-mono text-[#475569]">
+                                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{idx + 1}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.description || '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">
                                   {d.quantity !== null
                                     ? Math.abs(Number(d.quantity)).toLocaleString('id-ID')
                                     : '-'}
                                 </td>
-                                <td className="px-4 py-0.25 font-mono whitespace-nowrap text-[#475569]">{d.lot_no || '-'}</td>
-                                <td className="px-4 py-0.25 whitespace-nowrap text-[#475569]">
+                                <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{d.lot_no || '-'}</td>
+                                <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
                                   {d.expiration_date && d.expiration_date !== '9999-12-31'
                                     ? String(d.expiration_date).slice(0, 10)
                                     : '-'}
@@ -224,7 +224,7 @@ export default function PssDetailModal({ pssNo }: Props) {
                               <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-gray-500">
                                 TOTAL ({details.length} lines)
                               </td>
-                              <td className="px-4 py-0.25 text-right font-mono text-xs font-semibold text-[#475569]">
+                              <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">
                                 {details
                                   .reduce((s, d) => s + Math.abs(Number(d.quantity ?? 0)), 0)
                                   .toLocaleString('id-ID')}

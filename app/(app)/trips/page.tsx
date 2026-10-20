@@ -62,11 +62,11 @@ export default async function TripsPage() {
             {trips.map((trip) => (
               <tr key={trip.id} className="hover:bg-gray-50">
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.trip_no}</td>
-                <td className="px-4 py-0.25 text-xs text-[#475569]">{displayVendorName(trip.vendor_name) || '-'}</td>
-                <td className="px-4 py-0.25 text-xs text-[#475569]">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{displayVendorName(trip.vendor_name) || '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.stop_count}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{rupiah(trip.total_expense)}</td>
-                <td className="px-4 py-0.25 text-center text-[#475569]">
+                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[trip.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {trip.status}
                   </span>

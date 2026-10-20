@@ -411,34 +411,34 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 							const reorderIsDue = reorderDate ? reorderDate < today : false
 							return (
 								<tr key={customer.id} className={status.label === 'Critical' ? 'bg-red/5' : status.label === 'Replenish now' ? 'bg-orange/5' : ''}>
-									<td className="whitespace-nowrap px-4 py-0.25 font-medium text-[#475569]">{customer.customer_name}</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{customer.machine_count}</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{status.usage} set</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{(status.usage * 25).toLocaleString('id-ID')} set</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{(status.usage * 6).toLocaleString('id-ID')} set</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{(status.usage * 8).toLocaleString('id-ID')} set</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-muted text-[#475569]">
+									<td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{customer.customer_name}</td>
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">{customer.machine_count}</td>
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">{status.usage} set</td>
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">{(status.usage * 25).toLocaleString('id-ID')} set</td>
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">{(status.usage * 6).toLocaleString('id-ID')} set</td>
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">{(status.usage * 8).toLocaleString('id-ID')} set</td>
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">
 										{latestOrder ? (
 											<span className="font-medium text-text">{formatDate(latestOrder.documentDate)} · {latestOrder.totalSets.toLocaleString('id-ID')} set</span>
 										) : 'Belum ada data'}
 									</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">
 										{coverage !== null ? `${coverage.toFixed(1)} hari` : '—'}
 									</td>
-									<td className="whitespace-nowrap px-4 py-0.25 text-right text-muted text-[#475569]">
+									<td className="px-4 py-0.25 text-xs font-medium text-right whitespace-nowrap text-[#475569]">
 										{stockoutDate ? formatDate(stockoutDate.toISOString()) : '—'}
 									</td>
 									<td className={`whitespace-nowrap px-2.5 py-2 text-right ${reorderIsDue ? 'text-red-600' : 'text-muted'}`}>
 										{reorderDate ? <span className="font-medium">{formatDate(reorderDate.toISOString())}</span> : '—'}
 										{reorderIsDue && <span className="block text-xs">Perlu reorder</span>}
 									</td>
-									<td className="hidden text-[#475569]">
+									<td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
 										<span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `${status.color}22`, color: status.color }}>
 											{status.label}
 											{qty > 0 && <span className="ml-1 opacity-80">· reorder {qty}</span>}
 										</span>
 									</td>
-									<td className="hidden text-[#475569]">
+									<td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
 										<button aria-label={`Edit ${customer.customer_name}`} onClick={() => startEdit(customer)} className="mr-2 text-blue"><Pencil size={16} /></button>
 										<button aria-label={`Hapus ${customer.customer_name}`} onClick={() => removeCustomer(customer.id)} className="text-red"><Trash2 size={16} /></button>
 									</td>
