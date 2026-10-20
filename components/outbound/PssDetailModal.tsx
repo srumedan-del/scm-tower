@@ -199,9 +199,9 @@ export default function PssDetailModal({ pssNo }: Props) {
                               <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">EXPIRED</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-100">
+                          <tbody className="divide-y divide-[#EEF0F4]">
                             {details.map((d, idx) => (
-                              <tr key={String(d.id)} className="hover:bg-blue-50">
+                              <tr key={String(d.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
                                 <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{idx + 1}</td>
                                 <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{d.item_no ?? '-'}</td>
                                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.description || '-'}</td>
