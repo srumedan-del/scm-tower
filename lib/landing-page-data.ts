@@ -180,9 +180,8 @@ export async function getLandingPageData() {
       shipment: activeShipmentCount ?? 0,
       receiving: receivingCount ?? 0,
       outbound: outboundTotal ?? 0,
-      // inventory: inventoryCount ?? 0, // Add when inventory table is available
-      inventory: 0, // Placeholder until inventory table is available
-      operationalReadiness: otd.rate ?? 0,
+      inventory: null, // Inventory source is not available yet.
+      operationalReadiness: otd.rate,
     },
     // Area metrics
     areas: [
@@ -273,8 +272,8 @@ export async function getLandingPageData() {
     ],
     // Additional data for other sections
     customerCount: customers?.length ?? 0,
-    totalMachineHD: (customers as any[]).reduce((s, r) => s + (Number(r.machine_count) || 0), 0),
-    locationCoverage: customers?.length ? Math.round(((customers as any[]).filter((r) => r.latitude != null && r.longitude != null).length) * 100 / customers.length) : 0,
+        totalMachineHD: customers?.length ? (customers as any[]).reduce((s, r) => s + (Number(r.machine_count) || 0), 0) : 0,
+        locationCoverage: customers?.length ? Math.round(((customers as any[]).filter((r) => r.latitude != null && r.longitude != null).length) * 100 / customers.length) : 0,
     lateShipmentsCount: lateShipments?.length ?? 0,
     receivingAI: {
       trend: receivingTrend,
