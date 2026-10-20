@@ -202,7 +202,7 @@ export default async function OutboundPage({
               const delayDays = r.delivery_delay_days ?? null;
 
               return (
-                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={r.id} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
                   <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                     {formatDateTime(r.document_created_at)}
                   </td>
