@@ -105,13 +105,13 @@ export default function ReceivingTable({ rows, details }: Props) {
       <table className="w-full min-w-[980px] whitespace-nowrap text-xs">
               <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Posting date</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTR no</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transfer order</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">From → To</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Shipping agent</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Ship date</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lead time</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Posting date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTR no</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transfer order</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">From → To</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Shipping agent</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Ship date</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lead time</th>
                  </tr>
               </thead>
               <tbody className="divide-y divide-[#EEF0F4]">
@@ -126,8 +126,8 @@ export default function ReceivingTable({ rows, details }: Props) {
 
                   return (
                     <tr key={String(r.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
-                       <td className="whitespace-nowrap px-4 py-2 text-xs font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
-                      <td className="px-4 py-2 text-xs font-medium">
+                       <td className="whitespace-nowrap px-4 py-1.5 text-xs font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
+                      <td className="px-4 py-1.5 text-xs font-medium">
                         <button
                           type="button"
                           onClick={() => setSelectedPtr(ptr)}
@@ -137,10 +137,10 @@ export default function ReceivingTable({ rows, details }: Props) {
                           {ptr || '-'}
                         </button>
                       </td>
-                      <td className="px-4 py-2 text-xs font-medium text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
-                      <td className="px-4 py-2 text-xs font-medium text-[#475569]">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
-                      <td className="px-4 py-2 text-xs font-medium text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
-                                        <td className="whitespace-nowrap px-4 py-2 text-xs font-medium text-[#475569]">
+                      <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
+                      <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
+                      <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
+                                        <td className="whitespace-nowrap px-4 py-1.5 text-xs font-medium text-[#475569]">
                                          {editRowId === r.id ? (
                                            <div className="flex items-center gap-1">
                                              <input
@@ -182,7 +182,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                                             </button>
                                           )}
                                         </td>
-                                        <td className="whitespace-nowrap px-4 py-2 text-right">
+                                        <td className="whitespace-nowrap px-4 py-1.5 text-right">
                                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${ltColor}`}>{lt} hari</span>
                                          </td>
                  </tr>
