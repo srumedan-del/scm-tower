@@ -8,3 +8,10 @@ out/
 tsconfig.tsbuildinfo
 ~$*
 .env
+
+# AI tooling / editor config (not part of app source)
+.claude/
+.continue/
+.kombai/
+.cursor/
+PR_BODY.md

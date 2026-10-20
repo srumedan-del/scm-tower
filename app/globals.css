@@ -1,7 +1,11 @@
 @import "tailwindcss";
+
 @source not "../.kilo/worktrees";
 
 @theme {
+  /* === ONE FONT FOR THE WHOLE APP: Inter (self-hosted via next/font) === */
+  --font-family-sans: var(--font-inter);
+  --font-family-mono: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   /* Apple-inspired Design System - UI/UX Pro Max */
   /* Primitive Colors - Apple System Colors */
   --color-apple-blue: #007AFF;
@@ -197,7 +201,7 @@ html {
 body {
   background: var(--color-background-secondary);
   color: var(--color-foreground-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+  font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

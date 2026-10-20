@@ -428,17 +428,17 @@ export default function ShipmentPage() {
                 <col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-36" />
                 <col className="w-28" /><col className="w-28" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-orange-50 border-b"><tr>
-                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">PSS / CD No.</th>
-                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Document Date Time</th>
-                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Customer</th>
-                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Kota Tujuan</th>
-                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Nomor Resi</th>
-                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Waktu Serah Terima</th>
-                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Biaya Pengiriman</th>
-                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Status</th>
-                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Penerimaan</th>
-              </tr></thead>
+              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border"><tr>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">PSS / CD No.</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Document Date Time</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Customer</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Kota Tujuan</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Nomor Resi</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Waktu Serah Terima</th>
+                              <th className="text-right px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Biaya Pengiriman</th>
+                              <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Status</th>
+                              <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Penerimaan</th>
+                            </tr></thead>
               <tbody className="divide-y divide-border">
                 {loadingRetail && <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
                 {!loadingRetail && retailInTransit.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">Tidak ada shipment Retail yang sedang dalam perjalanan.</td></tr>}

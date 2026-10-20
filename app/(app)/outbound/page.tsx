@@ -153,24 +153,24 @@ export default async function OutboundPage({
             <col className="w-[14%]" />
             <col className="w-[9%]" />
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
+              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
                 DOCUMENT DATE TIME
               </th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
+              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
                 PSS NO
               </th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
+              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
                 ORDER NO
               </th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900">
+              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
                 CUSTOMER NAME
               </th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
+              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
                 MTA
               </th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-900 whitespace-nowrap">
+              <th className="text-right px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
                 DELAY
               </th>
             </tr>
@@ -182,7 +182,7 @@ export default async function OutboundPage({
               const delayDays = r.delivery_delay_days ?? null
 
               return (
-                <tr key={r.id} className="border-t border-border align-middle hover:bg-blue-50">
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2.5 text-xs whitespace-nowrap">
                     {formatDateTime(r.document_created_at)}
                   </td>
@@ -193,8 +193,8 @@ export default async function OutboundPage({
                     {String(r.order_no ?? '-').toUpperCase()}
                   </td>
                   <td className="px-4 py-2.5 text-xs">
-                    <div className="truncate font-medium text-gray-700">
-                      <span className="mr-1.5 text-[10px] font-normal text-gray-400">
+                    <div className="truncate font-medium text-text">
+                      <span className="mr-1.5 text-[10px] font-normal text-text-muted">
                         {r.customer_no ?? ''}
                       </span>
                       {String(r.customer_name ?? '-')}
@@ -213,7 +213,7 @@ export default async function OutboundPage({
                         {delayDays} HARI
                       </span>
                     ) : (
-                      <span className="text-gray-400 text-xs">-</span>
+                      <span className="text-text-muted text-xs">-</span>
                     )}
                   </td>
                 </tr>
@@ -221,7 +221,7 @@ export default async function OutboundPage({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted text-sm">
                   {customer
                     ? 'TIDAK ADA DATA UNTUK CUSTOMER YANG DICARI'
                     : months.length > 0

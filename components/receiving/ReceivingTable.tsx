@@ -102,89 +102,88 @@ export default function ReceivingTable({ rows, details }: Props) {
 
   return (
     <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-2rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-      <table className="w-full min-w-[980px] whitespace-nowrap text-sm">
-        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
-          <tr>
-            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Posting date</th>
-            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">PTR no</th>
-            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Transfer order</th>
-            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">From → To</th>
-            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Shipping agent</th>
-            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Ship date</th>
-            <th className="px-5 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Lead time</th>
-           </tr>
-         </thead>
-        <tbody className="divide-y divide-[#EEF0F4]">
-          {rows.map((r) => {
-            const ptr = String(r.ptr_no ?? '').trim().toUpperCase()
-            const shipmentDate = r.shipment_date ? new Date(r.shipment_date) : null
-            const postingDate = r.posting_date ? new Date(r.posting_date) : null
-            const lt = (shipmentDate && postingDate && !isNaN(shipmentDate.getTime()) && !isNaN(postingDate.getTime()))
-              ? Math.ceil((postingDate.getTime() - shipmentDate.getTime()) / (1000 * 60 * 60 * 24))
-              : 0
-             const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt >= 11 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+      <table className="w-full min-w-[980px] whitespace-nowrap text-xs">
+              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Posting date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTR no</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transfer order</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">From → To</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Shipping agent</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Ship date</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lead time</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EEF0F4]">
+                {rows.map((r) => {
+                  const ptr = String(r.ptr_no ?? '').trim().toUpperCase()
+                  const shipmentDate = r.shipment_date ? new Date(r.shipment_date) : null
+                  const postingDate = r.posting_date ? new Date(r.posting_date) : null
+                  const lt = (shipmentDate && postingDate && !isNaN(shipmentDate.getTime()) && !isNaN(postingDate.getTime()))
+                    ? Math.ceil((postingDate.getTime() - shipmentDate.getTime()) / (1000 * 60 * 60 * 24))
+                    : 0
+                   const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt >= 11 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
 
-            return (
-              <tr key={String(r.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
-                 <td className="whitespace-nowrap px-5 py-1 text-sm font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
-                <td className="px-5 py-1 font-mono text-sm font-medium">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPtr(ptr)}
-                    className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1 font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                    disabled={pendingAction}
-                  >
-                    {ptr || '-'}
-                  </button>
-                </td>
-                <td className="px-5 py-1 font-mono text-sm text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
-                <td className="px-5 py-1 text-sm font-medium text-[#334155]">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
-                <td className="px-5 py-1 text-sm text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
-                 <td className="whitespace-nowrap px-5 py-1 text-sm">
-                   {editRowId === r.id ? (
-                     <div className="flex items-center gap-1">
-                       <input
-                         type="date"
-                         value={editDate}
-                         onChange={(e) => setEditDate(e.target.value)}
-                         className="w-36 rounded-lg border border-[#D8DEE8] px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                         disabled={pendingAction}
-                       />
-                       <button
-                         type="button"
-                         onClick={saveShipmentDate}
-                         disabled={pendingAction}
-                         className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50"
-                         title="Simpan"
-                       >
-                         <Check className="h-3 w-3" />
-                       </button>
-                       <button
-                         type="button"
-                         onClick={cancelEditShipment}
-                         disabled={pendingAction}
-                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
-                         title="Batal"
-                       >
-                         <XIcon className="h-3 w-3" />
-                       </button>
-                     </div>
-                   ) : (
-                     <button
-                       type="button"
-                       onClick={() => startEditShipment(r)}
-                       disabled={pendingAction}
-                       className="cursor-pointer rounded-lg border border-transparent bg-[#F1F5F9] px-2.5 py-1 font-mono text-sm text-[#475569] transition-colors hover:border-[#D8DEE8] hover:bg-white"
-                       title="Edit Ship Date"
-                     >
-                       <Calendar className="h-3 w-3 inline mr-1" />
-                       {formatDate(r.shipment_date)}
-                      </button>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-1 text-right">
-                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${ltColor}`}>{lt} hari</span>
-                   </td>
+                  return (
+                    <tr key={String(r.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
+                       <td className="whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
+                      <td className="px-4 py-2.5 text-xs font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPtr(ptr)}
+                          className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1 font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                          disabled={pendingAction}
+                        >
+                          {ptr || '-'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs font-medium text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
+                                        <td className="px-4 py-2.5 text-xs font-medium text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
+                                        <td className="whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#475569]">
+                                         {editRowId === r.id ? (
+                                           <div className="flex items-center gap-1">
+                                             <input
+                                               type="date"
+                                               value={editDate}
+                                               onChange={(e) => setEditDate(e.target.value)}
+                                               className="w-32 rounded-lg border border-[#D8DEE8] px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                               disabled={pendingAction}
+                                             />
+                                             <button
+                                               type="button"
+                                               onClick={saveShipmentDate}
+                                               disabled={pendingAction}
+                                               className="rounded-md p-1 text-emerald-700 hover:bg-emerald-50"
+                                               title="Simpan"
+                                             >
+                                               <Check className="h-3 w-3" />
+                                             </button>
+                                             <button
+                                               type="button"
+                                               onClick={cancelEditShipment}
+                                               disabled={pendingAction}
+                                               className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+                                               title="Batal"
+                                             >
+                                               <XIcon className="h-3 w-3" />
+                                             </button>
+                                           </div>
+                                         ) : (
+                                           <button
+                                             type="button"
+                                             onClick={() => startEditShipment(r)}
+                                             disabled={pendingAction}
+                                             className="cursor-pointer rounded-lg border border-transparent bg-[#F1F5F9] px-2 py-1 text-xs text-[#475569] transition-colors hover:border-[#D8DEE8] hover:bg-white"
+                                             title="Edit Ship Date"
+                                           >
+                                             <Calendar className="h-3 w-3 inline mr-1" />
+                                             {formatDate(r.shipment_date)}
+                                            </button>
+                                          )}
+                                        </td>
+                                        <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${ltColor}`}>{lt} hari</span>
+                                         </td>
                  </tr>
             )
           })}

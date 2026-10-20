@@ -46,25 +46,25 @@ export default async function Issues() {
 
       <div className="bg-white border border-border rounded-xl overflow-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 border-b border-border">
             <tr>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900 whitespace-nowrap">NO</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900">KATEGORI</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900">JUDUL</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900">PIC</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900">IMPACT</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900">STATUS</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900 whitespace-nowrap">UMUR</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-bold text-gray-900">DUE</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text whitespace-nowrap">NO</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">KATEGORI</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">JUDUL</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">PIC</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">IMPACT</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">STATUS</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text whitespace-nowrap">UMUR</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">DUE</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {sorted.map((r: any) => (
               <IssueRow key={r.id} issue={r} />
             ))}
             {!sorted.length && (
               <tr>
-                <td colSpan={8} className="p-6 text-center text-gray-500">Belum ada issue.</td>
+                <td colSpan={8} className="px-4 py-12 text-center text-muted text-sm">Belum ada issue.</td>
               </tr>
             )}
           </tbody>

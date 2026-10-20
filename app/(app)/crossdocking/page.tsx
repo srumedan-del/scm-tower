@@ -52,7 +52,7 @@ export default function CrossdockingPage() {
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">CROSSDOCKING</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-muted mt-0.5">
             Shipment dari Kantor Pusat via Medan — input manual
           </p>
         </div>
@@ -67,8 +67,8 @@ export default function CrossdockingPage() {
       </header>
 
       <nav className="flex w-fit rounded-lg border border-border bg-white p-1" aria-label="Crossdocking submenu">
-        <button type="button" onClick={() => setActiveView('crossdocking')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'crossdocking' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>Crossdocking</button>
-        <button type="button" onClick={() => setActiveView('pts')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'pts' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>PTS</button>
+        <button type="button" onClick={() => setActiveView('crossdocking')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'crossdocking' ? 'bg-indigo-600 text-white' : 'text-text hover:bg-gray-100'}`}>Crossdocking</button>
+        <button type="button" onClick={() => setActiveView('pts')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'pts' ? 'bg-indigo-600 text-white' : 'text-text hover:bg-gray-100'}`}>PTS</button>
       </nav>
 
       {activeView === 'pts' ? <PtsPanel /> : <>
