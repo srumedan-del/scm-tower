@@ -78,7 +78,7 @@ export default async function Inventory() {
               <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-[#EEF0F4]">
             {data?.map((r: any) => (
               <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-0.25 text-text text-[#475569]">{r.sku_code}</td>

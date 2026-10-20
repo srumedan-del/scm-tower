@@ -31,7 +31,7 @@ export default async function SkuPage() {
                 <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ACTIVE</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-[#EEF0F4]">
               {skus.map((s:any) => (
                 <SkuRow key={s.id} sku={s}/>
               ))}

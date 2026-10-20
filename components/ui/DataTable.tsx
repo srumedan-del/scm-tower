@@ -81,7 +81,7 @@ export function DataTable<T extends Record<string, any>>({
   if (loading) {
     return (
       <div className="bg-white border border-border rounded-xl overflow-hidden">
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-[#EEF0F4]">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="p-4 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -127,7 +127,7 @@ export function DataTable<T extends Record<string, any>>({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-[#EEF0F4]">
               {data.map(row => {
                 const rowId = row[rowKey]
                 const isExpanded = expandedRows.has(rowId)
@@ -183,7 +183,7 @@ export function DataTable<T extends Record<string, any>>({
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-border">
+        <div className="md:hidden divide-y divide-[#EEF0F4]">
           {data.map(row => {
             const rowId = row[rowKey]
             const isExpanded = expandedRows.has(rowId)

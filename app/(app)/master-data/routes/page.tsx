@@ -29,7 +29,7 @@ export default async function RoutesPage() {
                 <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">NOTES</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-[#EEF0F4]">
               {routes.map((r:any) => <RouteRow key={r.id} route={r} />)}
               {routes.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">BELUM ADA RUTE.</td></tr>}
             </tbody>

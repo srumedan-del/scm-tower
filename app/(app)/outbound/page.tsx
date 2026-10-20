@@ -175,7 +175,7 @@ export default async function OutboundPage({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-[#EEF0F4]">
             {rows.map((r: any) => {
               const pssNo = String(r.pss_no ?? r.shipment_no ?? '-')
               const isLate = r.is_late === true

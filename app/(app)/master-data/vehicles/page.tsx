@@ -28,7 +28,7 @@ export default async function VehiclesPage() {
                 <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-[#EEF0F4]">
               {fleet.map((r:any) => <FleetRow key={r.id} fleet={r} />)}
               {fleet.length===0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">BELUM ADA ARMADA.</td></tr>}
             </tbody>

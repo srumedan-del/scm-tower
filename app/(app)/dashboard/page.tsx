@@ -502,7 +502,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <Link href="/shipment" className="text-indigo-600 hover:underline">Tambah di Shipment Tracking</Link>.
             </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-[#EEF0F4]">
               {activeShipments.map((s) => {
                 const isUrgent = s.promised_delivery_date
                   ? new Date(s.promised_delivery_date) <= new Date()
@@ -540,7 +540,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {openIssues.length === 0 ? (
             <div className="p-6 text-sm text-gray-500 text-center">Tidak ada open issue. 🎉</div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-[#EEF0F4]">
               {openIssues.map((iss: any) => (
                 <li key={iss.issue_no} className="flex items-start gap-3 p-3 text-sm">
                   <span className={`text-xs px-2 py-0.5 rounded whitespace-nowrap font-medium ${

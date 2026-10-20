@@ -156,7 +156,7 @@ export default function PtsPanel() {
               <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-[#EEF0F4]">
             {loading && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Memuat PTS...</td></tr>}
             {!loading && rows.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Belum ada PTS. Klik <strong>Upload PTS</strong> untuk mulai.</td></tr>

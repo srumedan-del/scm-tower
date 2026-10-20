@@ -235,7 +235,7 @@ export default function ShipmentPage() {
                   <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status Dokumen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-[#EEF0F4]">
                 {loadingUT && (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
                 )}
@@ -350,7 +350,7 @@ export default function ShipmentPage() {
                                 <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">POD</th>
                               </tr>
                             </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-[#EEF0F4]">
                 {loading && (
                   <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Memuat...</td></tr>
                 )}
@@ -439,7 +439,7 @@ export default function ShipmentPage() {
                               <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
                               <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Penerimaan</th>
                             </tr></thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-[#EEF0F4]">
                 {loadingRetail && <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
                 {!loadingRetail && retailInTransit.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">Tidak ada shipment Retail yang sedang dalam perjalanan.</td></tr>}
                 {retailInTransit.map(r => (

@@ -398,7 +398,7 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 									<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Reorder ideal</th>
 						</tr>
 					</thead>
-					<tbody className="divide-y divide-border">
+					<tbody className="divide-y divide-[#EEF0F4]">
 						{listCustomers.map((customer) => {
 							const status = statusFor(customer)
 							const qty = reorderQty(customer, status.usage)

@@ -58,7 +58,7 @@ export default async function Issues() {
               <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DUE</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-[#EEF0F4]">
             {sorted.map((r: any) => (
               <IssueRow key={r.id} issue={r} />
             ))}
