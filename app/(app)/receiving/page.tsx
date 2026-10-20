@@ -90,10 +90,12 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
   const packaging = await getReceivingPackaging(itemNos)
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">RECEIVING / INBOUND</h1>
-        <div className="flex items-center gap-3">
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#172033] sm:text-3xl">Receiving &amp; Inbound</h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Suspense>
             <ReceivingFilter months={availableMonths} />
           </Suspense>

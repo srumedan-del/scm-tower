@@ -141,7 +141,7 @@ function LoginForm() {
           >
             {loading
               ? <><Loader2 size={16} aria-hidden="true" className="animate-spin" /> Memeriksa...</>
-              : <><LogIn size={16} aria-hidden="true" /> oke</>
+              : <><LogIn size={16} aria-hidden="true" /> Masuk</>
             }
           </motion.button>
         </motion.form>
