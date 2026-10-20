@@ -80,7 +80,7 @@ export default async function Inventory() {
           </thead>
           <tbody className="divide-y divide-[#EEF0F4]">
             {data?.map((r: any) => (
-              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={r.id} className="group border-t border-[#EEF0F4] hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.sku_code}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.item_name}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.warehouse_code}</td>

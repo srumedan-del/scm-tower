@@ -60,7 +60,7 @@ export default async function TripsPage() {
               <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Belum ada trip v1.6.</td></tr>
             )}
             {trips.map((trip) => (
-              <tr key={trip.id} className="hover:bg-gray-50">
+              <tr key={trip.id} className="group border-t border-[#EEF0F4] hover:bg-gray-50">
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.trip_no}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{displayVendorName(trip.vendor_name) || '-'}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>

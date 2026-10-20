@@ -414,7 +414,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       'In Transit': 'bg-orange-100 text-orange-700',
                     }
                     return (
-                      <tr key={s.id} className="bg-white hover:bg-red-50 transition-colors">
+                      <tr key={s.id} className="group border-t border-[#EEF0F4] bg-white hover:bg-red-50 transition-colors">
                         <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${urgency}`}>
                             <AlertTriangle size={10} />

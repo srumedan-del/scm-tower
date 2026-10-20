@@ -404,7 +404,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {details.map(d => (
-                    <tr key={d._key} className="hover:bg-gray-50">
+                    <tr key={d._key} className="group border-t border-[#EEF0F4] hover:bg-gray-50">
                       {/* Ketik kode produk; daftar menampilkan kode dan nama SKU. */}
                       <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                         <input

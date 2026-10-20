@@ -162,7 +162,7 @@ export default function PtsPanel() {
               <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Belum ada PTS. Klik <strong>Upload PTS</strong> untuk mulai.</td></tr>
             )}
             {rows.map(row => (
-              <tr key={row.id} className="hover:bg-blue-50">
+              <tr key={row.id} className="group border-t border-[#EEF0F4] hover:bg-blue-50">
                 <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pts_no}</td>
                 <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{row.document_date ?? '-'}</td>
                 <td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><div className="truncate" title={row.customer_name ?? undefined}>{row.customer_name ?? '-'}</div></td>
