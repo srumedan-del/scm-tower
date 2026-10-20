@@ -218,21 +218,21 @@ export default function ShipmentPage() {
                 <col className="w-44" /><col className="w-32" /><col className="w-32" />
                 <col className="w-56" /><col className="w-52" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-orange-50 border-b">
+              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 w-8">
                     {untracked.length > 0 && (
                       <input type="checkbox" checked={allUtChecked} onChange={toggleUtAll}
-                        className="rounded border-gray-300" title="Pilih semua" />
+                        className="rounded border-border text-text" title="Pilih semua" />
                     )}
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Doc Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">PSS No.</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Customer</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Kota Tujuan</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">Promised Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Muatan</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-700">Status Dokumen</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Doc Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700 whitespace-nowrap">PSS No.</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Customer</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Kota Tujuan</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Promised Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Muatan</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Status Dokumen</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -338,18 +338,18 @@ export default function ShipmentPage() {
                 <col className="w-44" /><col className="w-44" /><col className="w-40" />
                 <col className="w-28" /><col className="w-24" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-gray-50 border-b">
-                <tr>
-								<th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Trip ID</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">PSS / CD No.</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Document Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Transporter</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Driver</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">POD</th>
-                </tr>
-              </thead>
+              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border">
+                              <tr>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Trip ID</th>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">PSS / CD No.</th>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Document Date</th>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Customer</th>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Transporter</th>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Driver</th>
+                                <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Status</th>
+                                <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">POD</th>
+                              </tr>
+                            </thead>
               <tbody className="divide-y divide-border">
                 {loading && (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>

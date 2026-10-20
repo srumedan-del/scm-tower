@@ -42,9 +42,9 @@ export function Modal({ isOpen, onClose, title, message, type = 'info' }: ModalP
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-md bg-white sm:rounded-xl shadow-[var(--shadow-xl)] sm:m-0 m-0 border-t-4 border-t-blue sm:border-t-0 transition-interactive"
-        onClick={(e) => e.stopPropagation()}
-      >
+                    className="relative w-full sm:max-w-md bg-white sm:rounded-xl shadow-[var(--shadow-level-3)] sm:m-0 m-0 border-t-4 border-t-blue-600 sm:border-t-0 transition-interactive"
+                    onClick={(e) => e.stopPropagation()}
+                  >
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div className={`mt-0.5 flex-shrink-0 ${cfg.icon}`}>

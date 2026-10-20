@@ -109,121 +109,121 @@ export function DataTable<T extends Record<string, any>>({
   }
 
   return (
-    <div className="bg-white border border-border rounded-xl overflow-hidden">
-      {/* Desktop View */}
-      <div className="data-list-scroll hidden md:block overflow-x-auto">
-        <table className={`w-full text-sm ${noWrap ? 'whitespace-nowrap' : ''}`}>
-          <thead className="bg-gray-50 border-b border-border sticky top-0 z-10">
-            <tr>
-              {expandable && <th className="px-4 py-3 text-left"></th>}
-              {visibleCols.map(col => (
-                <th
-                  key={String(col.key)}
-                  className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wide whitespace-nowrap"
-                  style={{ width: col.width }}
-                >
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {data.map(row => {
-              const rowId = row[rowKey]
-              const isExpanded = expandedRows.has(rowId)
-              return (
-                <Fragment key={rowId}>
-                  <tr
-                    onClick={() => onRowClick?.(row)}
-                    className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
-                  >
-                    {expandable && (
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={e => {
-                            e.stopPropagation()
-                            toggleExpand(rowId)
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        {/* Desktop View */}
+        <div className="data-list-scroll hidden md:block overflow-x-auto">
+          <table className={`w-full text-sm ${noWrap ? 'whitespace-nowrap' : ''}`}>
+            <thead className="bg-gray-50 border-b border-border sticky top-0 z-10">
+              <tr>
+                {expandable && <th className="px-4 py-3 text-left"></th>}
+                {visibleCols.map(col => (
+                  <th
+                          key={String(col.key)}
+                          className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap"
+                          style={{ width: col.width }}
                         >
-                          <ChevronDown
-                            size={16}
-                            className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                          />
-                        </button>
-                      </td>
-                    )}
-                    {visibleCols.map(col => (
-                      <td
-                        key={String(col.key)}
-                        className={`px-4 py-3 text-sm ${isNumericTableValue(row[col.key]) ? 'text-right font-medium tabular-nums text-gray-700 numeric-cell' : 'text-gray-700'}`}
-                        style={{ width: col.width }}
-                        data-numeric={isNumericTableValue(row[col.key]) ? 'true' : 'false'}
-                      >
-                        {col.render
-                          ? col.render(row[col.key], row)
-                          : isNumericTableValue(row[col.key])
-                            ? formatNumericTableValue(row[col.key])
-                            : String(row[col.key] ?? '-')}
-                      </td>
-                    ))}
-                  </tr>
-                  {expandable && isExpanded && (
-                    <tr className="bg-gray-50 border-t border-gray-100">
-                      <td colSpan={visibleCols.length + (expandable ? 1 : 0)} className="px-4 py-4">
-                        {expandable.render(row)}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden divide-y divide-border">
-        {data.map(row => {
-          const rowId = row[rowKey]
-          const isExpanded = expandedRows.has(rowId)
-          return (
-            <div key={rowId} className="p-4">
-              <div
-                onClick={() => {
-                  onRowClick?.(row)
-                  if (expandable) toggleExpand(rowId)
-                }}
-                className={`grid grid-cols-2 gap-3 ${onRowClick || expandable ? 'cursor-pointer' : ''}`}
-              >
-                {visibleCols.slice(0, 4).map(col => (
-                  <div key={String(col.key)} className="min-w-0">
-                    <div className="text-xs font-bold text-muted mb-1">{col.label}</div>
-                    <div className="text-sm text-text truncate">
-                      {col.render ? col.render(row[col.key], row) : row[col.key] ?? '-'}
-                    </div>
-                  </div>
+                          {col.label}
+                        </th>
                 ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {data.map(row => {
+                const rowId = row[rowKey]
+                const isExpanded = expandedRows.has(rowId)
+                return (
+                  <Fragment key={rowId}>
+                    <tr
+                      onClick={() => onRowClick?.(row)}
+                      className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                    >
+                      {expandable && (
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              toggleExpand(rowId)
+                            }}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          >
+                            <ChevronDown
+                              size={16}
+                              className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                        </td>
+                      )}
+                      {visibleCols.map(col => (
+                                            <td
+                                              key={String(col.key)}
+                                              className={`px-4 py-3 text-sm ${isNumericTableValue(row[col.key]) ? 'text-right font-medium text-text numeric-cell' : 'text-text'}`}
+                                              style={{ width: col.width }}
+                                              data-numeric={isNumericTableValue(row[col.key]) ? 'true' : 'false'}
+                                            >
+                          {col.render
+                            ? col.render(row[col.key], row)
+                            : isNumericTableValue(row[col.key])
+                              ? formatNumericTableValue(row[col.key])
+                              : String(row[col.key] ?? '-')}
+                        </td>
+                      ))}
+                    </tr>
+                    {expandable && isExpanded && (
+                      <tr className="bg-gray-50 border-t border-border">
+                        <td colSpan={visibleCols.length + (expandable ? 1 : 0)} className="px-4 py-4">
+                          {expandable.render(row)}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-border">
+          {data.map(row => {
+            const rowId = row[rowKey]
+            const isExpanded = expandedRows.has(rowId)
+            return (
+              <div key={rowId} className="p-4">
+                <div
+                  onClick={() => {
+                    onRowClick?.(row)
+                    if (expandable) toggleExpand(rowId)
+                  }}
+                  className={`grid grid-cols-2 gap-3 ${onRowClick || expandable ? 'cursor-pointer' : ''}`}
+                >
+                  {visibleCols.slice(0, 4).map(col => (
+                    <div key={String(col.key)} className="min-w-0">
+                      <div className="text-xs font-bold text-muted mb-1">{col.label}</div>
+                      <div className="text-sm text-text truncate">
+                        {col.render ? col.render(row[col.key], row) : row[col.key] ?? '-'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {expandable && (
+                  <>
+                    <button
+                      onClick={() => toggleExpand(rowId)}
+                      className="mt-3 text-xs text-blue-600 font-medium flex items-center gap-1"
+                    >
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                      {isExpanded ? 'Tutup' : 'Detail'}
+                    </button>
+                    {isExpanded && <div className="mt-3 pt-3 border-t border-border">{expandable.render(row)}</div>}
+                  </>
+                )}
               </div>
-              {expandable && (
-                <>
-                  <button
-                    onClick={() => toggleExpand(rowId)}
-                    className="mt-3 text-xs text-blue font-medium flex items-center gap-1"
-                  >
-                    <ChevronDown
-                      size={14}
-                      className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                    />
-                    {isExpanded ? 'Tutup' : 'Detail'}
-                  </button>
-                  {isExpanded && <div className="mt-3 pt-3 border-t border-border">{expandable.render(row)}</div>}
-                </>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
-    </div>
-  )
+    )
 }

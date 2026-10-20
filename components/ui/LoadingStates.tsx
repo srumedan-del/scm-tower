@@ -31,13 +31,13 @@ export function EmptyState({ icon = 'box', title, description, action }: EmptySt
         <h3 className="text-sm font-semibold text-text mb-1">{title}</h3>
         {description && <p className="text-xs text-muted mb-4 max-w-xs mx-auto">{description}</p>}
         {action && (
-          <button
-            onClick={action.onClick}
-            className="mt-4 px-4 py-2 bg-blue text-white rounded-lg text-xs font-medium hover:bg-blue/90 transition-colors"
-          >
-            {action.label}
-          </button>
-        )}
+                  <button
+                    onClick={action.onClick}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-500 transition-colors"
+                  >
+                    {action.label}
+                  </button>
+                )}
       </div>
     </div>
   )
