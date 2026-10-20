@@ -242,7 +242,6 @@ function UploadButtonShell({
   onClick,
   alert,
   closeAlert,
-  color = 'indigo',
   children,
 }: {
   label: string
@@ -250,17 +249,14 @@ function UploadButtonShell({
   onClick: () => void
   alert: AlertState
   closeAlert: () => void
-  color?: 'indigo' | 'emerald'
   children: ReactNode
 }) {
-  const colorClasses = color === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'
-
   return (
     <div className="flex flex-col items-end gap-2">
       <button
         type="button"
         onClick={onClick}
-        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${colorClasses}`}
+        className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#D8DEE8] bg-white px-3.5 text-sm font-semibold text-[#334155] shadow-sm transition-colors hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={loading}
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
@@ -366,7 +362,6 @@ export function PtrHeaderUploadButton() {
       onClick={() => inputRef.current?.click()}
       alert={alert}
       closeAlert={closeAlert}
-      color="indigo"
     >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
     </UploadButtonShell>
@@ -530,7 +525,6 @@ export function PtrDetailUploadButton() {
       onClick={() => inputRef.current?.click()}
       alert={alert}
       closeAlert={closeAlert}
-      color="emerald"
     >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
     </UploadButtonShell>
@@ -619,7 +613,6 @@ export default function ReceivingUploadButton() {
       onClick={() => inputRef.current?.click()}
       alert={alert}
       closeAlert={closeAlert}
-      color="indigo"
     >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
     </UploadButtonShell>

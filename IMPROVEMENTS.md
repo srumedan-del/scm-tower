@@ -53,7 +53,7 @@ Badge primitive dengan tone & size variants:
 | `.hover-lift` | `app/globals.css` | Button (primary/danger), Login submit |
 | `.transition-interactive` | `app/globals.css` | Button, Modal, Login form |
 | `.transition-smooth` | var(--transition-smooth) | Card, Modal |
-| `.shadow-[var(--shadow-*)]` | `app/globals.css` | Modal, Login submit |
+| Design-token shadow utilities | `app/globals.css` | Modal, Login submit |
 
 ## Cara Rollback
 

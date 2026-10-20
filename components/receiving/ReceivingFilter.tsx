@@ -12,7 +12,7 @@ export default function ReceivingFilter({ months }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const selected = searchParams.getAll('month')
@@ -55,20 +55,22 @@ export default function ReceivingFilter({ months }: Props) {
 
   return (
     <div className="relative inline-flex items-center gap-2">
-      <div
+      <button
+        type="button"
         ref={triggerRef}
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm cursor-pointer hover:bg-gray-50"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex h-10 items-center gap-2 rounded-xl border border-[#D8DEE8] bg-white px-3.5 text-sm font-semibold text-[#334155] shadow-sm transition-colors hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
-        <Calendar className="h-4 w-4 text-gray-500" />
+        <Calendar className="h-4 w-4 text-[#64748B]" />
         <span>{selected.length > 0 ? `${selected.length} bulan` : 'Pilih Bulan'}</span>
-        <ChevronDown className="h-3 w-3 text-gray-400" />
-      </div>
+        <ChevronDown className="h-3 w-3 text-[#64748B]" />
+      </button>
 
       {selected.length > 0 && (
         <button
           onClick={clearAll}
-          className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+          className="flex h-10 items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#64748B] transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
         >
           <Filter className="h-3 w-3 rotate-180" />
           Reset

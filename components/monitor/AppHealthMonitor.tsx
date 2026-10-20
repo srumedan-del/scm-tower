@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Activity, AlertTriangle, Wifi, WifiOff } from 'lucide-react'
 
 type LogEntry = {
@@ -19,6 +20,7 @@ type Snapshot = {
 }
 
 export default function AppHealthMonitor() {
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
   const [snapshot, setSnapshot] = useState<Snapshot>({
     status: 'offline',
@@ -130,6 +132,8 @@ export default function AppHealthMonitor() {
   }, [])
 
   const slowSummary = useMemo(() => snapshot.logs.filter(entry => entry.type === 'fetch' && (entry.durationMs ?? 0) > 2500), [snapshot.logs])
+
+  if (pathname === '/login') return null
 
   return (
     <div style={{ position: 'fixed', right: 12, bottom: 12, zIndex: 99999 }}>

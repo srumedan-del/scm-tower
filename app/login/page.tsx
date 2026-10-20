@@ -2,8 +2,8 @@
 
 import { FormEvent, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, LogIn, AlertCircle, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion'
+import { Mail, Lock, LogIn, AlertCircle, Loader2, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 function LoginForm() {
@@ -11,7 +11,7 @@ function LoginForm() {
   const requestedRedirect = searchParams.get('redirectTo')
   const redirectTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//')
     ? requestedRedirect
-    : '/dashboard'
+    : '/'
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -37,122 +37,118 @@ function LoginForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-end justify-end overflow-hidden bg-surface p-4 sm:p-8">
-      <div className="login-art absolute inset-0" aria-hidden="true" />
-
-      <div className="relative z-10 flex w-full max-w-sm items-center justify-center">
+    <MotionConfig reducedMotion="user">
+      <main className="flex min-h-screen items-center justify-center bg-white px-4 py-10 sm:px-6">
+      <motion.div
+        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="rounded-3xl border border-[#E5E5EA] bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.07)] sm:p-9">
         <motion.form
           onSubmit={signIn}
-          className="w-full px-2 pb-2 pt-4 sm:px-4 sm:pb-4"
-          initial={{ opacity: 0, y: 32, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full"
         >
-        {/* Logo & Heading */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.35 }}
-        >
-          <div className="flex items-center gap-3 mb-5">
-            <motion.div
-              className="grid h-11 w-11 place-items-center rounded-xl bg-blue text-sm font-bold text-white shadow-md shadow-blue/30"
-              whileHover={{ scale: 1.08, rotate: 3 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-            >
-              SC
-            </motion.div>
-            <div>
-              <p className="font-bold text-text text-base leading-tight">SCM Medan</p>
-              <p className="text-xs text-muted">Control Center</p>
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.3 }}
+          >
+            <div className="mb-7 flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-primary text-sm font-bold text-foreground-inverse shadow-sm">
+                <Activity size={24} aria-hidden="true" className="text-foreground-inverse" />
+              </div>
+              <div>
+                <p className="text-base font-semibold leading-tight text-foreground-primary">SCM Control Tower</p>
+                <p className="mt-1 text-xs text-foreground-secondary">Ruang kerja Medan</p>
+              </div>
             </div>
-          </div>
-        </motion.div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground-primary sm:text-3xl">Selamat datang kembali</h1>
+            <p className="mt-2 text-sm leading-6 text-foreground-secondary">Masuk untuk melanjutkan ke ruang kendali operasional.</p>
+          </motion.div>
 
-        <motion.div
-          className="mb-4"
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.22, duration: 0.3 }}
-        >
-          <div className="relative">
-            <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              required
-              type="email"
-              aria-label="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border-0 border-b border-white/70 bg-white/45 pl-10 pr-4 py-2.5 text-sm text-text shadow-sm
-                focus-ring focus:border-blue
-                transition-interactive placeholder:text-muted/60"
-              placeholder="nama@email.com"
-            />
-          </div>
-        </motion.div>
+          <motion.div
+            className="mb-5"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14, duration: 0.3 }}
+          >
+            <label htmlFor="email" className="mb-2 block text-sm font-medium text-foreground-primary">Email</label>
+            <div className="relative">
+              <Mail size={16} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-secondary" />
+              <input
+                id="email"
+                required
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-border-default bg-foreground-inverse px-4 py-3 pl-10 text-sm text-foreground-primary shadow-sm outline-none transition-interactive placeholder:text-foreground-tertiary/60 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
+                placeholder="nama@email.com"
+              />
+            </div>
+          </motion.div>
 
-        <motion.div
-          className="mb-5"
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.28, duration: 0.3 }}
-        >
-          <div className="relative">
-            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              required
-              type="password"
-              aria-label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border-0 border-b border-white/70 bg-white/45 pl-10 pr-4 py-2.5 text-sm text-text shadow-sm
-                focus-ring focus:border-blue
-                transition-interactive placeholder:text-muted/60"
-              placeholder="••••••••"
-            />
-          </div>
-        </motion.div>
+          <motion.div
+            className="mb-6"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <label htmlFor="password" className="mb-2 block text-sm font-medium text-foreground-primary">Password</label>
+            <div className="relative">
+              <Lock size={16} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-secondary" />
+              <input
+                id="password"
+                required
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-border-default bg-foreground-inverse px-4 py-3 pl-10 text-sm text-foreground-primary shadow-sm outline-none transition-interactive placeholder:text-foreground-tertiary/60 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
+                placeholder="Masukkan password"
+              />
+            </div>
+          </motion.div>
 
-        {/* Error message */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              className="mb-4 flex items-start gap-2.5 rounded-lg bg-red/8 border border-red/20 px-3.5 py-2.5"
-              initial={{ opacity: 0, y: -8, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -8, height: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <AlertCircle size={15} className="text-red mt-0.5 shrink-0" />
-              <p className="text-sm text-red">{error}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                role="alert"
+                className="mb-4 flex items-start gap-2.5 rounded-xl border border-status-error/20 bg-status-error/10 px-3.5 py-3"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+              >
+                <AlertCircle size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-status-error" />
+                <p className="text-sm text-status-error">{error}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {/* Submit button */}
-        <motion.button
-          disabled={loading}
-          type="submit"
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue py-2.5 text-sm
-            font-semibold text-white shadow-[var(--shadow-md)]
-            hover:bg-blue/90 hover-lift
-            disabled:opacity-60 disabled:cursor-not-allowed
-            transition-interactive focus-ring"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.3 }}
-          whileHover={{ y: -1, boxShadow: '0 8px 24px rgba(39,131,222,0.3)' }}
-          whileTap={{ scale: 0.98 }}
-        >
-          {loading
-            ? <><Loader2 size={15} className="animate-spin" /> Memeriksa...</>
-            : <><LogIn size={15} /> Masuk</>
-          }
-        </motion.button>
+          <motion.button
+            disabled={loading}
+            type="submit"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-primary text-foreground-inverse text-sm font-semibold transition-interactive hover:bg-brand-primary/90 focus-ring disabled:cursor-not-allowed disabled:opacity-60"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.26, duration: 0.3 }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.99 }}
+          >
+            {loading
+              ? <><Loader2 size={16} aria-hidden="true" className="animate-spin" /> Memeriksa...</>
+              : <><LogIn size={16} aria-hidden="true" /> oke</>
+            }
+          </motion.button>
         </motion.form>
-      </div>
-    </div>
+        </div>
+      </motion.div>
+      </main>
+    </MotionConfig>
   )
 }
 

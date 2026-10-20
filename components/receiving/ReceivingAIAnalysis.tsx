@@ -110,7 +110,7 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
       <button
         type="button"
         onClick={startAnalysis}
-        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+        className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#3B5BDB] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F4FC5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         <Sparkles className="h-4 w-4" />
         Analisis AI

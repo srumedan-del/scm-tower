@@ -101,21 +101,20 @@ export default function ReceivingTable({ rows, details }: Props) {
   }
 
   return (
-    <div className="data-list-scroll overflow-auto bg-white border border-border rounded-xl">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-gray-50 border-b">
-          
+    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-2rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <table className="w-full min-w-[980px] whitespace-nowrap text-sm">
+        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
           <tr>
-            <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">POSTING DATE</th>
-            <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">PTR NO</th>
-            <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">TRANSFER ORDER</th>
-            <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">FROM → TO</th>
-            <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">SHIPPING AGENT</th>
-            <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">SHIP DATE</th>
-            <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LEAD TIME</th>
+            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Posting date</th>
+            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">PTR no</th>
+            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Transfer order</th>
+            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">From → To</th>
+            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Shipping agent</th>
+            <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Ship date</th>
+            <th className="px-5 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Lead time</th>
            </tr>
          </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-[#EEF0F4]">
           {rows.map((r) => {
             const ptr = String(r.ptr_no ?? '').trim().toUpperCase()
             const shipmentDate = r.shipment_date ? new Date(r.shipment_date) : null
@@ -126,36 +125,36 @@ export default function ReceivingTable({ rows, details }: Props) {
              const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt >= 11 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
 
             return (
-              <tr key={String(r.id)} className="h-8 border-t border-border hover:bg-blue-50 align-top">
-                 <td className="px-4 py-2.5 text-xs font-medium">{formatDate(r.posting_date)}</td>
-                <td className="px-4 py-2.5 font-mono text-xs font-medium">
+              <tr key={String(r.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
+                 <td className="whitespace-nowrap px-5 py-1 text-sm font-medium text-[#475569]">{formatDate(r.posting_date)}</td>
+                <td className="px-5 py-1 font-mono text-sm font-medium">
                   <button
                     type="button"
                     onClick={() => setSelectedPtr(ptr)}
-                    className="cursor-pointer rounded bg-sky-50 px-2 py-1 font-semibold text-sky-700 hover:bg-sky-100"
+                    className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1 font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     disabled={pendingAction}
                   >
                     {ptr || '-'}
                   </button>
                 </td>
-                <td className="px-4 py-2.5 font-mono text-xs">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
-                <td className="px-4 py-2.5 text-xs">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
-                <td className="px-4 py-2.5 text-xs">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
-                 <td className="px-4 py-2.5 text-xs">
+                <td className="px-5 py-1 font-mono text-sm text-[#475569]">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
+                <td className="px-5 py-1 text-sm font-medium text-[#334155]">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
+                <td className="px-5 py-1 text-sm text-[#475569]">{String(r.shipping_agent_code ?? '-').toUpperCase()}</td>
+                 <td className="whitespace-nowrap px-5 py-1 text-sm">
                    {editRowId === r.id ? (
                      <div className="flex items-center gap-1">
                        <input
                          type="date"
                          value={editDate}
                          onChange={(e) => setEditDate(e.target.value)}
-                         className="border border-gray-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                         className="w-36 rounded-lg border border-[#D8DEE8] px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                          disabled={pendingAction}
                        />
                        <button
                          type="button"
                          onClick={saveShipmentDate}
                          disabled={pendingAction}
-                         className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+                         className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50"
                          title="Simpan"
                        >
                          <Check className="h-3 w-3" />
@@ -164,7 +163,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                          type="button"
                          onClick={cancelEditShipment}
                          disabled={pendingAction}
-                         className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
                          title="Batal"
                        >
                          <XIcon className="h-3 w-3" />
@@ -175,7 +174,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                        type="button"
                        onClick={() => startEditShipment(r)}
                        disabled={pendingAction}
-                       className="cursor-pointer rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 hover:bg-gray-100"
+                       className="cursor-pointer rounded-lg border border-transparent bg-[#F1F5F9] px-2.5 py-1 font-mono text-sm text-[#475569] transition-colors hover:border-[#D8DEE8] hover:bg-white"
                        title="Edit Ship Date"
                      >
                        <Calendar className="h-3 w-3 inline mr-1" />
@@ -183,24 +182,17 @@ export default function ReceivingTable({ rows, details }: Props) {
                       </button>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                  <span className={`text-xs px-2 py-0.5 rounded font-bold ${ltColor}`}>{lt} HARI</span>
+                  <td className="whitespace-nowrap px-5 py-1 text-right">
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${ltColor}`}>{lt} hari</span>
                    </td>
                  </tr>
             )
           })}
 
           {rows.length === 0 && (
-             <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">BELUM ADA DATA RECEIVING</td></tr>
+             <tr><td colSpan={7} className="px-6 py-14 text-center text-sm text-[#64748B]">Belum ada data receiving untuk periode ini.</td></tr>
           )}
 
-          {rows.length > 0 && rows.length < 21 && (
-            <tr>
-              <td colSpan={7}>
-                <div style={{ height: `${(21 - rows.length) * 32}px` }} />
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
 

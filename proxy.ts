@@ -39,10 +39,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && pathname === '/login') {
-    const dashboardUrl = request.nextUrl.clone()
-    dashboardUrl.pathname = '/dashboard'
-    dashboardUrl.searchParams.delete('redirectTo')
-    return NextResponse.redirect(dashboardUrl)
+    const homeUrl = request.nextUrl.clone()
+    homeUrl.pathname = '/'
+    homeUrl.searchParams.delete('redirectTo')
+    return NextResponse.redirect(homeUrl)
   }
 
   return supabaseResponse
