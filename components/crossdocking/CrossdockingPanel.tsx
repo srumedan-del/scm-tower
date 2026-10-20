@@ -391,22 +391,22 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
 
             <div className="rounded-lg border border-gray-200 overflow-hidden">
               <table className="w-full text-xs">
-                <thead className="bg-gray-50 border-b">
+                <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-text">Item No</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-text">Deskripsi</th>
-                    <th className="px-4 py-2.5 text-right text-xs text-[#475569]">Qty</th>
-                    <th className="px-4 py-2.5 text-left text-xs text-[#475569]">UOM</th>
-                    <th className="px-4 py-2.5 text-left text-xs text-[#475569]">Lot</th>
-                    <th className="px-4 py-2.5 text-left text-xs text-[#475569]">Expired</th>
-                    <th className="w-8"></th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item No</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Deskripsi</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Qty</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">UOM</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lot</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Expired</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {details.map(d => (
                     <tr key={d._key} className="hover:bg-gray-50">
                       {/* Ketik kode produk; daftar menampilkan kode dan nama SKU. */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-0.25 text-[#475569]">
                         <input
                           value={d.item_no ?? ''}
                           onChange={e => onItemChange(d._key, e.target.value)}
@@ -421,7 +421,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                         </datalist>
                       </td>
                       {/* Deskripsi */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-0.25 text-[#475569]">
                         <input
                           value={d.item_name || d.description || ''}
                           onChange={e => dupd(d._key, 'description', e.target.value || null)}
@@ -430,7 +430,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                         />
                       </td>
                       {/* Qty */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-0.25 text-[#475569]">
                         <input
                           type="number" min={0}
                           value={d.quantity}
@@ -439,7 +439,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                         />
                       </td>
                       {/* UOM */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-0.25 text-[#475569]">
                         <input
                           value={d.uom ?? ''}
                           onChange={e => dupd(d._key, 'uom', e.target.value || null)}
@@ -448,7 +448,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                         />
                       </td>
                       {/* Lot */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-0.25 text-[#475569]">
                         <input
                           value={d.lot_no ?? ''}
                           onChange={e => dupd(d._key, 'lot_no', e.target.value || null)}
@@ -456,7 +456,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                         />
                       </td>
                       {/* Expired */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-0.25 text-[#475569]">
                         <input
                           type="date"
                           value={d.expiration_date ?? ''}
@@ -465,7 +465,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                         />
                       </td>
                       {/* Hapus */}
-                      <td className="px-2 py-1.5 text-center">
+                      <td className="px-4 py-0.25 text-center text-[#475569]">
                         <button
                           type="button"
                           onClick={() => removeDetail(d)}
@@ -484,7 +484,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                       <td colSpan={2} className="px-3 py-2 text-xs font-semibold text-gray-500">
                         TOTAL ({details.filter(d => d.quantity > 0).length} item)
                       </td>
-                      <td className="px-3 py-2 text-right text-xs font-bold">
+                      <td className="px-4 py-0.25 text-right text-xs font-semibold text-[#475569]">
                         {totalQty.toLocaleString('id-ID')}
                       </td>
                       <td colSpan={4} />

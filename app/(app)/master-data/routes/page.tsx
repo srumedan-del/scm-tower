@@ -17,16 +17,16 @@ export default async function RoutesPage() {
       </header>
 
       <section className="bg-white border border-border rounded-xl overflow-hidden">
-        <div className="data-list-scroll overflow-x-auto">
+        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-border">
+            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ROUTE CODE</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ORIGIN → DESTINATION</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">TIPE</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-text uppercase tracking-wide">LEAD TIME</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-text uppercase tracking-wide">JARAK</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">NOTES</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ROUTE CODE</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ORIGIN → DESTINATION</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">TIPE</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">LEAD TIME</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">JARAK</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">NOTES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

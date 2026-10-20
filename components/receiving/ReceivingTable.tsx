@@ -101,7 +101,7 @@ export default function ReceivingTable({ rows, details }: Props) {
   }
 
   return (
-    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-6rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
       <table className="w-full min-w-[980px] whitespace-nowrap text-xs">
               <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                 <tr>

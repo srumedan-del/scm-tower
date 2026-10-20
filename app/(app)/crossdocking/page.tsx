@@ -83,20 +83,20 @@ export default function CrossdockingPage() {
       )}
 
       {/* Tabel */}
-      <div className="bg-white border border-border rounded-xl overflow-x-auto">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">CD No.</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">PSS No.</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Customer</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Kota Tujuan</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Terima dari HQ</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Promised Date</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Sisa Hari</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Ref. HQ</th>
-              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Catatan</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">CD No.</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS No.</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Terima dari HQ</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Promised Date</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sisa Hari</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Ref. HQ</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Catatan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -121,25 +121,25 @@ export default function CrossdockingPage() {
                   onClick={() => setEditId(r.id)}
                   className="hover:bg-blue-50 cursor-pointer"
                 >
-                  <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
+                  <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
                     {r.crossdocking_no}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-indigo-600 whitespace-nowrap">
+                  <td className="px-4 py-0.25 font-mono text-xs text-indigo-600 whitespace-nowrap">
                     {r.pss_no ?? '-'}
                   </td>
-                  <td className="px-4 py-2.5 text-xs max-w-[180px]">
+                  <td className="px-4 py-0.25 text-xs max-w-[180px] text-[#475569]">
                     <div className="font-medium truncate">{r.customer_name ?? '-'}</div>
                   </td>
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
                     {r.destination_city ?? '-'}
                   </td>
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
                     {r.received_from_hq_date?.slice(0, 10) ?? '-'}
                   </td>
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
                     {r.promised_delivery_date?.slice(0, 10) ?? '-'}
                   </td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-4 py-0.25 text-center text-[#475569]">
                     {sisa !== null && r.status !== 'Delivered' ? (
                       <span className={`text-xs font-bold rounded-full px-2 py-0.5 ${
                         isUrgent ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
@@ -150,15 +150,15 @@ export default function CrossdockingPage() {
                       <span className="text-gray-300 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-xs font-mono text-gray-500">
+                  <td className="px-4 py-0.25 text-xs font-mono text-gray-500">
                     {r.hq_reference_no ?? '-'}
                   </td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-4 py-0.25 text-center text-[#475569]">
                     <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusBadge(r.status)}`}>
                       {r.status}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500 max-w-[120px] truncate">
+                  <td className="px-4 py-0.25 text-xs text-gray-500 max-w-[120px] truncate">
                     {r.notes ?? '-'}
                   </td>
                 </tr>

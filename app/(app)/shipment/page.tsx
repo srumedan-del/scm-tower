@@ -211,28 +211,28 @@ export default function ShipmentPage() {
             </button>
           </div>
 
-          <div className="max-h-[calc(100vh-250px)] overflow-auto bg-white border border-border rounded-xl">
+          <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm max-h-[calc(100vh-250px)]">
             <table className="w-full table-fixed text-xs">
               <colgroup>
                 <col className="w-10" /><col className="w-28" /><col className="w-36" />
                 <col className="w-44" /><col className="w-32" /><col className="w-32" />
                 <col className="w-56" /><col className="w-52" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border">
+              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                 <tr>
-                  <th className="px-4 py-3 w-8">
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                     {untracked.length > 0 && (
                       <input type="checkbox" checked={allUtChecked} onChange={toggleUtAll}
                         className="rounded border-border text-text" title="Pilih semua" />
                     )}
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Doc Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700 whitespace-nowrap">PSS No.</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Customer</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Kota Tujuan</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Promised Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Muatan</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Status Dokumen</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Doc Date</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS No.</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Promised Date</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Muatan</th>
+                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status Dokumen</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -259,19 +259,19 @@ export default function ShipmentPage() {
                         <input type="checkbox" checked={isChecked} onChange={() => toggleUtCheck(r.pss_no)}
                           className="rounded border-gray-300" />
                       </td>
-                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs font-bold text-indigo-600 whitespace-nowrap">{r.pss_no}</td>
-                      <td className="px-4 py-2.5 text-xs max-w-[160px] truncate">{r.customer_name ?? '-'}</td>
-                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
-                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.promised_delivery_date ?? '-'}</td>
-                      <td className="px-4 py-2.5 text-left text-[11px] whitespace-nowrap">
+                      <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
+                      <td className="px-4 py-0.25 font-mono text-xs font-semibold text-indigo-600 whitespace-nowrap">{r.pss_no}</td>
+                      <td className="px-4 py-0.25 text-xs max-w-[160px] truncate text-[#475569]">{r.customer_name ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.destination_city ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.promised_delivery_date ?? '-'}</td>
+                      <td className="px-4 py-0.25 text-left text-[11px] whitespace-nowrap text-[#475569]">
                         {r.total_koli != null ? (
                           <span className={r.incomplete_load_count > 0 ? 'text-orange-600' : 'text-gray-700'}>
                             {Number(r.total_koli).toLocaleString('id-ID')} koli · {formatLoadTonnage(r.total_tonnage)} · {Number(r.total_volume_cbm ?? 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })} m3
                           </span>
                         ) : <span className="text-gray-400">Belum dihitung</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-left">
+                      <td className="px-4 py-0.25 text-left text-[#475569]">
                         <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">BELUM DIBUAT SHIPMENT</span>
                       </td>
                     </tr>
@@ -331,32 +331,32 @@ export default function ShipmentPage() {
           )}
 
           {/* Tabel tracking */}
-          <div className="max-h-[calc(100vh-250px)] overflow-auto bg-white border border-border rounded-xl">
+          <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm max-h-[calc(100vh-250px)]">
             <table className="w-full table-fixed text-xs">
               <colgroup>
                 <col className="w-32" /><col className="w-36" /><col className="w-32" />
                 <col className="w-44" /><col className="w-44" /><col className="w-40" />
                 <col className="w-28" /><col className="w-24" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border">
+              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                               <tr>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Trip ID</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">PSS / CD No.</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Document Date</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Customer</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Transporter</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Driver</th>
-                                <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">Status</th>
-                                <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide text-gray-700">POD</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip ID</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS / CD No.</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Document Date</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transporter</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Driver</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+                                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">POD</th>
                               </tr>
                             </thead>
               <tbody className="divide-y divide-border">
                 {loading && (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
+                  <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Memuat...</td></tr>
                 )}
                 {!loading && rows.length === 0 && tmsAvail !== false && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">
+                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                       Belum ada shipment. Buat dari tab <strong>Belum Dibuat</strong>.
                     </td>
                   </tr>
@@ -367,27 +367,27 @@ export default function ShipmentPage() {
                     onClick={() => setSelected(r)}
                     className="cursor-pointer transition-colors hover:bg-blue-50"
                   >
-									<td className="px-4 py-2.5 font-mono text-xs text-gray-500 whitespace-nowrap">{r.trip_id ?? '-'}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
+									<td className="px-4 py-0.25 font-mono text-xs text-gray-500 whitespace-nowrap">{r.trip_id ?? '-'}</td>
+                    <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">
                       {r.pss_no ?? (r.crossdocking_id != null ? `CD-${r.crossdocking_id}` : '-')}
                     </td>
-                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs max-w-[140px] truncate">{r.customer_name ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs">
+                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs max-w-[140px] truncate text-[#475569]">{r.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs text-[#475569]">
                       <div>{r.transporter_name ?? (r.cost_model === 'Internal' || r.fleet_type === 'Internal' ? 'SRU MEDAN' : (r.notes?.match(/Vendor: ([^|]+)/)?.[1]?.trim()) ?? '-')}</div>
                       {r.transporter_service_model && <div className="text-gray-400">{r.transporter_service_model}</div>}
                       {!r.transporter_name && r.notes?.match(/Nopol: ([^|]+)/)?.[1] && (
                         <div className="text-gray-400 font-mono text-xs">{r.notes.match(/Nopol: ([^|]+)/)?.[1]?.trim()}</div>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-xs">
+                    <td className="px-4 py-0.25 text-xs text-[#475569]">
                       <div>{r.driver_name ?? (r.notes?.match(/Driver: ([^|]+)/)?.[1]?.trim()) ?? '-'}</div>
                       {(r as any).helper_name && <div className="text-gray-400">{(r as any).helper_name}</div>}
                       {!r.driver_name && r.notes?.match(/Tipe: ([^|]+)/)?.[1] && (
                         <div className="text-gray-400">{r.notes.match(/Tipe: ([^|]+)/)?.[1]?.trim()}</div>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-0.25 text-center text-[#475569]">
                       <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusBadge(r.status)}`}>
                         {r.status}
                       </span>
@@ -421,37 +421,37 @@ export default function ShipmentPage() {
             <p className="text-sm text-gray-500">Pengiriman Retail yang sudah diserahterimakan ke vendor dan memiliki <strong>nomor resi</strong>. Status tetap <strong>In Transit</strong> sampai barang diterima pelanggan.</p>
             <button onClick={loadRetailInTransit} className="text-xs text-indigo-600 hover:underline">Refresh</button>
           </div>
-          <div className="max-h-[calc(100vh-250px)] overflow-auto bg-white border border-border rounded-xl">
+          <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm max-h-[calc(100vh-250px)]">
             <table className="w-full table-fixed text-xs">
               <colgroup>
                 <col className="w-36" /><col className="w-36" /><col className="w-44" />
                 <col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-36" />
                 <col className="w-28" /><col className="w-28" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border"><tr>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">PSS / CD No.</th>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Document Date Time</th>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Customer</th>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Kota Tujuan</th>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Nomor Resi</th>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Waktu Serah Terima</th>
-                              <th className="text-right px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Biaya Pengiriman</th>
-                              <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Status</th>
-                              <th className="text-center px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">Penerimaan</th>
+              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS / CD No.</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Document Date Time</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nomor Resi</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Waktu Serah Terima</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Biaya Pengiriman</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Penerimaan</th>
                             </tr></thead>
               <tbody className="divide-y divide-border">
                 {loadingRetail && <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
                 {!loadingRetail && retailInTransit.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">Tidak ada shipment Retail yang sedang dalam perjalanan.</td></tr>}
                 {retailInTransit.map(r => (
                   <tr key={r.id} onClick={() => setSelected(r)} className="cursor-pointer transition-colors hover:bg-orange-50">
-                    <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">{r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}</td>
-                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.document_date ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs max-w-[180px] truncate">{r.customer_name ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.destination_city ?? '-'}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs font-medium whitespace-nowrap">{r.no_resi ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                    <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">{formatRupiah(r.total_biaya_eksternal)}</td>
-                    <td className="px-4 py-2.5 text-center"><span className="text-xs rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">In Transit</span></td>
+                    <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600 whitespace-nowrap">{r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}</td>
+                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.document_date ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs max-w-[180px] truncate text-[#475569]">{r.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.destination_city ?? '-'}</td>
+                    <td className="px-4 py-0.25 font-mono text-xs font-medium whitespace-nowrap text-[#475569]">{r.no_resi ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">{r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td className="px-4 py-0.25 text-right text-xs font-medium whitespace-nowrap text-[#475569]">{formatRupiah(r.total_biaya_eksternal)}</td>
+                    <td className="px-4 py-0.25 text-center text-[#475569]"><span className="text-xs rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">In Transit</span></td>
                     <td className="px-4 py-2.5 text-center" onClick={e => e.stopPropagation()}><button onClick={() => setPodShipment(r)} className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"><PackageCheck className="h-3.5 w-3.5" /> Terima</button></td>
                   </tr>
                 ))}

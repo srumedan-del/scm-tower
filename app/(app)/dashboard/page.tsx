@@ -391,17 +391,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div className="px-4 py-2 bg-red-100 border-b border-red-200 text-xs text-red-700 font-medium">
               Shipment berikut sudah melewati Promised Delivery Date tapi belum berstatus Delivered
             </div>
-            <div className="overflow-x-auto">
+            <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
               <table className="w-full text-sm">
-                <thead className="bg-red-50 border-b border-red-100">
+                <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                   <tr>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold uppercase text-red-600 whitespace-nowrap">Terlambat</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold uppercase text-red-600 whitespace-nowrap">PSS / Ref</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold uppercase text-red-600">Customer</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold uppercase text-red-600">Tujuan</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold uppercase text-red-600 whitespace-nowrap">Promised Date</th>
-                    <th className="text-center px-4 py-2.5 text-xs font-bold uppercase text-red-600">Status</th>
-                    <th className="text-center px-4 py-2.5 text-xs font-bold uppercase text-red-600">DK/LK</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Terlambat</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS / Ref</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tujuan</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Promised Date</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+                    <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DK/LK</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-red-100">
@@ -415,30 +415,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     }
                     return (
                       <tr key={s.id} className="bg-white hover:bg-red-50 transition-colors">
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-0.25 text-[#475569]">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${urgency}`}>
                             <AlertTriangle size={10} />
                             {days} hari
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-700 whitespace-nowrap">
+                        <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-700 whitespace-nowrap">
                           {s.pss_no ?? `#${s.id}`}
                         </td>
-                        <td className="px-4 py-2.5 text-xs max-w-[180px] truncate font-medium">
+                        <td className="px-4 py-0.25 text-xs max-w-[180px] truncate font-medium text-[#475569]">
                           {s.customer_name ?? '—'}
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-[#475569]">
+                        <td className="px-4 py-0.25 text-xs text-[#475569]">
                           {s.destination_city ?? '—'}
                         </td>
-                        <td className="px-4 py-2.5 text-xs whitespace-nowrap text-gray-600">
+                        <td className="px-4 py-0.25 text-xs whitespace-nowrap text-gray-600">
                           {s.promised_delivery_date}
                         </td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-4 py-0.25 text-center text-[#475569]">
                           <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusColor[s.status] ?? 'bg-gray-100 text-gray-600'}`}>
                             {s.status}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-4 py-0.25 text-center text-[#475569]">
                           {s.dk_lk ? (
                             <span className={`text-xs font-bold rounded px-1.5 py-0.5 ${s.dk_lk === 'DK' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
                               {s.dk_lk}

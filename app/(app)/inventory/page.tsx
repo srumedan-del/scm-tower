@@ -68,29 +68,29 @@ export default async function Inventory() {
           </span>
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-border">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-medium text-text">SKU</th>
-              <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-medium text-text">ITEM</th>
-              <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-medium text-text">WAREHOUSE</th>
-              <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-medium text-text">AVAILABLE</th>
-              <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-medium text-text">SAFETY</th>
-              <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-medium text-text">STATUS</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">SKU</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ITEM</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">WAREHOUSE</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">AVAILABLE</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">SAFETY</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {data?.map((r: any) => (
               <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-text">{r.sku_code}</td>
-                <td className="px-4 py-3 text-text">{r.item_name}</td>
-                <td className="px-4 py-3 text-text">{r.warehouse_code}</td>
-                <td className="px-4 py-3 text-right text-text font-medium numeric-cell">{r.available_qty}</td>
-                <td className="px-4 py-3 text-right text-text numeric-cell">{r.safety_stock}</td>
-                <td className="px-4 py-3 text-text">{r.alert_status}</td>
+                <td className="px-4 py-0.25 text-text text-[#475569]">{r.sku_code}</td>
+                <td className="px-4 py-0.25 text-text text-[#475569]">{r.item_name}</td>
+                <td className="px-4 py-0.25 text-text text-[#475569]">{r.warehouse_code}</td>
+                <td className="px-4 py-0.25 text-right text-text font-medium numeric-cell text-[#475569]">{r.available_qty}</td>
+                <td className="px-4 py-0.25 text-right text-text numeric-cell text-[#475569]">{r.safety_stock}</td>
+                <td className="px-4 py-0.25 text-text text-[#475569]">{r.alert_status}</td>
               </tr>
             ))}
             {!data?.length && (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-muted text-sm">Belum ada data inventory.</td></tr>
+              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Belum ada data inventory.</td></tr>
             )}
           </tbody>
         </table>

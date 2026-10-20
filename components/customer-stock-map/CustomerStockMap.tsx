@@ -382,20 +382,20 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 		{(mode === 'maintain' || showMaintainBelow) && <div className="p-6">
 			<div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h3 className="font-semibold">DASHBOARD MONITOR STOK HD</h3></div><div className="flex flex-wrap items-center gap-2"><select id="customer-stock-filter" aria-label="Filter customer stock" value={pendingStockFilter} onChange={(event) => setPendingStockFilter(event.target.value as 'all' | 'reorder')} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="all">Semua customer</option><option value="reorder">Perlu reorder</option></select><button type="button" onClick={() => setStockFilter(pendingStockFilter)} className="rounded-lg bg-text px-3 py-2 text-sm font-medium text-white">Terapkan</button><button type="button" onClick={() => { setPendingStockFilter('all'); setStockFilter('all') }} className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Reset</button></div></div>
 			{formOpen ? <form onSubmit={saveCustomer} className="mb-6 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3"><div className="rounded-lg border border-blue/20 bg-blue/5 p-3 text-xs text-muted md:col-span-3">Cara mengambil koordinat: buka Google Maps, klik kanan pada lokasi customer, lalu klik angka koordinat untuk menyalin. Tempel format seperti <strong>1.28895440385333, 97.61411017362235</strong> pada kolom koordinat; sistem otomatis memisahkan Latitude dan Longitude.</div>{([['customer_name','Nama customer'],['city','Kabupaten/kota'],['province','Provinsi'],['latitude','Latitude'],['longitude','Longitude'],['machine_count','Jumlah mesin HD']] as [keyof FormState,string][]).map(([field,label]) => <label key={field} className="text-xs font-medium text-muted">{label}<input required min={field === 'latitude' ? -90 : field === 'longitude' ? -180 : field === 'machine_count' ? 0 : undefined} max={field === 'latitude' ? 90 : field === 'longitude' ? 180 : undefined} step="any" type={field === 'province' || field === 'customer_name' || field === 'city' ? 'text' : 'number'} value={String(form[field] ?? '')} onChange={(event) => updateField(field, event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label>)}<label className="text-xs font-medium text-muted md:col-span-3">Paste koordinat Google Maps<input required type="text" inputMode="decimal" placeholder="1.28895440385333, 97.61411017362235" value={coordinateText} onChange={(event) => updateCoordinates(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label><div className="flex items-end gap-2 md:col-span-3"><button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-green px-3 py-2 text-sm font-medium text-white"><Save size={16} />{saving ? 'Menyimpan...' : 'Simpan'}</button><button type="button" onClick={() => { setEditing(null); setFormOpen(false); setForm(emptyForm); setCoordinateText('') }} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><X size={16} />Batal</button></div></form> : null}
-			<div className="overflow-x-auto">
-						<table className="w-max text-left text-sm">
-					<thead className="bg-surface text-xs uppercase tracking-wide text-muted">
+			<div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+     <table className="w-max text-left text-sm">
+					<thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
 						<tr>
-							<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Customer</th>
-							<th className="w-20 max-w-20 px-2.5 py-2 text-center leading-tight">Mesin HD</th>
-							<th className="w-24 max-w-24 px-2.5 py-2 text-center leading-tight">Kebutuhan / hari</th>
-							<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Kebutuhan / bulan</th>
-							<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Safety Stock (6 hari)</th>
-							<th className="w-24 max-w-24 px-2.5 py-2 text-center leading-tight">ROP (8 hari)</th>
-									<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Order terakhir</th>
-									<th className="w-20 max-w-20 px-2.5 py-2 text-center leading-tight">DOI</th>
-									<th className="w-28 max-w-28 px-2.5 py-2 text-center leading-tight">Stock Habis Tanggal</th>
-									<th className="w-24 max-w-24 px-2.5 py-2 text-center leading-tight">Reorder ideal</th>
+							<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+							<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Mesin HD</th>
+							<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kebutuhan / hari</th>
+							<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kebutuhan / bulan</th>
+							<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Safety Stock (6 hari)</th>
+							<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ROP (8 hari)</th>
+									<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Order terakhir</th>
+									<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOI</th>
+									<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Stock Habis Tanggal</th>
+									<th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Reorder ideal</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
@@ -411,34 +411,34 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 							const reorderIsDue = reorderDate ? reorderDate < today : false
 							return (
 								<tr key={customer.id} className={status.label === 'Critical' ? 'bg-red/5' : status.label === 'Replenish now' ? 'bg-orange/5' : ''}>
-									<td className="whitespace-nowrap px-2.5 py-2 font-medium">{customer.customer_name}</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right">{customer.machine_count}</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right">{status.usage} set</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right">{(status.usage * 25).toLocaleString('id-ID')} set</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right">{(status.usage * 6).toLocaleString('id-ID')} set</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right">{(status.usage * 8).toLocaleString('id-ID')} set</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right text-muted">
+									<td className="whitespace-nowrap px-4 py-0.25 font-medium text-[#475569]">{customer.customer_name}</td>
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{customer.machine_count}</td>
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{status.usage} set</td>
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{(status.usage * 25).toLocaleString('id-ID')} set</td>
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{(status.usage * 6).toLocaleString('id-ID')} set</td>
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">{(status.usage * 8).toLocaleString('id-ID')} set</td>
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-muted text-[#475569]">
 										{latestOrder ? (
 											<span className="font-medium text-text">{formatDate(latestOrder.documentDate)} · {latestOrder.totalSets.toLocaleString('id-ID')} set</span>
 										) : 'Belum ada data'}
 									</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right">
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-[#475569]">
 										{coverage !== null ? `${coverage.toFixed(1)} hari` : '—'}
 									</td>
-									<td className="whitespace-nowrap px-2.5 py-2 text-right text-muted">
+									<td className="whitespace-nowrap px-4 py-0.25 text-right text-muted text-[#475569]">
 										{stockoutDate ? formatDate(stockoutDate.toISOString()) : '—'}
 									</td>
 									<td className={`whitespace-nowrap px-2.5 py-2 text-right ${reorderIsDue ? 'text-red-600' : 'text-muted'}`}>
 										{reorderDate ? <span className="font-medium">{formatDate(reorderDate.toISOString())}</span> : '—'}
 										{reorderIsDue && <span className="block text-xs">Perlu reorder</span>}
 									</td>
-									<td className="hidden">
+									<td className="hidden text-[#475569]">
 										<span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `${status.color}22`, color: status.color }}>
 											{status.label}
 											{qty > 0 && <span className="ml-1 opacity-80">· reorder {qty}</span>}
 										</span>
 									</td>
-									<td className="hidden">
+									<td className="hidden text-[#475569]">
 										<button aria-label={`Edit ${customer.customer_name}`} onClick={() => startEdit(customer)} className="mr-2 text-blue"><Pencil size={16} /></button>
 										<button aria-label={`Hapus ${customer.customer_name}`} onClick={() => removeCustomer(customer.id)} className="text-red"><Trash2 size={16} /></button>
 									</td>

@@ -160,21 +160,21 @@ export default function InventorySnapshotPage() {
       )}
 
       {/* Tabel */}
-      <div className="bg-white border border-border rounded-xl overflow-x-auto">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">SKU</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Nama Item</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Gudang</th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">On Hand</th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Reserved</th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Available</th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Safety Stock</th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Avg/Hari</th>
-              <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">DOS</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Tgl Snapshot</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">SKU</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama Item</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Gudang</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">On Hand</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Reserved</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Available</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Safety Stock</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Avg/Hari</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOS</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tgl Snapshot</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -199,15 +199,15 @@ export default function InventorySnapshotPage() {
                   onClick={() => setSelected(r)}
                   className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
                 >
-                  <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-700">{r.sku_code}</td>
-                  <td className="px-4 py-2.5 text-xs max-w-[200px] truncate">{r.item_name ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-xs font-mono">{r.warehouse_code}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs">{fmtQty(r.qty_on_hand)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-gray-500">{fmtQty(r.qty_reserved)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs font-bold">{fmtQty(r.qty_available)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-gray-500">{fmtQty(r.safety_stock)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs">{r.avg_daily_usage != null ? r.avg_daily_usage.toFixed(1) : '—'}</td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-700">{r.sku_code}</td>
+                  <td className="px-4 py-0.25 text-xs max-w-[200px] truncate text-[#475569]">{r.item_name ?? '—'}</td>
+                  <td className="px-4 py-0.25 text-xs font-mono text-[#475569]">{r.warehouse_code}</td>
+                  <td className="px-4 py-0.25 text-right font-mono text-xs text-[#475569]">{fmtQty(r.qty_on_hand)}</td>
+                  <td className="px-4 py-0.25 text-right font-mono text-xs text-gray-500">{fmtQty(r.qty_reserved)}</td>
+                  <td className="px-4 py-0.25 text-right font-mono text-xs font-semibold text-[#475569]">{fmtQty(r.qty_available)}</td>
+                  <td className="px-4 py-0.25 text-right font-mono text-xs text-gray-500">{fmtQty(r.safety_stock)}</td>
+                  <td className="px-4 py-0.25 text-right font-mono text-xs text-[#475569]">{r.avg_daily_usage != null ? r.avg_daily_usage.toFixed(1) : '—'}</td>
+                  <td className="px-4 py-0.25 text-right text-[#475569]">
                     {r.days_of_supply != null ? (
                       <span className={`font-mono text-xs font-bold ${
                         r.days_of_supply < 3 ? 'text-red-600'
@@ -218,8 +218,8 @@ export default function InventorySnapshotPage() {
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-center"><AlertBadge status={r.alert_status} /></td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">{r.snapshot_date}</td>
+                  <td className="px-4 py-0.25 text-center text-[#475569]"><AlertBadge status={r.alert_status} /></td>
+                  <td className="px-4 py-0.25 text-xs text-gray-500 whitespace-nowrap">{r.snapshot_date}</td>
                 </tr>
               )
             })}

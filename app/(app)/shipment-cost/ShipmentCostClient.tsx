@@ -99,13 +99,13 @@ function ReportTable({
 }) {
   return <section className="bg-white border border-border rounded-xl overflow-hidden">
     <h2 className="px-4 py-3 text-sm font-bold border-b">{title}</h2>
-    <table className="w-full text-sm"><thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="text-left px-4 py-2">Kategori</th><th className="text-right px-4 py-2">Shipment</th><th className="text-right px-4 py-2">Realisasi Biaya</th></tr></thead>
+    <table className="w-full text-sm"><thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kategori</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Shipment</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Realisasi Biaya</th></tr></thead>
       <tbody className="divide-y divide-border">{rows.map(row => <tr key={row.label} className={selectedLabel === row.label ? 'bg-indigo-50' : ''}>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-0.25 text-[#475569]">
           {onRowClick ? <button type="button" onClick={() => onRowClick(row.label)} className="text-left font-medium text-indigo-600 hover:underline">{row.label}</button> : row.label}
         </td>
-        <td className="px-4 py-2.5 text-right">{row.count}</td>
-        <td className="px-4 py-2.5 text-right font-mono font-medium">{rp(row.total)}</td>
+        <td className="px-4 py-0.25 text-right text-[#475569]">{row.count}</td>
+        <td className="px-4 py-0.25 text-right font-mono font-medium text-[#475569]">{rp(row.total)}</td>
       </tr>)}{!rows.length && <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400">Belum ada data.</td></tr>}</tbody>
     </table>
   </section>
@@ -130,14 +130,14 @@ function VendorBills({
       </div>
       <button type="button" onClick={onClose} className="text-xs text-indigo-600 hover:underline">Tutup</button>
     </div>
-    <div className="overflow-x-auto">
+    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="text-left px-4 py-2">Shipment</th><th className="text-left px-4 py-2">Customer</th><th className="text-left px-4 py-2">Tanggal</th><th className="text-right px-4 py-2">Tagihan</th></tr></thead>
+        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Shipment</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tanggal</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tagihan</th></tr></thead>
         <tbody className="divide-y divide-border">{rows.map(row => <tr key={row.id}>
-          <td className="px-4 py-2.5"><button type="button" onClick={() => onRowClick(row)} className="font-mono text-xs text-indigo-600 hover:underline">{row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : row.trip_id ?? '-')}</button></td>
-          <td className="px-4 py-2.5">{row.customer_name ?? '-'}</td>
-          <td className="px-4 py-2.5 text-xs">{row.document_date ?? '-'}</td>
-          <td className="px-4 py-2.5 text-right font-mono font-medium">{rp(row.total_biaya)}</td>
+          <td className="px-4 py-0.25 text-[#475569]"><button type="button" onClick={() => onRowClick(row)} className="font-mono text-xs text-indigo-600 hover:underline">{row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : row.trip_id ?? '-')}</button></td>
+          <td className="px-4 py-0.25 text-[#475569]">{row.customer_name ?? '-'}</td>
+          <td className="px-4 py-0.25 text-xs text-[#475569]">{row.document_date ?? '-'}</td>
+          <td className="px-4 py-0.25 text-right font-mono font-medium text-[#475569]">{rp(row.total_biaya)}</td>
         </tr>)}{!rows.length && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Belum ada tagihan.</td></tr>}</tbody>
       </table>
     </div>

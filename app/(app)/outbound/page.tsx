@@ -143,8 +143,8 @@ export default async function OutboundPage({
         </div>
       </header>
 
-      <div className="data-list-scroll overflow-auto bg-white border border-border rounded-xl">
-        <table className="w-full min-w-[960px] table-fixed text-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+        <table className="w-full min-w-[980px] whitespace-nowrap text-xs">
           <colgroup>
             <col className="w-[18%]" />
             <col className="w-[12%]" />
@@ -153,24 +153,24 @@ export default async function OutboundPage({
             <col className="w-[14%]" />
             <col className="w-[9%]" />
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-gray-50 border-b border-border">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                 DOCUMENT DATE TIME
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                 PSS NO
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                 ORDER NO
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                 CUSTOMER NAME
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                 MTA
               </th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
                 DELAY
               </th>
             </tr>
@@ -183,16 +183,16 @@ export default async function OutboundPage({
 
               return (
                 <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
                     {formatDateTime(r.document_created_at)}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
+                  <td className="px-4 py-0.25 whitespace-nowrap text-[#475569]">
                     <PssDetailModal pssNo={pssNo} />
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                  <td className="px-4 py-0.25 font-mono text-xs whitespace-nowrap text-[#475569]">
                     {String(r.order_no ?? '-').toUpperCase()}
                   </td>
-                  <td className="px-4 py-2.5 text-xs">
+                  <td className="px-4 py-0.25 text-xs text-[#475569]">
                     <div className="truncate font-medium text-text">
                       <span className="mr-1.5 text-[10px] font-normal text-text-muted">
                         {r.customer_no ?? ''}
@@ -200,10 +200,10 @@ export default async function OutboundPage({
                       {String(r.customer_name ?? '-')}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-xs whitespace-nowrap text-[#475569]">
                     {formatDateTime(r.mta)}
                   </td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                  <td className="px-4 py-0.25 text-right whitespace-nowrap text-[#475569]">
                     {delayDays !== null ? (
                       <span
                         className={`inline-block rounded-md px-2 py-0.5 text-xs font-bold ${
@@ -221,7 +221,7 @@ export default async function OutboundPage({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted text-sm">
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                   {customer
                     ? 'TIDAK ADA DATA UNTUK CUSTOMER YANG DICARI'
                     : months.length > 0

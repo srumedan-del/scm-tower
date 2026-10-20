@@ -45,28 +45,28 @@ export default async function TripsPage() {
           <span className="text-xs text-gray-400">{trips.length} trip</span>
         </div>
         <table className="w-full text-sm">
-          <thead className="border-b bg-gray-50">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-600">Trip</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-600">Transporter</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-600">Armada / Driver</th>
-              <th className="px-4 py-3 text-center text-xs font-bold uppercase text-gray-600">Stop</th>
-              <th className="px-4 py-3 text-right text-xs font-bold uppercase text-gray-600">Biaya Trip</th>
-              <th className="px-4 py-3 text-center text-xs font-bold uppercase text-gray-600">Status</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transporter</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Armada / Driver</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Stop</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Biaya Trip</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {trips.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Belum ada trip v1.6.</td></tr>
+              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Belum ada trip v1.6.</td></tr>
             )}
             {trips.map((trip) => (
               <tr key={trip.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs font-semibold text-indigo-700">{trip.trip_no}</td>
-                <td className="px-4 py-3 text-xs">{displayVendorName(trip.vendor_name) || '-'}</td>
-                <td className="px-4 py-3 text-xs">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
-                <td className="px-4 py-3 text-center text-xs font-semibold">{trip.stop_count}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{rupiah(trip.total_expense)}</td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.trip_no}</td>
+                <td className="px-4 py-0.25 text-xs text-[#475569]">{displayVendorName(trip.vendor_name) || '-'}</td>
+                <td className="px-4 py-0.25 text-xs text-[#475569]">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.stop_count}</td>
+                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{rupiah(trip.total_expense)}</td>
+                <td className="px-4 py-0.25 text-center text-[#475569]">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[trip.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {trip.status}
                   </span>

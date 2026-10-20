@@ -18,19 +18,19 @@ export default async function CustomersPage() {
       </header>
 
       <section className="bg-white border border-border rounded-xl overflow-hidden">
-        <div className="data-list-scroll overflow-x-auto">
+        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-border">
+            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CUSTOMER CODE</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CUSTOMER NAME</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CITY</th>
-                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">DK/LK</th>
-                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">JENIS CUSTOMER</th>
-                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">MESIN HD</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ADDRESS</th>
-                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">LOKASI</th>
-                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">ACTIVE</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">CUSTOMER CODE</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">CUSTOMER NAME</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">CITY</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DK/LK</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">JENIS CUSTOMER</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">MESIN HD</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ADDRESS</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">LOKASI</th>
+                <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ACTIVE</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

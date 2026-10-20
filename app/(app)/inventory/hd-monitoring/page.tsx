@@ -173,21 +173,21 @@ export default function HdMonitoringPage() {
       )}
 
       {/* Tabel */}
-      <div className="bg-white border border-border rounded-xl overflow-x-auto">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Kota</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Mesin HD</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Pemakaian/Hari</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Stok Estimasi</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">DOI</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Est. Habis</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Tanggal FU-PO</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Sisa FU-PO</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Pengiriman Terakhir</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Mesin HD</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Pemakaian/Hari</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Stok Estimasi</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOI</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Est. Habis</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tanggal FU-PO</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sisa FU-PO</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Pengiriman Terakhir</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -210,34 +210,34 @@ export default function HdMonitoringPage() {
                   onClick={() => setSelected(r)}
                   className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
                 >
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-0.25 text-[#475569]">
                     <div className="font-medium text-xs">{r.customer_name ?? r.customer_code}</div>
                     <div className="text-gray-400 text-xs font-mono">{r.customer_code}</div>
                   </td>
-                  <td className="px-4 py-2.5 text-xs">{r.city ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-center font-bold text-sm">
+                  <td className="px-4 py-0.25 text-xs text-[#475569]">{r.city ?? '—'}</td>
+                  <td className="px-4 py-0.25 text-center font-semibold text-xs text-[#475569]">
                     {r.hd_machine_count ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-center text-xs">
+                  <td className="px-4 py-0.25 text-center text-xs text-[#475569]">
                     {r.daily_usage != null ? r.daily_usage.toLocaleString('id-ID') : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-4 py-0.25 text-center text-[#475569]">
                     <span className={`text-sm font-bold ${(r.estimated_stock ?? 0) < 0 ? 'text-red-600' : 'text-gray-800'}`}>
                       {r.estimated_stock != null ? r.estimated_stock.toLocaleString('id-ID') : '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-4 py-0.25 text-center text-[#475569]">
                     <span className={`text-sm font-bold ${(r.doi_days ?? 0) < (r.rop_days ?? 8) ? 'text-red-600' : 'text-gray-700'}`}>
                       {r.doi_days != null ? Math.round(r.doi_days) : '—'}
                     </span>
                     {r.doi_days != null && <span className="text-xs text-gray-400 ml-0.5">h</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-center text-xs">{fmtDate(r.estimated_stockout_date)}</td>
-                  <td className="px-4 py-2.5 text-center text-xs font-medium">{fmtDate(r.fu_po_date)}</td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-4 py-0.25 text-center text-xs text-[#475569]">{fmtDate(r.estimated_stockout_date)}</td>
+                  <td className="px-4 py-0.25 text-center text-xs font-medium text-[#475569]">{fmtDate(r.fu_po_date)}</td>
+                  <td className="px-4 py-0.25 text-center text-[#475569]">
                     <DaysBadge date={r.fu_po_date} />
                   </td>
-                  <td className="px-4 py-2.5 text-xs">
+                  <td className="px-4 py-0.25 text-xs text-[#475569]">
                     {r.last_shipment_date ? (
                       <div>
                         <span className="font-medium">{fmtDate(r.last_shipment_date)}</span>
@@ -249,7 +249,7 @@ export default function HdMonitoringPage() {
                       <span className="text-red-400 font-medium">— belum ada data</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-4 py-0.25 text-center text-[#475569]">
                     <StatusBadge status={status} />
                   </td>
                 </tr>

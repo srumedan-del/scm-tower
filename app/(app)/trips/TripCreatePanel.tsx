@@ -88,19 +88,19 @@ export function TripCreatePanel({ onClose }: Props) {
               <span className="text-xs text-gray-500">{selected.size} dipilih</span>
             </div>
             <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50 text-left text-xs text-gray-600">
-                <tr><th className="px-4 py-2">Pilih</th><th className="px-4 py-2">Referensi</th><th className="px-4 py-2">Customer</th><th className="px-4 py-2">Kota</th><th className="px-4 py-2">Janji Kirim</th></tr>
+              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+                <tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Pilih</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Referensi</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Janji Kirim</th></tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
                 {!loading && shipments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada shipment yang tersedia.</td></tr>}
                 {shipments.map((shipment) => (
                   <tr key={shipment.id} className="hover:bg-indigo-50">
-                    <td className="px-4 py-2.5"><input type="checkbox" checked={selected.has(shipment.id)} onChange={() => toggle(shipment.id)} /></td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-indigo-700">{shipment.reference_no}</td>
-                    <td className="px-4 py-2.5 text-xs">{shipment.customer_name ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs">{shipment.destination_city ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-xs">{shipment.promised_delivery_date ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-[#475569]"><input type="checkbox" checked={selected.has(shipment.id)} onChange={() => toggle(shipment.id)} /></td>
+                    <td className="px-4 py-0.25 font-mono text-xs text-indigo-700">{shipment.reference_no}</td>
+                    <td className="px-4 py-0.25 text-xs text-[#475569]">{shipment.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs text-[#475569]">{shipment.destination_city ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs text-[#475569]">{shipment.promised_delivery_date ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -61,25 +61,25 @@ export default function DriversPage() {
         ))}
       </div>
 
-      <div className="data-list-scroll bg-white border border-border rounded-xl overflow-auto">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Kode</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Nama</th>
-              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Role</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">No. SIM</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">No. HP</th>
-              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Catatan</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kode</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Role</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">No. SIM</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">No. HP</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Catatan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
+              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Memuat...</td></tr>
             )}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">
+              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                 {rows.length === 0
                   ? 'Belum ada data. Jalankan schema SQL di Supabase dulu.'
                   : 'Tidak ada kru dengan filter ini.'}
@@ -91,22 +91,22 @@ export default function DriversPage() {
                 onClick={() => setSelected(r)}
                 className="hover:bg-blue-50 cursor-pointer"
               >
-                <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600">{r.driver_code}</td>
-                <td className="px-4 py-2.5 font-medium">{r.driver_name}</td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600">{r.driver_code}</td>
+                <td className="px-4 py-0.25 font-medium text-[#475569]">{r.driver_name}</td>
+                <td className="px-4 py-0.25 text-center text-[#475569]">
                   <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${roleBadge(r.role)}`}>
                     {r.role}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 font-mono text-xs">{r.sim_no ?? '-'}</td>
-                <td className="px-4 py-2.5 text-xs">{r.phone ?? '-'}</td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-4 py-0.25 font-mono text-xs text-[#475569]">{r.sim_no ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs text-[#475569]">{r.phone ?? '-'}</td>
+                <td className="px-4 py-0.25 text-center text-[#475569]">
                   {r.is_active
                     ? <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 rounded-full px-2 py-0.5"><UserCheck className="h-3 w-3" /> Aktif</span>
                     : <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5"><UserX className="h-3 w-3" /> Nonaktif</span>
                   }
                 </td>
-                <td className="px-4 py-2.5 text-xs text-[#8E8E93]">{r.notes ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs text-[#8E8E93] text-[#475569]">{r.notes ?? '-'}</td>
               </tr>
             ))}
           </tbody>

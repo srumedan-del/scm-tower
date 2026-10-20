@@ -111,11 +111,11 @@ export function DataTable<T extends Record<string, any>>({
   return (
       <div className="bg-white border border-border rounded-xl overflow-hidden">
         {/* Desktop View */}
-        <div className="data-list-scroll hidden md:block overflow-x-auto">
+        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm hidden md:block">
           <table className={`w-full text-sm ${noWrap ? 'whitespace-nowrap' : ''}`}>
-            <thead className="bg-gray-50 border-b border-border sticky top-0 z-10">
+            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
               <tr>
-                {expandable && <th className="px-4 py-3 text-left"></th>}
+                {expandable && <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap"></th>}
                 {visibleCols.map(col => (
                   <th
                           key={String(col.key)}
@@ -138,7 +138,7 @@ export function DataTable<T extends Record<string, any>>({
                       className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                     >
                       {expandable && (
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-0.25 text-[#475569]">
                           <button
                             onClick={e => {
                               e.stopPropagation()

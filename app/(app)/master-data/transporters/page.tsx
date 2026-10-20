@@ -53,25 +53,25 @@ export default function TransportersPage() {
         </button>
       </header>
 
-      <div className="data-list-scroll bg-white border border-border rounded-xl overflow-auto">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Kode</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Nama</th>
-              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Tipe</th>
-              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Model Layanan</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">PIC</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Phone</th>
-              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Status</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kode</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tipe</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Model Layanan</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PIC</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Phone</th>
+              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
+              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Memuat...</td></tr>
             )}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">
+              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
                 Belum ada data. Jalankan schema SQL di Supabase dulu.
               </td></tr>
             )}
@@ -81,21 +81,21 @@ export default function TransportersPage() {
                 onClick={() => setSelected(r)}
                 className="hover:bg-blue-50 cursor-pointer"
               >
-                <td className="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600">{r.transporter_code}</td>
-                <td className="px-4 py-2.5 font-medium">{r.name}</td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-4 py-0.25 font-mono text-xs font-medium text-indigo-600">{r.transporter_code}</td>
+                <td className="px-4 py-0.25 font-medium text-[#475569]">{r.name}</td>
+                <td className="px-4 py-0.25 text-center text-[#475569]">
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 font-medium ${typeColor(r.type)}`}>
                     {r.type}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-4 py-0.25 text-center text-[#475569]">
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 font-medium ${modelColor(r.service_model)}`}>
                     {r.service_model ?? 'Operasional Aktual'}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-xs">{r.pic_name ?? '-'}</td>
-                <td className="px-4 py-2.5 text-xs">{r.pic_phone ?? '-'}</td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-4 py-0.25 text-xs text-[#475569]">{r.pic_name ?? '-'}</td>
+                <td className="px-4 py-0.25 text-xs text-[#475569]">{r.pic_phone ?? '-'}</td>
+                <td className="px-4 py-0.25 text-center text-[#475569]">
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 ${
                     r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                   }`}>

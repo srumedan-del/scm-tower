@@ -112,19 +112,19 @@ export default function ReceivingVerifyButton() {
                     <p className="text-xs text-gray-500">document_no tidak ditemukan di receiving_header</p>
                     <div className="mt-2 max-h-48 overflow-y-auto">
                       <table className="w-full text-xs">
-                        <thead className="bg-gray-50">
+                        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                           <tr>
-                            <th className="text-left px-2 py-1">DOCUMENT NO</th>
-                            <th className="text-left px-2 py-1">ITEM</th>
-                            <th className="text-left px-2 py-1">DESKRIPSI</th>
+                            <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOCUMENT NO</th>
+                            <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ITEM</th>
+                            <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DESKRIPSI</th>
                           </tr>
                         </thead>
                         <tbody>
                           {result.orphanedDetails.map((d) => (
                             <tr key={String(d.id)} className="border-t">
-                              <td className="px-2 py-1 font-mono">{d.document_no}</td>
-                              <td className="px-2 py-1">{d.item_no}</td>
-                              <td className="px-2 py-1">{d.description}</td>
+                              <td className="px-4 py-0.25 font-mono text-[#475569]">{d.document_no}</td>
+                              <td className="px-4 py-0.25 text-[#475569]">{d.item_no}</td>
+                              <td className="px-4 py-0.25 text-[#475569]">{d.description}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -145,17 +145,17 @@ export default function ReceivingVerifyButton() {
                     <p className="text-xs text-gray-500">ptr_no tidak memiliki detail transaksi</p>
                     <div className="mt-2 max-h-48 overflow-y-auto">
                       <table className="w-full text-xs">
-                        <thead className="bg-gray-50">
+                        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                           <tr>
-                            <th className="text-left px-2 py-1">ID</th>
-                            <th className="text-left px-2 py-1">PTR NO</th>
+                            <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ID</th>
+                            <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTR NO</th>
                           </tr>
                         </thead>
                         <tbody>
                           {result.emptyHeaders.map((h) => (
                             <tr key={String(h.id)} className="border-t">
-                              <td className="px-2 py-1">{h.id}</td>
-                              <td className="px-2 py-1 font-mono">{h.ptr_no}</td>
+                              <td className="px-4 py-0.25 text-[#475569]">{h.id}</td>
+                              <td className="px-4 py-0.25 font-mono text-[#475569]">{h.ptr_no}</td>
                             </tr>
                           ))}
                         </tbody>

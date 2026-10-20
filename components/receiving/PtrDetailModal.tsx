@@ -287,29 +287,29 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                     {details.length === 0 ? (
                       <p className="text-sm text-gray-500">Tidak ada item detail.</p>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="receiving-table-scroll data-list-scroll max-h-[60vh] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
                         <table className="w-full text-xs">
-                          <thead className="bg-gray-50 border-b">
+                          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                             <tr>
-                              <th className="text-center px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">#</th>
-                              <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">NOMOR URUT</th>
-                              <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">ITEM NO</th>
-                              <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">DESKRIPSI (MATERIAL MASTER)</th>
-                              <th className="text-right px-3 py-0.5 text-xs font-medium text-text uppercase tracking-wide">QTY</th>
-                              <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">LOT</th>
-                              <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">EXPIRED DATE</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">#</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">NOMOR URUT</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ITEM NO</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DESKRIPSI (MATERIAL MASTER)</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">QTY</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">LOT</th>
+                              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">EXPIRED DATE</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="hover:bg-gray-50">
-                                <td className="px-3 py-0.5 text-center text-xs text-[#475569]">{idx + 1}</td>
-                                <td className="px-3 py-0.5 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
-                                <td className="px-3 py-0.5 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
-                                <td className="px-3 py-0.5 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
-                                <td className="px-3 py-1 text-right">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
-                                <td className="px-3 py-0.5 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
-                                <td className="px-3 py-0.5 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
+                                <td className="px-4 py-0.25 text-center text-xs text-[#475569]">{idx + 1}</td>
+                                <td className="px-4 py-0.25 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
+                                <td className="px-4 py-0.25 text-right text-[#475569]">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
+                                <td className="px-4 py-0.25 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
+                                <td className="px-4 py-0.25 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
                               </tr>
                             ))}
                           </tbody>
