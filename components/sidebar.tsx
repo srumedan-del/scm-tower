@@ -18,7 +18,7 @@ type NavItem = readonly [string, string, typeof LayoutDashboard]
 function NavLink({ item, pathname, onNavigate }: { item: NavItem; pathname: string; onNavigate?: () => void }) {
   const [label, href, Icon] = item
   const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-  return <Link href={href} onClick={onNavigate} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-label-medium transition-all duration-150 ease-standard ${active ? 'bg-blue/10 font-medium text-brand-primary' : 'text-foreground-secondary hover:bg-background-tertiary hover:text-foreground-primary'}`}>
+  return <Link href={href} onClick={onNavigate} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-label-medium transition-all duration-150 ease-standard ${active ? 'bg-blue/10 font-medium text-brand-primary' : 'text-foreground-secondary hover:bg-background-tertiary hover:text-foreground-primary'}`}>
     <Icon size={17} className={active ? 'text-brand-primary' : 'text-foreground-tertiary'} /><span>{label}</span>
   </Link>
 }
@@ -38,7 +38,7 @@ export function Sidebar() {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   async function handleLogout() { await supabase.auth.signOut(); setMobileOpen(false); router.push('/login'); router.refresh() }
-  const logout = <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-label-medium text-foreground-secondary hover:bg-red/5 hover:text-brand-red transition-all duration-150"><LogOut size={17} className="text-foreground-tertiary" /><span>Keluar</span></button>
+  const logout = <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-label-medium text-foreground-secondary hover:bg-red/5 hover:text-brand-red transition-all duration-150"><LogOut size={17} className="text-foreground-tertiary" /><span>Keluar</span></button>
 
   return <>
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-background-elevated p-4 md:flex shadow-level-1">
