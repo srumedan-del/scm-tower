@@ -295,7 +295,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                               <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">NOMOR URUT</th>
                               <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">ITEM NO</th>
                               <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">DESKRIPSI (MATERIAL MASTER)</th>
-                              <th className="text-right px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">QTY</th>
+                              <th className="text-right px-3 py-0.5 text-xs font-medium text-text uppercase tracking-wide">QTY</th>
                               <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">LOT</th>
                               <th className="text-left px-3 py-2 text-xs font-bold text-text uppercase tracking-wide">EXPIRED DATE</th>
                             </tr>
@@ -303,13 +303,13 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                           <tbody className="divide-y divide-gray-200">
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="hover:bg-gray-50">
-                                <td className="px-3 py-1 text-center text-xs text-[#475569]">{idx + 1}</td>
-                                <td className="px-3 py-1 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
-                                <td className="px-3 py-1 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
-                                <td className="px-3 py-1 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
+                                <td className="px-3 py-0.5 text-center text-xs text-[#475569]">{idx + 1}</td>
+                                <td className="px-3 py-0.5 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
+                                <td className="px-3 py-0.5 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-3 py-0.5 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
                                 <td className="px-3 py-1 text-right">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
-                                <td className="px-3 py-1 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
-                                <td className="px-3 py-1 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
+                                <td className="px-3 py-0.5 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
+                                <td className="px-3 py-0.5 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
                               </tr>
                             ))}
                           </tbody>
