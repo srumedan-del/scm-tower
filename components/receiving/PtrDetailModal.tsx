@@ -79,7 +79,7 @@ function InfoGrid({ data }: { data: HeaderData }) {
   const items = Object.entries(data).filter(([key]) => !HIDDEN_FIELDS.has(key))
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
       {items.map(([key, value]) => {
         const label = fieldLabels[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
         const display = value !== null && value !== undefined && value !== '' ? String(value) : '-'
@@ -236,7 +236,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
               {!loading && !errorMsg && header && (
                 <>
                   <div className="p-4 border-b">
-                    <h3 className="text-xs font-medium uppercase tracking-wide text-text mb-2.5 flex items-center gap-2">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-text mb-3 flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Data Header
                     </h3>
@@ -244,14 +244,14 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                   </div>
 
                   <div className="border-b bg-slate-50 p-4">
-                    <h3 className="mb-2.5 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text">
+                    <h3 className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text">
                       <span className="h-2 w-2 rounded-full bg-indigo-600" />
                       Informasi Pengiriman
                     </h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Mode pengiriman</span>
-                                              <select value={transportForm.transport_mode} onChange={event => setTransportForm(current => ({ ...current, transport_mode: event.target.value as typeof current.transport_mode }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm">
+                                              <select value={transportForm.transport_mode} onChange={event => setTransportForm(current => ({ ...current, transport_mode: event.target.value as typeof current.transport_mode }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm">
                                                 <option value="DARAT">Darat</option>
                                                 <option value="LAUT">Laut</option>
                                                 <option value="UDARA">Udara</option>
@@ -263,15 +263,15 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor darat / utama</span>
-                                              <input value={transportForm.land_vendor_code} onChange={event => setTransportForm(current => ({ ...current, land_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm" placeholder="Kode atau nama vendor" />
+                                              <input value={transportForm.land_vendor_code} onChange={event => setTransportForm(current => ({ ...current, land_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm" placeholder="Kode atau nama vendor" />
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor laut (opsional)</span>
-                                              <input value={transportForm.sea_vendor_code} onChange={event => setTransportForm(current => ({ ...current, sea_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm" placeholder="Diisi jika vendor laut berbeda" />
+                                              <input value={transportForm.sea_vendor_code} onChange={event => setTransportForm(current => ({ ...current, sea_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm" placeholder="Diisi jika vendor laut berbeda" />
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor udara (opsional)</span>
-                                              <input value={transportForm.air_vendor_code} onChange={event => setTransportForm(current => ({ ...current, air_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm" placeholder="Diisi jika vendor udara berbeda" />
+                                              <input value={transportForm.air_vendor_code} onChange={event => setTransportForm(current => ({ ...current, air_vendor_code: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm" placeholder="Diisi jika vendor udara berbeda" />
                                             </label>
                     </div>
                     <button type="button" onClick={saveTransportDetails} disabled={savingTransport} className="mt-2.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
@@ -280,7 +280,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                   </div>
 
                   <div className="p-4">
-                    <h3 className="text-xs font-medium uppercase tracking-wide text-text mb-2.5 flex items-center gap-2">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-text mb-3 flex items-center gap-2">
                       <Package className="h-4 w-4" />
                       Data Detail ({details.length} item)
                     </h3>
@@ -291,25 +291,25 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                         <table className="w-full text-xs">
                           <thead className="bg-gray-50 border-b">
                             <tr>
-                              <th className="text-center px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">#</th>
-                              <th className="text-left px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">NOMOR URUT</th>
-                              <th className="text-left px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">ITEM NO</th>
-                              <th className="text-left px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">DESKRIPSI (MATERIAL MASTER)</th>
+                              <th className="text-center px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">#</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">NOMOR URUT</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">ITEM NO</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">DESKRIPSI (MATERIAL MASTER)</th>
                               <th className="text-right px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">QTY</th>
-                              <th className="text-left px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">LOT</th>
-                              <th className="text-left px-3 py-1 text-xs font-medium text-text uppercase tracking-wide">EXPIRED DATE</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">LOT</th>
+                              <th className="text-left px-3 py-1.5 text-xs font-medium text-text uppercase tracking-wide">EXPIRED DATE</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="hover:bg-gray-50">
-                                <td className="px-3 py-1 text-center text-xs text-[#475569]">{idx + 1}</td>
-                                <td className="px-3 py-1 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
-                                <td className="px-3 py-1 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
-                                <td className="px-3 py-1 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
+                                <td className="px-3 py-1.5 text-center text-xs text-[#475569]">{idx + 1}</td>
+                                <td className="px-3 py-1.5 font-mono text-xs text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
+                                <td className="px-3 py-1.5 font-mono text-xs text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-3 py-1.5 text-xs text-[#475569]">{d.item_name || d.description || '-'}</td>
                                 <td className="px-3 py-1 text-right">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
-                                <td className="px-3 py-1 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
-                                <td className="px-3 py-1 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
+                                <td className="px-3 py-1.5 text-xs text-[#475569]">{d.lot_no ?? '-'}</td>
+                                <td className="px-3 py-1.5 text-xs text-[#475569]">{d.expiration_date ? String(d.expiration_date).slice(0, 10) : '-'}</td>
                               </tr>
                             ))}
                           </tbody>
