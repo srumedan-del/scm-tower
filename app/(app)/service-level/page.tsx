@@ -136,11 +136,11 @@ function PerformanceTable({ title, rows }: { title: string; rows: GroupRow[] }) 
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Total</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Selesai</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">OTD</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tertunda</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Total</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Selesai</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">OTD</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tertunda</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -296,16 +296,16 @@ export default function ServiceLevelPage() {
               </colgroup>
               <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
                 <tr>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS No.</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Doc Date Time</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip ID</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip Created Date Time</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transporter</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Cust Received</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Hari</th>
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS No.</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Doc Date Time</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip ID</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip Created Date Time</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transporter</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Cust Received</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Hari</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -393,7 +393,7 @@ export default function ServiceLevelPage() {
         <div className="border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Shipment Butuh Perhatian</h2><p className="text-xs text-gray-500 mt-0.5">Melewati SLA dari Document Created Date/Time: DK 24 jam · LK 72 jam.</p></div>
         <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Vendor</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Batas SLA</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th></tr></thead>
+            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Vendor</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Batas SLA</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th></tr></thead>
             <tbody className="divide-y">
               {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pss_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.customer_name ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{vendorName(row)}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]"><StatusBadge status={row.status} /></td></tr>)}
             </tbody>

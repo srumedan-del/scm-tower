@@ -115,7 +115,7 @@ export function DataTable<T extends Record<string, any>>({
           <table className={`w-full text-sm ${noWrap ? 'whitespace-nowrap' : ''}`}>
             <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
               <tr>
-                {expandable && <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap"></th>}
+                {expandable && <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap"></th>}
                 {visibleCols.map(col => (
                   <th
                           key={String(col.key)}

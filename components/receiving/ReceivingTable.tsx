@@ -111,7 +111,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                   <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">From → To</th>
                   <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Shipping agent</th>
                   <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Ship date</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lead time</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lead time</th>
                  </tr>
               </thead>
               <tbody className="divide-y divide-[#EEF0F4]">

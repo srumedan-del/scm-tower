@@ -148,12 +148,12 @@ export default function PtsPanel() {
         <table className="w-full min-w-[980px] text-sm">
           <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
             <tr>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTS No.</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Document Date</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Alamat</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTS No.</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Document Date</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Alamat</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#EEF0F4]">
@@ -202,7 +202,7 @@ function PtsDetailModal({ record, onClose }: { record: PtsRecord; onClose: () =>
     <p className="mb-3 text-sm text-gray-600">{record.document_date ?? '-'} · Total {total.toLocaleString('id-ID')} unit</p>
     <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm max-h-[55vh]">
       <table className="w-full min-w-[620px] text-xs">
-        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item No.</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Deskripsi</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Qty</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lot</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Expired</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sumber</th></tr></thead>
+        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item No.</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Deskripsi</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Qty</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lot</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Expired</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sumber</th></tr></thead>
         <tbody className="divide-y divide-gray-100">
           {loading && <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Memuat item...</td></tr>}
           {!loading && items.map((item, index) => <tr key={`${item.item_no}-${item.lot_no}-${index}`}><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{item.item_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{item.description ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{item.quantity.toLocaleString('id-ID')}</td><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{item.lot_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{item.expiration_date ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{item.notes ?? '-'}</td></tr>)}
@@ -258,7 +258,7 @@ function UploadPtsModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       </label>
       {file && <p className="text-xs text-gray-500">{file.name} {rows.length ? `• ${rows.length} nomor PTS dan ${rows.reduce((sum, row) => sum + row.details.length, 0)} item ditemukan` : ''}</p>}
       {rows.length > 0 && <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-                        <table className="w-full text-xs"><thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTS No.</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tanggal</th><th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Detail Item</th></tr></thead>
+                        <table className="w-full text-xs"><thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTS No.</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tanggal</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Detail Item</th></tr></thead>
           <tbody>{rows.slice(0, 10).map(row => <tr key={row.pts_no} className="border-t"><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pts_no}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.document_date ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.details.length} item</td></tr>)}</tbody>
         </table>
       </div>}
