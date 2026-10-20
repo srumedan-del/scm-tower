@@ -22,15 +22,15 @@ export default async function CustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CUSTOMER CODE</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CUSTOMER NAME</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CITY</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">DK/LK</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">JENIS CUSTOMER</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">MESIN HD</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ADDRESS</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LOKASI</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ACTIVE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CUSTOMER CODE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CUSTOMER NAME</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CITY</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">DK/LK</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">JENIS CUSTOMER</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">MESIN HD</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ADDRESS</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">LOKASI</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">ACTIVE</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

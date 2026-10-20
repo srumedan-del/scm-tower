@@ -48,14 +48,14 @@ export default async function Issues() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-border">
             <tr>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text whitespace-nowrap">NO</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">KATEGORI</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">JUDUL</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">PIC</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">IMPACT</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">STATUS</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text whitespace-nowrap">UMUR</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs font-medium text-text">DUE</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">NO</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">KATEGORI</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">JUDUL</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">PIC</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">IMPACT</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">STATUS</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide whitespace-nowrap">UMUR</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">DUE</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

@@ -152,8 +152,8 @@ export default function PtsPanel() {
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Document Date</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-600">Alamat</th>
-              <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
-              <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-600">Item</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Status</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Item</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -205,7 +205,7 @@ function PtsDetailModal({ record, onClose }: { record: PtsRecord; onClose: () =>
         <thead className="sticky top-0 bg-gray-50"><tr><th className="px-3 py-2 text-left">Item No.</th><th className="px-3 py-2 text-left">Deskripsi</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-left">Lot</th><th className="px-3 py-2 text-left">Expired</th><th className="px-3 py-2 text-left">Sumber</th></tr></thead>
         <tbody className="divide-y divide-gray-100">
           {loading && <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Memuat item...</td></tr>}
-          {!loading && items.map((item, index) => <tr key={`${item.item_no}-${item.lot_no}-${index}`}><td className="px-3 py-2 font-mono">{item.item_no ?? '-'}</td><td className="px-3 py-2">{item.description ?? '-'}</td><td className="px-3 py-2 text-right font-semibold">{item.quantity.toLocaleString('id-ID')}</td><td className="px-3 py-2 font-mono">{item.lot_no ?? '-'}</td><td className="px-3 py-2">{item.expiration_date ?? '-'}</td><td className="px-3 py-2 text-gray-500">{item.notes ?? '-'}</td></tr>)}
+          {!loading && items.map((item, index) => <tr key={`${item.item_no}-${item.lot_no}-${index}`}><td className="px-4 py-2.5 font-mono text-xs text-[#475569]">{item.item_no ?? '-'}</td><td className="px-4 py-2.5">{item.description ?? '-'}</td><td className="px-3 py-2 text-right font-semibold">{item.quantity.toLocaleString('id-ID')}</td><td className="px-4 py-2.5 font-mono text-xs text-[#475569]">{item.lot_no ?? '-'}</td><td className="px-4 py-2.5">{item.expiration_date ?? '-'}</td><td className="px-3 py-2 text-gray-500">{item.notes ?? '-'}</td></tr>)}
           {!loading && items.length === 0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Tidak ada detail item.</td></tr>}
         </tbody>
       </table>
@@ -259,7 +259,7 @@ function UploadPtsModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       {file && <p className="text-xs text-gray-500">{file.name} {rows.length ? `• ${rows.length} nomor PTS dan ${rows.reduce((sum, row) => sum + row.details.length, 0)} item ditemukan` : ''}</p>}
       {rows.length > 0 && <div className="max-h-40 overflow-auto rounded-lg border border-gray-200">
         <table className="w-full text-xs"><thead className="sticky top-0 bg-gray-50"><tr><th className="px-3 py-2 text-left">PTS No.</th><th className="px-3 py-2 text-left">Tanggal</th><th className="px-3 py-2 text-left">Detail Item</th></tr></thead>
-          <tbody>{rows.slice(0, 10).map(row => <tr key={row.pts_no} className="border-t"><td className="px-3 py-2 font-mono">{row.pts_no}</td><td className="px-3 py-2">{row.document_date ?? '-'}</td><td className="px-3 py-2">{row.details.length} item</td></tr>)}</tbody>
+          <tbody>{rows.slice(0, 10).map(row => <tr key={row.pts_no} className="border-t"><td className="px-4 py-2.5 font-mono text-xs text-[#475569]">{row.pts_no}</td><td className="px-4 py-2.5">{row.document_date ?? '-'}</td><td className="px-4 py-2.5">{row.details.length} item</td></tr>)}</tbody>
         </table>
       </div>}
       {error && <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</p>}

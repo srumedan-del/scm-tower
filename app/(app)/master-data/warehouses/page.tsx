@@ -21,12 +21,12 @@ export default async function WarehousesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CODE</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">NAMA</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CITY</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ADDRESS</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ACTIVE</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CREATED</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CODE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">NAMA</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CITY</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ADDRESS</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">ACTIVE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CREATED</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

@@ -393,12 +393,12 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
               <table className="w-full text-xs">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Item No</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Deskripsi</th>
-                    <th className="text-right px-3 py-2 font-semibold text-gray-600 w-20">Qty</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-600 w-16">UOM</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-600 w-24">Lot</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-600 w-28">Expired</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-text">Item No</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-text">Deskripsi</th>
+                    <th className="px-4 py-2.5 text-right text-xs text-[#475569]">Qty</th>
+                    <th className="px-4 py-2.5 text-left text-xs text-[#475569]">UOM</th>
+                    <th className="px-4 py-2.5 text-left text-xs text-[#475569]">Lot</th>
+                    <th className="px-4 py-2.5 text-left text-xs text-[#475569]">Expired</th>
                     <th className="w-8"></th>
                   </tr>
                 </thead>

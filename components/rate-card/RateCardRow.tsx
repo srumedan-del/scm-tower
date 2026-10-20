@@ -47,9 +47,9 @@ export function RateCardRow({ rate }: { rate: Rate }) {
         <td className="break-words px-2 py-2.5 text-left text-[11px] font-bold sm:px-3">
           {(rate as any).vendor_name ? String((rate as any).vendor_name).toUpperCase() : '-'}
         </td>
-        <td className="break-words px-2 py-2.5 text-left sm:px-3">{String(rate.origin).toUpperCase()} → {String(rate.destination).toUpperCase()}</td>
-        <td className="break-words px-2 py-2.5 text-left sm:px-3">{truckSpecification(rate)}</td>
-        <td className="break-words px-2 py-2.5 text-left sm:px-3">{String(rate.tariff_model ?? '-').toUpperCase()}</td>
+        <td className="px-4 py-2.5 text-left text-xs text-[#475569]">{String(rate.origin).toUpperCase()} → {String(rate.destination).toUpperCase()}</td>
+        <td className="px-4 py-2.5 text-left text-xs text-[#475569]">{truckSpecification(rate)}</td>
+        <td className="px-4 py-2.5 text-left text-xs text-[#475569]">{String(rate.tariff_model ?? '-').toUpperCase()}</td>
         <td className="whitespace-nowrap px-2 py-2.5 text-right font-medium sm:px-3">{rate.price != null ? Number(rate.price).toLocaleString('id-ID') : '-'}</td>
         <td className="px-2 py-2.5 text-center sm:px-3">{statusBadge(rate.status)}</td>
       </tr>

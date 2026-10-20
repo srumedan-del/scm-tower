@@ -41,7 +41,7 @@ export function RouteRow({ route }: { route: Route }) {
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
           {route.distance_km == null ? '-' : `${Number(route.distance_km).toLocaleString('id-ID', { maximumFractionDigits: 1 })} KM`}
         </td>
-        <td className="px-4 py-2.5 text-xs text-gray-600">{String(route.notes ?? '-').toUpperCase()}</td>
+        <td className="px-4 py-2.5 text-xs text-[#475569]">{String(route.notes ?? '-').toUpperCase()}</td>
       </tr>
       {mounted && open && createPortal(
         <RouteEditPanel

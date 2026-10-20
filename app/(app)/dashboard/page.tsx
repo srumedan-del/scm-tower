@@ -427,7 +427,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <td className="px-4 py-2.5 text-xs max-w-[180px] truncate font-medium">
                           {s.customer_name ?? '—'}
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-gray-600">
+                        <td className="px-4 py-2.5 text-xs text-[#475569]">
                           {s.destination_city ?? '—'}
                         </td>
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap text-gray-600">

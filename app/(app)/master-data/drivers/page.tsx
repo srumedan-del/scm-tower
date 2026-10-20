@@ -65,13 +65,13 @@ export default function DriversPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Kode</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Nama</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Role</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">No. SIM</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">No. HP</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Catatan</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Kode</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Nama</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Role</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">No. SIM</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">No. HP</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Catatan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -106,7 +106,7 @@ export default function DriversPage() {
                     : <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5"><UserX className="h-3 w-3" /> Nonaktif</span>
                   }
                 </td>
-                <td className="px-4 py-2.5 text-xs text-gray-500">{r.notes ?? '-'}</td>
+                <td className="px-4 py-2.5 text-xs text-[#8E8E93]">{r.notes ?? '-'}</td>
               </tr>
             ))}
           </tbody>

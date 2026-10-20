@@ -80,13 +80,13 @@ export default function RateCardList({ rates }: { rates: Rate[] }) {
           </colgroup>
           <thead className="border-b border-border bg-gray-50">
             <tr>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">RATE CODE</th>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">VENDOR</th>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">ORIGIN → DESTINATION</th>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">TYPE SERVICE</th>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">TARIFF MODEL</th>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">PRICE</th>
-              <th className="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-gray-900 sm:px-3">STATUS</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">RATE CODE</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">VENDOR</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">ORIGIN → DESTINATION</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">TYPE SERVICE</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">TARIFF MODEL</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">PRICE</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">STATUS</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

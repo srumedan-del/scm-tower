@@ -21,12 +21,12 @@ export default async function RoutesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ROUTE CODE</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ORIGIN → DESTINATION</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">TIPE</th>
-                <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">LEAD TIME</th>
-                <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">JARAK</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">NOTES</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ROUTE CODE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ORIGIN → DESTINATION</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">TIPE</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-text uppercase tracking-wide">LEAD TIME</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-text uppercase tracking-wide">JARAK</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">NOTES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

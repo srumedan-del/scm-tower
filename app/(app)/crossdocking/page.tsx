@@ -89,14 +89,14 @@ export default function CrossdockingPage() {
             <tr>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">CD No.</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">PSS No.</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Customer</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Customer</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Kota Tujuan</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Terima dari HQ</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Promised Date</th>
               <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Sisa Hari</th>
               <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600 whitespace-nowrap">Ref. HQ</th>
-              <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Status</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-600">Catatan</th>
+              <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">Catatan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

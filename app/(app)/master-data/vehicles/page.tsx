@@ -21,11 +21,11 @@ export default async function VehiclesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">NOPOL / VEHICLE NO</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">JENIS</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">TONASE / VOLUME</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">DRIVER</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">STATUS</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">NOPOL / VEHICLE NO</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">JENIS</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">TONASE / VOLUME</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">DRIVER</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">STATUS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

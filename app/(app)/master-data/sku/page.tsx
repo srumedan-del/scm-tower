@@ -22,13 +22,13 @@ export default async function SkuPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">SKU CODE</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ITEM NAME</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">CATEGORY</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">GROUP</th>
-                <th className="text-left px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">UOM</th>
-                <th className="text-right px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">SAFETY STOCK</th>
-                <th className="text-center px-4 py-3 uppercase tracking-wide text-xs font-bold text-gray-900">ACTIVE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">SKU CODE</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">ITEM NAME</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">CATEGORY</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">GROUP</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text uppercase tracking-wide">UOM</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-text uppercase tracking-wide">SAFETY STOCK</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-text uppercase tracking-wide">ACTIVE</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
