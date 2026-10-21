@@ -259,7 +259,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Nomor container / airway reference</span>
-                                              <input value={transportForm.container_no} onChange={event => setTransportForm(current => ({ ...current, container_no: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-mono" placeholder="CONT-... / AWB-..." />
+                                              <input value={transportForm.container_no} onChange={event => setTransportForm(current => ({ ...current, container_no: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-medium" placeholder="CONT-... / AWB-..." />
                                             </label>
                                             <label className="block">
                                               <span className="mb-1 block text-xs font-medium text-gray-500">Vendor darat / utama</span>
@@ -304,8 +304,8 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                             {details.map((d, idx) => (
                               <tr key={String(d.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
                                 <td className="px-4 py-1.5 text-xs font-medium text-center text-[#475569]">{idx + 1}</td>
-                                <td className="px-4 py-1.5 text-xs font-medium font-mono text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
-                                <td className="px-4 py-1.5 text-xs font-medium font-mono text-[#475569]">{d.item_no ?? '-'}</td>
+                                <td className="px-4 py-1.5 text-xs font-medium font-medium text-[#475569]">{d.entry_no ?? d.document_line_no ?? '-'}</td>
+                                <td className="px-4 py-1.5 text-xs font-medium font-medium text-[#475569]">{d.item_no ?? '-'}</td>
                                 <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">{d.item_name || d.description || '-'}</td>
                                 <td className="px-4 py-1.5 text-xs font-medium text-right text-[#475569]">{Number(d.quantity ?? 0).toLocaleString('id-ID')}</td>
                                 <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">{d.lot_no ?? '-'}</td>

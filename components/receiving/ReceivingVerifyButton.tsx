@@ -122,7 +122,7 @@ export default function ReceivingVerifyButton() {
                         <tbody>
                           {result.orphanedDetails.map((d) => (
                             <tr key={String(d.id)} className="border-t">
-                              <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{d.document_no}</td>
+                              <td className="px-4 py-0.25 text-xs font-medium font-medium text-[#475569]">{d.document_no}</td>
                               <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.item_no}</td>
                               <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.description}</td>
                             </tr>
@@ -155,7 +155,7 @@ export default function ReceivingVerifyButton() {
                           {result.emptyHeaders.map((h) => (
                             <tr key={String(h.id)} className="border-t">
                               <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{h.id}</td>
-                              <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{h.ptr_no}</td>
+                              <td className="px-4 py-0.25 text-xs font-medium font-medium text-[#475569]">{h.ptr_no}</td>
                             </tr>
                           ))}
                         </tbody>
