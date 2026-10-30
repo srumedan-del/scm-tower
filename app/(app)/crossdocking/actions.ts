@@ -250,7 +250,7 @@ export async function getPtsRecords() {
   })
 }
 
-type PtsUploadRow = {
+export type PtsUploadRow = {
   pts_no: string
   document_date?: string | null
   document_created_at?: string | null

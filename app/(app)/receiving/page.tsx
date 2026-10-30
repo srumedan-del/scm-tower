@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { PtrHeaderUploadButton, PtrDetailUploadButton } from '@/components/receiving/ReceivingUploadButton'
+import MultiDestinationDetailUpload from '@/components/shared/MultiDestinationDetailUpload'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
 import ReceivingAIAnalysis from '@/components/receiving/ReceivingAIAnalysis'
@@ -96,13 +97,14 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
           <h1 className="text-2xl font-semibold tracking-tight text-text">Receiving</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Suspense>
-            <ReceivingFilter months={availableMonths} />
-          </Suspense>
-          <PtrHeaderUploadButton />
-          <PtrDetailUploadButton />
-          <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />
-        </div>
+                  <Suspense>
+                    <ReceivingFilter months={availableMonths} />
+                  </Suspense>
+                  <PtrHeaderUploadButton />
+                  <PtrDetailUploadButton />
+                  <MultiDestinationDetailUpload />
+                  <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />
+                </div>
       </header>
 
       <ReceivingTable rows={rows} details={details} />
