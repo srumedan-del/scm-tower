@@ -145,7 +145,7 @@ async function getDashboardData(period: string) {
   // PSS untracked bulan ini
   const trackedPssSet = new Set(
     allShipments
-      .filter(s => s.pss_no && s.document_date >= from && s.document_date < to)
+      .filter(s => s.pss_no && s.status !== 'Failed Delivery' && s.document_date >= from && s.document_date < to)
       .map(s => String(s.pss_no).trim())
   )
   const untrackedCount = (outboundRows ?? []).filter((r: any) => {
@@ -170,7 +170,7 @@ async function getDashboardData(period: string) {
 
   // Overdue
   const overdueFiltered = allShipments
-    .filter(s => s.status !== 'Delivered' && s.status !== 'Closed' && s.document_date && new Date(today) > slaDeadline(s.document_date, s.dk_lk))
+    .filter(s => s.status !== 'Delivered' && s.status !== 'Closed' && s.status !== 'Failed Delivery' && s.document_date && new Date(today) > slaDeadline(s.document_date, s.dk_lk))
     .sort((a, b) => a.document_date.localeCompare(b.document_date))
 
   // Aktif (Dispatched / In Transit)

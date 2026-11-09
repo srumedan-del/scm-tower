@@ -66,6 +66,7 @@ export default function ShipmentPage() {
   // Bulk create
   const [bulkOpen, setBulkOpen]         = useState(false)
   const [checkedUt, setCheckedUt]       = useState<Set<string>>(new Set())
+  const [utFilter, setUtFilter]         = useState<'all' | 'redelivery'>('all')
 
   // ── Month Filter State ──
   const [months, setMonths] = useState<string[]>([])
@@ -143,14 +144,17 @@ export default function ShipmentPage() {
   }
 
   // Checkbox helpers untuk untracked
-  const allUtChecked = untracked.length > 0 && checkedUt.size === untracked.length
+  const redeliveryRows = untracked.filter(r => r.redelivery)
+  const visibleUntracked = utFilter === 'redelivery' && redeliveryRows.length > 0 ? redeliveryRows : untracked
+  const allUtChecked = visibleUntracked.length > 0 && visibleUntracked.every(r => checkedUt.has(r.pss_no))
   function toggleUtCheck(pssNo: string) {
     setCheckedUt(prev => { const n = new Set(prev); n.has(pssNo) ? n.delete(pssNo) : n.add(pssNo); return n })
   }
   function toggleUtAll() {
-    setCheckedUt(allUtChecked ? new Set() : new Set(untracked.map(r => r.pss_no)))
+    setCheckedUt(allUtChecked ? new Set() : new Set(visibleUntracked.map(r => r.pss_no)))
   }
   const selectedUtRows = untracked.filter(r => checkedUt.has(r.pss_no))
+  const onlyRedeliverySelected = selectedUtRows.length > 0 && selectedUtRows.every(r => r.redelivery)
   const selectedTripRows = selected?.trip_id
     ? rows.filter(row => row.trip_id === selected.trip_id)
     : selected ? [selected] : []
@@ -266,6 +270,21 @@ export default function ShipmentPage() {
             </button>
           </div>
 
+          {redeliveryRows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter PSS">
+              {([['all', `Semua (${untracked.length})`], ['redelivery', `Perlu Kirim Ulang (${redeliveryRows.length})`]] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setUtFilter(key)}
+                  aria-pressed={utFilter === key}
+                  className={`rounded-full border px-3 py-1 text-sm font-semibold transition-colors ${utFilter === key ? 'border-red-600 bg-red-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-red-300'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm max-h-[calc(100vh-250px)]">
             <table className="w-full min-w-[1100px] text-[14px] font-sans border-collapse">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
@@ -297,7 +316,7 @@ export default function ShipmentPage() {
                     </td>
                   </tr>
                 )}
-                {untracked.map(r => {
+                {visibleUntracked.map(r => {
                   const isChecked = checkedUt.has(r.pss_no)
                   return (
                     <tr
@@ -322,7 +341,14 @@ export default function ShipmentPage() {
                         ) : <span className="text-gray-400">Belum dihitung</span>}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-left text-slate-600">
-                        <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">BELUM DIBUAT SHIPMENT</span>
+                        {r.redelivery ? (
+                          <>
+                            <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">PERLU KIRIM ULANG</span>
+                            <div className="mt-1 text-xs text-slate-500">{[r.redelivery.failure_reason, r.redelivery.trip_id].filter(Boolean).join(' · ')}</div>
+                          </>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">BELUM DIBUAT SHIPMENT</span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -339,7 +365,7 @@ export default function ShipmentPage() {
                 onClick={() => setBulkOpen(true)}
                 className="bg-white text-indigo-700 font-bold text-sm px-4 py-1.5 rounded-xl hover:bg-indigo-50"
               >
-                Buat Shipment →
+                {onlyRedeliverySelected ? 'Jadwalkan Ulang →' : 'Buat Shipment →'}
               </button>
               <button onClick={() => setCheckedUt(new Set())} className="text-indigo-300 hover:text-white text-xs">
                 Batal pilih
@@ -438,7 +464,7 @@ export default function ShipmentPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
-                      <button
+                      {r.status === 'Failed Delivery' ? <span className="text-gray-400">-</span> : <button
                         onClick={() => setPodShipment(r)}
                         title={r.status === 'Delivered' ? 'Lihat / Edit POD' : 'Input POD & Konfirmasi Delivered'}
                         className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
@@ -449,7 +475,7 @@ export default function ShipmentPage() {
                       >
                         <PackageCheck className="h-3.5 w-3.5" />
                         {r.status === 'Delivered' ? 'POD' : 'Terima'}
-                      </button>
+                      </button>}
                     </td>
                   </tr>
                 ))}

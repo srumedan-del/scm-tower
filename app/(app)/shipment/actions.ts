@@ -25,6 +25,7 @@ export type ShipmentTrackingRow = {
   document_date: string | null
   promised_delivery_date: string | null
   status: 'Draft' | 'Dispatched' | 'In Transit' | 'Delivered' | 'Failed Delivery' | 'Closed'
+  failure_reason?: string | null
   dispatch_time: string | null
   delivery_time: string | null
   is_on_time: boolean | null
@@ -78,6 +79,8 @@ export type DriverOption      = { id: number; driver_name: string; phone: string
 export type RouteOption       = { id: number; route_code: string; origin: string; destination: string; distance_km: number | null }
 
 /** Strict normalized-name match only; ambiguity or no match stays null. */
+const FINAL_SHIPMENT_STATUSES = ['Delivered', 'Failed Delivery', 'Closed']
+
 export async function resolveTransporterFromVendor(vendorId: number | null): Promise<number | null> {
   await requireAuthenticatedUser()
   if (!vendorId) return null
@@ -232,7 +235,9 @@ export async function getServiceLevelShipments(startDate: string, endDate: strin
 
   if (error) throw error
 
-  const shipments = (data ?? []) as ServiceLevelShipmentRow[]
+  // Percobaan gagal tidak dihitung: PSS-nya muncul sekali lewat shipment pengganti
+  // atau, selama belum dijadwalkan ulang, sebagai backlog dari getUntrackedPss.
+  const shipments = ((data ?? []) as ServiceLevelShipmentRow[]).filter(row => row.status !== 'Failed Delivery')
   const transporterIds = [...new Set(shipments.map(row => row.transporter_id).filter((id): id is number => id != null))]
   const driverIds = [...new Set(shipments.map(row => row.driver_id).filter((id): id is number => id != null))]
   const routeIds = [...new Set(shipments.map(row => row.route_id).filter((id): id is number => id != null))]
@@ -508,14 +513,14 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
   if (String(payload.trip_id ?? '').trim() && payload.status !== 'Delivered') payload.status = 'In Transit'
 
   if (id) {
-    // Status Delivered dan Closed bersifat final: edit data tidak boleh memundurkannya.
+    // Status akhir tidak boleh dimundurkan oleh edit data.
     const { data: current, error: currentError } = await supabaseAdmin
       .from('shipment_tracking')
       .select('status')
       .eq('id', id)
       .maybeSingle()
     if (currentError) throw new Error(currentError.message)
-    if (current?.status === 'Delivered' || current?.status === 'Closed') payload.status = current.status
+    if (current && FINAL_SHIPMENT_STATUSES.includes(current.status)) payload.status = current.status
 
     const { error } = await supabaseAdmin.from('shipment_tracking').update(payload).eq('id', id)
     if (error) throw new Error(error.message)
@@ -570,8 +575,8 @@ export async function updateShipmentRetailCost(input: {
       no_resi: normalizedNoResi,
       total_biaya_eksternal: amount,
       cost_model: 'Retail',
-      // Status Delivered bersifat final: update resi/biaya tidak boleh memundurkannya.
-      status: current.status === 'Delivered' || current.status === 'Closed' ? current.status : 'In Transit',
+      // Update resi/biaya tidak boleh memundurkan status akhir.
+      status: FINAL_SHIPMENT_STATUSES.includes(current.status) ? current.status : 'In Transit',
     })
     .eq('id', input.id)
     .select('id, no_resi, total_biaya_eksternal, cost_model, status')
@@ -589,7 +594,129 @@ export async function deleteShipmentTracking(id: number) {
   if (error) throw error
 }
 
+/** Admin mencatat gagal kirim, untuk trip yang tidak dilaporkan lewat aplikasi driver. */
+export async function markShipmentFailed(input: { id: number; failure_reason: string; notes?: string }) {
+  await requireAuthenticatedUser()
+  const reason = input.failure_reason?.trim()
+  if (!reason) throw new Error('Alasan gagal kirim wajib dipilih')
+
+  const { data: current, error: currentError } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('status, notes')
+    .eq('id', input.id)
+    .maybeSingle()
+  if (currentError) throw new Error(currentError.message)
+  if (!current) throw new Error(`Shipment dengan ID ${input.id} tidak ditemukan`)
+  if (current.status !== 'Dispatched' && current.status !== 'In Transit') {
+    throw new Error(`Shipment berstatus ${current.status} tidak bisa ditandai gagal kirim`)
+  }
+
+  const { error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .update({
+      status: 'Failed Delivery',
+      failed_at: new Date().toISOString(),
+      failure_reason: reason,
+      notes: [`[GAGAL: ${reason}]${input.notes?.trim() ? ` ${input.notes.trim()}` : ''}`, current.notes].filter(Boolean).join(' | '),
+    })
+    .eq('id', input.id)
+  if (error) throw new Error(error.message)
+
+  const { error: stopError } = await supabaseAdmin
+    .from('trip_stop')
+    .update({ status: 'Delivery Attempt Failed' })
+    .eq('shipment_tracking_id', input.id)
+  if (stopError) throw new Error(stopError.message)
+}
+
+/** Mengoreksi gagal kirim yang salah catat, selama belum dijadwalkan ulang. */
+export async function undoShipmentFailed(id: number) {
+  await requireAuthenticatedUser()
+  const { data: current, error: currentError } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('id, status, notes, source_type, pss_no, crossdocking_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (currentError) throw new Error(currentError.message)
+  if (current?.status !== 'Failed Delivery') throw new Error('Shipment ini tidak berstatus gagal kirim')
+
+  const replacement = current.source_type === 'Crossdocking'
+    ? supabaseAdmin.from('shipment_tracking').select('id').eq('crossdocking_id', current.crossdocking_id)
+    : supabaseAdmin.from('shipment_tracking').select('id').eq('source_type', 'PSS').eq('pss_no', current.pss_no)
+  const { data: active, error: activeError } = await replacement.neq('status', 'Failed Delivery').limit(1)
+  if (activeError) throw new Error(activeError.message)
+  if (active?.length) throw new Error('Sudah ada pengiriman pengganti. Hapus dulu shipment penggantinya.')
+
+  const { error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .update({
+      status: 'In Transit',
+      failed_at: null,
+      failure_reason: null,
+      failure_photo_url: null,
+      notes: String(current.notes ?? '').replace(/^\[GAGAL: [^\]]*\][^|]*(\|\s*)?/, '').trim() || null,
+    })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+
+  const { error: stopError } = await supabaseAdmin
+    .from('trip_stop')
+    .update({ status: 'In Transit' })
+    .eq('shipment_tracking_id', id)
+  if (stopError) throw new Error(stopError.message)
+}
+
+/** Percobaan gagal terakhir tiap PSS/crossdocking yang belum punya pengiriman pengganti. */
+async function getPendingRedeliveries(): Promise<any[]> {
+  const { data: failedRows, error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('id, source_type, pss_no, crossdocking_id, outbound_header_id, customer_name, destination_city, dk_lk, document_date, promised_delivery_date, trip_id, failure_reason, failed_at')
+    .eq('status', 'Failed Delivery')
+    .order('failed_at', { ascending: false, nullsFirst: false })
+    .limit(300)
+  if (error) throw error
+  if (!failedRows?.length) return []
+
+  const isCrossdocking = (row: any) => row.source_type === 'Crossdocking'
+  const keyOf = (row: any) => isCrossdocking(row) ? `cd:${row.crossdocking_id}` : `pss:${row.pss_no}`
+  const pssNos = failedRows.filter(row => !isCrossdocking(row)).map(row => row.pss_no)
+  const crossdockingIds = failedRows.filter(isCrossdocking).map(row => row.crossdocking_id)
+
+  const [activePss, activeCrossdocking] = await Promise.all([
+    supabaseAdmin.from('shipment_tracking').select('source_type, pss_no, crossdocking_id').eq('source_type', 'PSS').in('pss_no', pssNos).neq('status', 'Failed Delivery'),
+    supabaseAdmin.from('shipment_tracking').select('source_type, pss_no, crossdocking_id').eq('source_type', 'Crossdocking').in('crossdocking_id', crossdockingIds).neq('status', 'Failed Delivery'),
+  ])
+  if (activePss.error) throw activePss.error
+  if (activeCrossdocking.error) throw activeCrossdocking.error
+
+  const handled = new Set([...(activePss.data ?? []), ...(activeCrossdocking.data ?? [])].map(keyOf))
+  return failedRows.filter(row => {
+    const key = keyOf(row)
+    if (handled.has(key)) return false
+    handled.add(key)
+    return true
+  })
+}
+
+function toRedeliveryInfo(row: any): RedeliveryInfo {
+  return {
+    shipment_id: Number(row.id),
+    trip_id: row.trip_id ?? null,
+    failure_reason: row.failure_reason ?? null,
+    failed_at: row.failed_at ?? null,
+  }
+}
+
+export type RedeliveryInfo = {
+  shipment_id: number
+  trip_id: string | null
+  failure_reason: string | null
+  failed_at: string | null
+}
+
 export type UntrackedPssRow = {
+  /** Terisi bila PSS ini pernah gagal kirim dan perlu dijadwalkan ulang. */
+  redelivery?: RedeliveryInfo | null
   id: number
   source_type: 'PSS' | 'Crossdocking'
   pss_no: string
@@ -831,15 +958,54 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
     cdQuery = cdQuery.gte('document_date', `${month}-01`).lt('document_date', nextMonth)
   }
 
-  const [{ data: pssRows, error: pssError }, { data: crossdockings, error: crossdockingError }, { data: tracked, error: trackedError }, { data: loadSummaries, error: loadError }] = await Promise.all([
+  const [{ data: viewPssRows, error: pssError }, { data: monthCrossdockings, error: crossdockingError }, { data: tracked, error: trackedError }, { data: loadSummaries, error: loadError }, pendingRedeliveries] = await Promise.all([
     pssQuery.limit(300),
     cdQuery.limit(300),
     supabaseAdmin.from('shipment_tracking').select('crossdocking_id').eq('source_type', 'Crossdocking').not('crossdocking_id', 'is', null),
     supabaseAdmin.from('vw_pss_load_summary').select('pss_no, total_koli, total_weight_kg, total_tonnage, total_volume_cbm, total_volumetric_ground_kg, total_volumetric_air_kg, missing_sku_count, incomplete_load_count'),
+    getPendingRedeliveries(),
   ])
   if (pssError) throw pssError
   if (crossdockingError) throw crossdockingError
   if (trackedError) throw trackedError
+
+  // PSS yang gagal kirim selalu ditampilkan, apa pun filter bulannya, agar tidak terlupakan.
+  const pendingPss = pendingRedeliveries.filter(row => row.source_type !== 'Crossdocking')
+  const pendingPssNos = new Set(pendingPss.map(row => String(row.pss_no).trim()))
+  const pssRows: any[] = [
+    ...pendingPss.map(row => ({
+      id: row.outbound_header_id ?? -Number(row.id),
+      source_type: 'PSS',
+      pss_no: row.pss_no,
+      customer_no: null,
+      customer_name: row.customer_name ?? null,
+      dk_lk: row.dk_lk ?? null,
+      destination_city: row.destination_city ?? null,
+      document_date: row.document_date ?? null,
+      promised_delivery_date: row.promised_delivery_date ?? null,
+      is_late: null,
+      delivery_delay_days: null,
+      psi_no: null,
+      redelivery: toRedeliveryInfo(row),
+    })),
+    ...(viewPssRows ?? []).filter(row => !pendingPssNos.has(String(row.pss_no).trim())),
+  ]
+
+  const redeliveryByCrossdocking = new Map(pendingRedeliveries
+    .filter(row => row.source_type === 'Crossdocking')
+    .map(row => [Number(row.crossdocking_id), toRedeliveryInfo(row)]))
+  const loadedCrossdockingIds = new Set((monthCrossdockings ?? []).map(row => Number(row.id)))
+  const missingCrossdockingIds = [...redeliveryByCrossdocking.keys()].filter(id => !loadedCrossdockingIds.has(id))
+  let otherCrossdockings: any[] = []
+  if (missingCrossdockingIds.length) {
+    const { data, error } = await supabaseAdmin
+      .from('crossdocking_header')
+      .select('id, pss_no, customer_code, customer_name, destination_city, document_created_at, document_date, promised_delivery_date, psi_no')
+      .in('id', missingCrossdockingIds)
+    if (error) throw error
+    otherCrossdockings = data ?? []
+  }
+  const crossdockings = [...(monthCrossdockings ?? []), ...otherCrossdockings]
 
   // Keep transport planning usable before migration_v28 is applied.
   const summaryByPss = new Map<string, PssLoadSummary>(
@@ -970,7 +1136,7 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
     }
   }
 
-  const trackedCrossdockingIds = new Set((tracked ?? []).map(row => Number(row.crossdocking_id)))
+  const trackedCrossdockingIds = new Set((tracked ?? []).map(row => Number(row.crossdocking_id)).filter(id => !redeliveryByCrossdocking.has(id)))
   const crossdockingIds = (crossdockings ?? []).map(row => Number(row.id)).filter(Number.isFinite)
   const crossdockingLoadById = new Map<number, PssLoadSummary>()
   if (crossdockingIds.length) {
@@ -1082,6 +1248,7 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
       document_created_at: row.document_created_at ?? row.document_date ?? null,
       promised_delivery_date: row.promised_delivery_date ?? null, is_late: null,
       delivery_delay_days: null, psi_no: row.psi_no ?? null,
+      redelivery: redeliveryByCrossdocking.get(Number(row.id)) ?? null,
       ...(crossdockingLoadById.get(Number(row.id)) ?? emptyLoadSummary),
     }))
 
@@ -1092,13 +1259,15 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
       ?? documentCreatedAtByPss.get(String(row.pss_no).trim())
       ?? documentDateByPss.get(String(row.pss_no).trim())
       ?? null,
-    dk_lk: (row.customer_no ? regionByCustomer.get(row.customer_no) : null) ?? inferDkLk(row.destination_city),
+    dk_lk: (row.customer_no ? regionByCustomer.get(row.customer_no) : null) ?? (row.redelivery ? row.dk_lk : null) ?? inferDkLk(row.destination_city),
     ...(summaryByPss.get(String(row.pss_no).trim()) ?? {}),
     products: summaryByPss.get(String(row.pss_no).trim())?.products ?? [],
   }))
 
   return [...pssWithLoad, ...untrackedCrossdockings]
     .sort((a, b) => {
+      const redeliveryOrder = Number(Boolean(b.redelivery)) - Number(Boolean(a.redelivery))
+      if (redeliveryOrder !== 0) return redeliveryOrder
       const pssOrder = String(b.pss_no ?? '').localeCompare(String(a.pss_no ?? ''), 'en', { numeric: true })
       if (pssOrder !== 0) return pssOrder
       return String(b.document_date ?? '').localeCompare(String(a.document_date ?? ''))
@@ -1369,6 +1538,7 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
       .select('pss_no, trip_id')
       .eq('source_type', 'PSS')
       .in('pss_no', uniquePssNos)
+      .neq('status', 'Failed Delivery')
     if (existingShipmentsError) throw new Error(existingShipmentsError.message)
     if (existingShipments?.length) {
       const existingPss = existingShipments
@@ -1393,7 +1563,7 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
     source_type:            pss.source_type,
     pss_no:                 pss.pss_no || null,
     crossdocking_id:        pss.source_type === 'Crossdocking' ? pss.id : null,
-    outbound_header_id:     pss.source_type === 'PSS' ? pss.id : null,
+    outbound_header_id:     pss.source_type === 'PSS' && pss.id > 0 ? pss.id : null,
     customer_name:          pss.customer_name,
     destination_city:       pss.destination_city,
     dk_lk:                  pss.dk_lk ?? (pss.source_type === 'Crossdocking' ? 'LK' : inferDkLk(pss.destination_city)),
@@ -1415,6 +1585,7 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
     estimated_overhead_rupiah: estimatedOverheadPerShipment,    dispatch_time:          processTime,
     // Simpan info vendor & kendaraan eksternal di notes
     notes: [
+      pss.redelivery ? `Kirim ulang dari ${pss.redelivery.trip_id ?? 'pengiriman sebelumnya'}${pss.redelivery.failure_reason ? ` (${pss.redelivery.failure_reason})` : ''}` : null,
       payload.vendor_name   ? `Vendor: ${payload.vendor_name}`      : null,
       payload.vehicle_nopol ? `Nopol: ${payload.vehicle_nopol}`     : null,
       payload.vehicle_type  ? `Tipe: ${payload.vehicle_type}`       : null,

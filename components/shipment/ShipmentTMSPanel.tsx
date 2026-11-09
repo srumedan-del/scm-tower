@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import {
-  upsertShipmentTracking, deleteShipmentTracking,
+  upsertShipmentTracking, deleteShipmentTracking, markShipmentFailed, undoShipmentFailed,
   updateShipmentRetailCost,
   getShipmentTMSOptions, lookupCustomerDkLk,
   type ShipmentTrackingRow,
@@ -12,7 +12,8 @@ import {
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { confirmAction, notify } from '@/lib/feedback'
 
-const STATUS_OPTS = ['Draft', 'Dispatched', 'In Transit', 'Delivered'] as const
+const STATUS_OPTS: readonly string[] = ['Draft', 'Dispatched', 'In Transit', 'Delivered']
+const FAILURE_REASONS = ['Customer tutup', 'Salah barang', 'Alamat tidak ditemukan', 'Ditolak penerima', 'Lainnya']
 
 type Props = {
   shipment: ShipmentTrackingRow | null
@@ -164,7 +165,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
 
   async function del() {
     if (!shipment) return
-    if (!(await confirmAction({ title: 'Hapus shipment?', message: 'Shipment ini beserta data POD-nya akan dihapus.' }))) return
+    if (!(await confirmAction({ title: 'Hapus shipment?', message: `Shipment ${shipment.pss_no ?? 'ini'} beserta data POD-nya akan dihapus.` }))) return
     startDeleting(async () => {
       try { await deleteShipmentTracking(shipment.id); notify.success('Shipment dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
@@ -242,9 +243,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 <InfoField label={relatedShipments && relatedShipments.length > 1 ? `PSS / CD No. (${relatedShipments.length} dalam 1 Trip)` : 'PSS / CD No.'}>
                   <div className="space-y-1">
                     {(relatedShipments?.length ? relatedShipments : [shipment]).map(row => (
-                      <div key={row.id} className="font-bold text-indigo-700">
-                        {row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : '-')}
-                      </div>
+                      <AttemptRow key={row.id} row={row} onChanged={onSaved} />
                     ))}
                   </div>
                 </InfoField>
@@ -348,6 +347,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
             <div className="grid grid-cols-2 gap-3">
               <Field label="Status *">
                 <select value={form.status ?? 'Draft'} onChange={e => up('status', e.target.value)} className="inp">
+                  {form.status && !STATUS_OPTS.includes(form.status) && <option value={form.status}>{form.status}</option>}
                   {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </Field>
@@ -415,6 +415,54 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
 
         <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}.inp:disabled{background:#f9fafb;color:#9ca3af}`}</style>
       </div>
+    </div>
+  )
+}
+
+function AttemptRow({ row, onChanged }: { row: ShipmentTrackingRow; onChanged: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState(FAILURE_REASONS[0])
+  const [note, setNote] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const [busy, startBusy] = useTransition()
+  const label = row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : '-')
+  const canFail = row.status === 'Dispatched' || row.status === 'In Transit'
+  const failed = row.status === 'Failed Delivery'
+
+  function run(action: () => Promise<void>, message: string) {
+    startBusy(async () => {
+      setErr(null)
+      try { await action(); notify.success(message); onChanged() }
+      catch (e: any) { setErr(e.message) }
+    })
+  }
+
+  async function undo() {
+    if (!(await confirmAction({ title: 'Batalkan gagal kirim?', message: `${label} akan kembali berstatus In Transit.` }))) return
+    run(() => undoShipmentFailed(row.id), 'Gagal kirim dibatalkan')
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-bold text-indigo-700">{label}</span>
+        {failed && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">Gagal kirim{row.failure_reason ? `: ${row.failure_reason}` : ''}</span>}
+        {canFail && !open && <button type="button" onClick={() => setOpen(true)} className="text-xs font-semibold text-red-600 hover:underline">Gagal kirim</button>}
+        {failed && <button type="button" onClick={undo} disabled={busy} className="text-xs font-semibold text-slate-500 hover:underline disabled:opacity-50">Batalkan</button>}
+      </div>
+      {open && (
+        <div className="mt-1.5 grid gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 sm:grid-cols-[12rem_1fr_auto_auto]">
+          <select value={reason} onChange={e => setReason(e.target.value)} aria-label={`Alasan gagal kirim ${label}`} className="inp">
+            {FAILURE_REASONS.map(item => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Catatan (opsional)" aria-label="Catatan gagal kirim" className="inp" />
+          <button type="button" disabled={busy} onClick={() => run(() => markShipmentFailed({ id: row.id, failure_reason: reason, notes: note }), `${label} ditandai gagal kirim`)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+            {busy ? 'Menyimpan…' : 'Simpan'}
+          </button>
+          <button type="button" disabled={busy} onClick={() => setOpen(false)} className="rounded-lg border bg-white px-3 py-2 text-xs">Batal</button>
+        </div>
+      )}
+      {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
     </div>
   )
 }

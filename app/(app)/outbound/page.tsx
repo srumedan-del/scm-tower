@@ -108,6 +108,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
 
     for (const t of trackings ?? []) {
       if (t.pss_no) {
+        // Pengiriman pengganti lebih relevan daripada percobaan yang gagal.
+        if (t.status === "Failed Delivery" && trackingByPss.has(String(t.pss_no).trim())) continue;
         trackingByPss.set(String(t.pss_no).trim(), {
           status: t.status,
           trip_id: t.trip_id ?? null,
