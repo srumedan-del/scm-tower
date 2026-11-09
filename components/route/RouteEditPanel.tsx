@@ -1,7 +1,9 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Route } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import { upsertRoute, deleteRoute, generateRouteCode } from '@/app/(app)/master-data/routes/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Route = {
   id: number
@@ -59,7 +61,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
     if (!route) return
     if (!(await confirmAction({ title: 'Hapus rute?', message: `Rute ${route.route_code} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteRoute(route.id); notify.success('Rute dihapus'); onSaved(); onClose() }
+      try { await deleteRoute(route.id); onClose(); void showSuccess({ title: 'Rute dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -83,23 +85,19 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
         dk_lk:                    form.dk_lk as 'D' | 'L',
         notes:                    form.notes.trim().toUpperCase() || null,
       }
-      try { await upsertRoute(payload, route?.id); notify.success('Rute tersimpan'); onSaved(); onClose() }
+      try { await upsertRoute(payload, route?.id); onClose(); void showSuccess({ title: 'Rute tersimpan', message: form.destination }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
-          <h3 className="text-lg font-bold uppercase">{route ? 'EDIT RUTE' : 'TAMBAH RUTE'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={route ? 'Edit Rute' : 'Tambah Rute'} subtitle={route ? route.route_code : 'Buat rute pengiriman baru'} icon={Route} />
 
-        <div className="p-4 space-y-3 overflow-y-auto">
+        <div className={dialogBodyClass}>
 
           {/* DK / LK */}
-          <Field label="TIPE RUTE (DK/LK) *">
+          <Field label="Tipe rute (DK/LK) *">
             <div className="grid grid-cols-2 gap-2">
               {(['D', 'L'] as const).map(v => (
                 <button
@@ -124,7 +122,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
           </Field>
 
           {/* Route Code — auto-generated, read-only saat tambah baru; update saat ganti DK/LK */}
-          <Field label="ROUTE CODE *">
+          <Field label="Route code *">
             <div className="relative">
               <input
                 value={generating ? 'Generating...' : form.route_code}
@@ -138,15 +136,15 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
             </div>
           </Field>
 
-          <Field label="ORIGIN">
+          <Field label="Origin">
             <input value={form.origin} onChange={e => up('origin', e.target.value)} className="inp" />
           </Field>
 
-          <Field label="DESTINATION *">
+          <Field label="Destination *">
             <input value={form.destination} onChange={e => up('destination', e.target.value)} className="inp" placeholder="Nama kota tujuan" />
           </Field>
 
-          <Field label="LEAD TIME (HOURS)">
+          <Field label="Lead time (hours)">
             <input
               type="number"
               value={form.standard_lead_time_hours ?? ''}
@@ -155,7 +153,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
             />
           </Field>
 
-          <Field label="JARAK (KM)">
+          <Field label="Jarak (KM)">
             <input
               type="number"
               min={0}
@@ -167,44 +165,33 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
             />
           </Field>
 
-          <Field label="NOTES">
+          <Field label="Notes">
             <textarea value={form.notes} onChange={e => up('notes', e.target.value)} className="inp" rows={2} />
           </Field>
 
           {err && <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded p-2">{err}</div>}
         </div>
 
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {route && (
               <button onClick={del} disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
-                {deleting ? 'MENGHAPUS…' : 'HAPUS'}
+                className={dialogDangerClass}>
+                {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button
               onClick={save}
               disabled={saving || generating || !form.dk_lk || !form.destination.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-              {saving ? 'MENYIMPAN…' : 'SIMPAN'}
+              className={dialogPrimaryClass}>
+              {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled,.inp[readonly]{background:#f9fafb;color:#6b7280}`}</style>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

@@ -1,5 +1,7 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field } from '@/components/ui/FormDialog'
+import { showSuccess } from '@/lib/feedback'
 import { useState, useTransition, useEffect } from 'react'
 import {
   getShipmentTMSOptions, assignTrip,
@@ -101,27 +103,17 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
             status:         form.status,
           }
         )
-        onSaved()
-        onClose()
+        onClose(); void showSuccess({ title: 'Trip berhasil ditugaskan', message: `${shipments.length} shipment` }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-indigo-600" />
-            <h3 className="font-bold text-lg uppercase">Assign Trip</h3>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title="Assign Trip" subtitle={`${shipments.length} shipment dipilih`} icon={Truck} />
 
         {/* Shipment list */}
-        <div className="px-4 pt-4 shrink-0">
+        <div className="shrink-0 px-6 pt-5">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
             {shipments.length} Shipment Dipilih
           </div>
@@ -144,7 +136,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
           </div>
         </div>
 
-        <div className="p-4 space-y-4 overflow-y-auto">
+        <div className={dialogBodyClass}>
           {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat opsi...</p>}
 
           {/* Trip ID */}
@@ -235,12 +227,12 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between border-t p-4 bg-gray-50 shrink-0">
-          <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+        <div className={dialogFooterClass}>
+          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
           <button
             onClick={save}
             disabled={saving || optLoading}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            className={dialogPrimaryClass}
           >
             <Truck className="h-4 w-4" />
             {saving
@@ -249,17 +241,6 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
           </button>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}.inp:disabled{background:#f9fafb;color:#9ca3af}`}</style>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

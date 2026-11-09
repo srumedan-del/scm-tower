@@ -1,7 +1,9 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { AlertTriangle } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { generateIssueNo, upsertIssue, deleteIssue } from '@/app/(app)/issues/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Issue = {
   id: number
@@ -67,7 +69,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteIssue(issue.id)
-        notify.success('Issue dihapus'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Issue dihapus' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -98,26 +100,19 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
       try {
         if (!issue) payload.issue_no = await generateIssueNo(issueDate)
         await upsertIssue(payload, issue?.id)
-        notify.success('Issue tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Issue tersimpan', message: form.title }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
-          <div>
-            <h3 className="text-lg font-bold uppercase">{issue ? 'EDIT ISSUE' : 'TAMBAH ISSUE'}</h3>
-            {issue?.issue_no && <p className="text-xs text-gray-400 font-mono mt-0.5">{issue.issue_no}</p>}
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={issue ? 'Edit Issue' : 'Tambah Issue'} subtitle={issue?.issue_no ?? 'Catat kendala operasional'} icon={AlertTriangle} />
 
-        <div className="p-4 space-y-3 overflow-y-auto">
+        <div className={dialogBodyClass}>
 
           {/* PIC */}
-          <Field label="PIC (PELAPOR) *">
+          <Field label="PIC (pelapor) *">
             <input
               value={form.pic_name}
               onChange={e => up('pic_name', e.target.value)}
@@ -128,12 +123,12 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
 
           {/* Kategori & Impact */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="KATEGORI *">
+            <Field label="Kategori *">
               <select value={form.category} onChange={e => up('category', e.target.value)} className="inp">
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="IMPACT *">
+            <Field label="Impact *">
               <select value={form.impact} onChange={e => up('impact', e.target.value)} className="inp">
                 {IMPACTS.map(i => <option key={i}>{i}</option>)}
               </select>
@@ -141,7 +136,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
           </div>
 
           {/* Judul */}
-          <Field label="JUDUL *">
+          <Field label="Judul *">
             <input
               value={form.title}
               onChange={e => up('title', e.target.value)}
@@ -151,7 +146,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
           </Field>
 
           {/* Deskripsi */}
-          <Field label="DESKRIPSI">
+          <Field label="Deskripsi">
             <textarea
               value={form.description}
               onChange={e => up('description', e.target.value)}
@@ -162,7 +157,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
           </Field>
 
           {/* Mitigasi */}
-          <Field label="RENCANA MITIGASI">
+          <Field label="Rencana mitigasi">
             <textarea
               value={form.mitigation_plan}
               onChange={e => up('mitigation_plan', e.target.value)}
@@ -174,12 +169,12 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
 
           {/* Status & Probability */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="STATUS *">
+            <Field label="Status *">
               <select value={form.status} onChange={e => up('status', e.target.value)} className="inp">
                 {STATUSES.map(s => <option key={s}>{s}</option>)}
               </select>
             </Field>
-            <Field label="PROBABILITY">
+            <Field label="Probability">
               <select value={form.probability} onChange={e => up('probability', e.target.value)} className="inp">
                 <option value="">-</option>
                 <option>Low</option>
@@ -191,17 +186,17 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
 
           {/* Tanggal */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="TANGGAL ISSUE *">
+            <Field label="Tanggal issue *">
               <input type="date" value={form.issue_date} onChange={e => up('issue_date', e.target.value)} className="inp" />
             </Field>
-            <Field label="DUE DATE">
+            <Field label="Due date">
               <input type="date" value={form.due_date} onChange={e => up('due_date', e.target.value)} className="inp" />
             </Field>
           </div>
 
           {/* Closed at — hanya tampil kalau status Closed */}
           {form.status === 'Closed' && (
-            <Field label="TANGGAL CLOSED">
+            <Field label="Tanggal closed">
               <input type="date" value={form.closed_at} onChange={e => up('closed_at', e.target.value)} className="inp" />
             </Field>
           )}
@@ -209,33 +204,22 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
           {err && <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded p-2">{err}</div>}
         </div>
 
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {issue && (
-              <button onClick={del} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
-                {deleting ? 'MENGHAPUS…' : 'HAPUS'}
+              <button onClick={del} disabled={deleting} className={dialogDangerClass}>
+                {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
-            <button onClick={save} disabled={saving || !form.title.trim()} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-              {saving ? 'MENYIMPAN…' : 'SIMPAN'}
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <button onClick={save} disabled={saving || !form.title.trim()} className={dialogPrimaryClass}>
+              {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}`}</style>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

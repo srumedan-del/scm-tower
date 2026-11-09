@@ -1,7 +1,8 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass } from '@/components/ui/FormDialog'
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Bot, CheckCircle2, Loader2, Sparkles, X } from 'lucide-react'
+import { AlertTriangle, Bot, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 import { calculateReceivingLoad, type ReceivingPackaging } from '@/lib/receiving-analytics'
 
 type HeaderRow = {
@@ -145,22 +146,10 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <section className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
-            <header className="flex items-start justify-between border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-white px-4 py-3">
-              <div>
-                <div className="flex items-center gap-2 text-indigo-700">
-                  <Bot className="h-5 w-5" />
-                  <span className="text-xs font-bold uppercase tracking-[0.18em]">Receiving Intelligence</span>
-                </div>
-                <h2 className="mt-1 text-xl font-bold text-slate-900">Analisa Receiving</h2>
-              </div>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-slate-700" aria-label="Tutup analisis AI">
-                <X className="h-5 w-5" />
-              </button>
-            </header>
+        <DialogShell onClose={() => setOpen(false)} size="4xl" guardDirty={false}>
+          <DialogHeader title="Analisa Receiving" subtitle="Receiving Intelligence" icon={Bot} />
 
-            <div className="max-h-[calc(90vh-82px)] space-y-3 overflow-y-auto p-4">
+            <div className={dialogBodyClass}>
               {analyzing ? (
                 <div className="flex items-center justify-center gap-3 py-12 text-sm text-slate-600">
                   <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
@@ -278,8 +267,7 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
                 </>
               ) : null}
             </div>
-          </section>
-        </div>
+        </DialogShell>
       )}
     </>
   )

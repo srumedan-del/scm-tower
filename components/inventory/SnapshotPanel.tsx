@@ -1,13 +1,14 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, dialogDangerClass } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertSnapshot, deleteSnapshot, getSnapshotOptions,
   type InventorySnapshotRow, type WarehouseOption, type SkuOption,
 } from '@/app/(app)/inventory/snapshot/actions'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Boxes } from 'lucide-react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Props = {
   row: InventorySnapshotRow | null
@@ -69,7 +70,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
     if (!row) return
     if (!(await confirmAction({ title: 'Hapus snapshot stok?', message: `Snapshot ${row.sku_code} — ${row.warehouse_code} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteSnapshot(row.id); notify.success('Snapshot stok dihapus'); onSaved(); onClose() }
+      try { await deleteSnapshot(row.id); onClose(); void showSuccess({ title: 'Snapshot stok dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -93,7 +94,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
           source:          'manual',
           import_period:   form.snapshot_date.slice(0, 7),
         })
-        notify.success('Snapshot stok tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Snapshot stok tersimpan' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -101,18 +102,10 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
   const status = alertStatus()
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={row ? 'Edit Snapshot Stok' : 'Input Snapshot Stok'} subtitle={row ? row.sku_code : 'Catat stok per gudang'} icon={Boxes} />
 
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <h3 className="font-bold text-lg uppercase">
-            {row ? `Edit Snapshot — ${row.sku_code}` : 'Input Stok Snapshot'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-
-        <div className="p-4 space-y-4 overflow-y-auto">
+        <div className={dialogBodyClass}>
           {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat opsi...</p>}
 
           {/* Tanggal & Gudang */}
@@ -202,36 +195,25 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between border-t p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {row && (
               <button onClick={del} disabled={deleting}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                className={dialogDangerClass}>
                 <Trash2 className="h-3.5 w-3.5" />
                 {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || optLoading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50">
+              className={dialogPrimaryClass}>
               {saving ? 'Menyimpan…' : 'Simpan Snapshot'}
             </button>
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}.inp:disabled{background:#f9fafb;color:#9ca3af}`}</style>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

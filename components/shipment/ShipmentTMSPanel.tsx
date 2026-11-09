@@ -1,5 +1,7 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Truck } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertShipmentTracking, deleteShipmentTracking, markShipmentFailed, undoShipmentFailed,
@@ -10,7 +12,7 @@ import {
   type DriverOption, type RouteOption,
 } from '@/app/(app)/shipment/actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 const STATUS_OPTS: readonly string[] = ['Draft', 'Dispatched', 'In Transit', 'Delivered']
 const FAILURE_REASONS = ['Customer tutup', 'Salah barang', 'Alamat tidak ditemukan', 'Ditolak penerima', 'Lainnya']
@@ -167,7 +169,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     if (!shipment) return
     if (!(await confirmAction({ title: 'Hapus shipment?', message: `Shipment ${shipment.pss_no ?? 'ini'} beserta data POD-nya akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteShipmentTracking(shipment.id); notify.success('Shipment dihapus'); onSaved(); onClose() }
+      try { await deleteShipmentTracking(shipment.id); onClose(); void showSuccess({ title: 'Shipment dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -216,23 +218,16 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 : Number(form.total_biaya_eksternal),
             })))
         }
-        notify.success('Shipment tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Shipment tersimpan' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
-            {shipment ? 'Edit Shipment TMS' : 'Tambah Shipment TMS'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="3xl">
+      <DialogHeader title={shipment ? 'Edit Shipment TMS' : 'Tambah Shipment TMS'} subtitle={shipment?.pss_no ?? 'Jadwalkan pengiriman baru'} icon={Truck} />
 
-        <div className="min-h-0 flex-1 content-start space-y-3 overflow-y-auto p-4">
+        <div className={dialogBodyClass}>
           {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat opsi...</p>}
 
           {/* ── Source — read-only saat edit ── */}
@@ -395,27 +390,25 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between border-t p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {shipment && (
               <button onClick={del} disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                className={dialogDangerClass}>
                 {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50">
+              className={dialogPrimaryClass}>
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}.inp:disabled{background:#f9fafb;color:#9ca3af}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
@@ -432,7 +425,7 @@ function AttemptRow({ row, onChanged }: { row: ShipmentTrackingRow; onChanged: (
   function run(action: () => Promise<void>, message: string) {
     startBusy(async () => {
       setErr(null)
-      try { await action(); notify.success(message); onChanged() }
+      try { await action(); await showSuccess({ title: message }); onChanged() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -470,18 +463,9 @@ function AttemptRow({ row, onChanged }: { row: ShipmentTrackingRow; onChanged: (
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="mb-1 border-b pb-0.5 text-sm font-bold uppercase tracking-wider text-slate-800">{title}</div>
+      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">{title}</div>
       {children}
     </section>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-0.5 block text-sm font-semibold text-slate-700">{label}</span>
-      {children}
-    </label>
   )
 }
 

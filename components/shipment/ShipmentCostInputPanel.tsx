@@ -1,5 +1,6 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass } from '@/components/ui/FormDialog'
 import { useEffect, useState, useTransition } from 'react'
 import {
   getTruckingRate,
@@ -9,8 +10,8 @@ import {
   type TripSiblingItem,
 } from '@/app/(app)/shipment-cost/actions'
 import { displayVendorName } from '@/lib/vendor-display'
-import { X, Plus, Trash2, Fuel, Truck, Gauge, Building2, MapPin, Wallet } from 'lucide-react'
-import { notify } from '@/lib/feedback'
+import { Plus, Trash2, Fuel, Truck, Gauge, Building2, MapPin, Wallet } from 'lucide-react'
+import { showSuccess } from '@/lib/feedback'
 
 type Props = {
   row: ShipmentCostRow
@@ -453,9 +454,8 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           total_biaya: previewTotal,
         }
 
-        notify.success('Biaya shipment tersimpan')
-        onSaved(nextRow)
         onClose()
+        void showSuccess({ title: 'Biaya shipment tersimpan', details: [{ label: 'Total biaya', value: rp(previewTotal) }] }).then(() => onSaved(nextRow))
       } catch (e: any) {
         setErr(e.message || 'Gagal menyimpan biaya.')
       }
@@ -477,37 +477,18 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       : 'bg-indigo-50 text-indigo-700 border-indigo-200'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-2 sm:p-4 backdrop-blur-xs">
-      <div className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 font-sans">
-        {/* ── Modal Header ── */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-2.5 shrink-0 bg-white">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <Wallet className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">INPUT BIAYA SHIPMENT</h3>
-                <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                  {row.trip_id ?? '-'}
-                </span>
-                <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                  {row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : '-')}
-                </span>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${modelBadgeClass}`}>
-                  {modelLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <DialogShell onClose={onClose} size="4xl">
+      <DialogHeader
+        title="Input Biaya Shipment"
+        icon={Wallet}
+        subtitle={
+          <span className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs font-bold text-indigo-600">{row.trip_id ?? '-'}</span>
+            <span className="font-mono text-xs font-semibold text-slate-700">{row.pss_no ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : '-')}</span>
+            <span className={`rounded border px-2 py-0.5 text-[11px] font-bold ${modelBadgeClass}`}>{modelLabel}</span>
+          </span>
+        }
+      />
 
         {/* ── Modal Body (Dense & Compact Spacing) ── */}
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2.5">
@@ -890,7 +871,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
         </div>
 
         {/* ── Modal Footer with Live Total (Always Visible) ── */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-5 py-2.5 bg-slate-50/90 shrink-0">
+        <div className={dialogFooterClass}>
           <div className="flex items-baseline gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Biaya:</span>
             <span className="text-base sm:text-lg font-bold font-mono text-indigo-700">{rp(previewTotal)}</span>
@@ -903,7 +884,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className={dialogCancelClass}
             >
               Batal
             </button>
@@ -911,13 +892,12 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
               type="button"
               onClick={save}
               disabled={saving}
-              className="rounded-xl bg-indigo-600 px-5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className={dialogPrimaryClass}
             >
               {saving ? 'Menyimpan…' : 'Simpan Biaya'}
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }

@@ -1,4 +1,5 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
   bulkCreateShipments, generateTripId, getShipmentTMSOptions,
@@ -7,7 +8,7 @@ import {
 import { getVendors, type VendorRow } from '@/app/(app)/vendor/actions'
 import { Truck, Users, Route } from 'lucide-react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
-import { notify } from '@/lib/feedback'
+import { showSuccess } from '@/lib/feedback'
 
 type Props = {
   selectedPss: UntrackedPssRow[]
@@ -168,9 +169,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           // Both shipment modes start when the create button is processed.
           dispatch_time:   new Date().toISOString(),
         })
-        notify.success('Shipment berhasil dibuat')
-        onSaved()
-        onClose()
+        onClose(); void showSuccess({ title: 'Shipment berhasil dibuat' }).then(onSaved)
       } catch (e: any) {
         setErr(e.message)
       }
@@ -178,16 +177,10 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
+    <DialogShell onClose={onClose} size="3xl">
+      <DialogHeader title="Buat Shipment TMS" subtitle={`${selectedPss.length} PSS dipilih`} icon={Truck} />
 
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b p-4">
-          <h3 className="font-bold uppercase">Buat Shipment TMS — {selectedPss.length} PSS</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-
-        <div className="min-h-0 flex-1 content-start space-y-3 overflow-y-auto p-4">
+        <div className={dialogBodyClass}>
 
           {/* Ringkasan PSS dan muatan */}
           <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
@@ -223,7 +216,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           </Section>
 
           {/* Trip ID — auto-generated, read only */}
-          <Field label="TRIP ID">
+          <Field label="Trip ID">
             <div className="inp select-all bg-gray-50 text-gray-600">
               {form.trip_id || <span className="text-gray-400 italic">Generating...</span>}
             </div>
@@ -232,13 +225,13 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           {form.shipment_mode === 'Eksternal' ? <>
           {/* ── Vendor ── */}
           <Section className="min-[480px]:col-span-2" icon={<Truck className="h-4 w-4" />} title="Vendor Pengiriman">
-            <Field label="VENDOR *">
+            <Field label="Vendor *">
               <SearchableSelect value={form.vendor_id ?? ''} onChange={value => onVendorChange(value)} placeholder="— Pilih Vendor —" options={vendors.map(v => ({ value: v.id, label: `${v.vendor_name}${v.vendor_type ? ` · ${v.vendor_type}` : ''}` }))} />
             </Field>
 
             {/* Kendaraan */}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="NO. POLISI KENDARAAN *">
+              <Field label="No. polisi kendaraan *">
                 <input
                   value={form.vehicle_nopol}
                   onChange={e => up('vehicle_nopol', e.target.value.toLocaleUpperCase('id-ID'))}
@@ -246,7 +239,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
                   className="inp uppercase"
                 />
               </Field>
-              <Field label="TIPE KENDARAAN">
+              <Field label="Tipe kendaraan">
                 <select value={form.vehicle_type} onChange={e => up('vehicle_type', e.target.value)} className="inp">
                   <option value="">— Pilih —</option>
                   {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -255,7 +248,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
             </div>
 
             {/* Driver */}
-            <Field label="NAMA DRIVER *">
+            <Field label="Nama driver *">
               <input
                 value={form.driver_name_ext}
                   onChange={e => up('driver_name_ext', e.target.value.toLocaleUpperCase('id-ID'))}
@@ -266,16 +259,16 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           </Section>
           </> : (
           <Section icon={<Truck className="h-4 w-4" />} title="Armada Internal">
-            <Field label="MODEL / TRANSPORTER">
+            <Field label="Model / transporter">
               <div className="inp bg-gray-50 font-semibold text-indigo-700">SRU MEDAN (otomatis)</div>
             </Field>
-            <Field label="ARMADA *">
+            <Field label="Armada *">
               <select value={form.vehicle_id ?? ''} onChange={e => onInternalVehicleChange(e.target.value)} className="inp">
                 <option value="">— Pilih Armada —</option>
                 {vehicles.map(vehicle => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicle_no} · {vehicle.vehicle_type ?? 'Armada'}</option>)}
               </select>
             </Field>
-            <Field label="DRIVER">
+            <Field label="Driver">
               <select value={form.driver_id ?? ''} onChange={e => up('driver_id', e.target.value ? Number(e.target.value) : null)} className="inp">
                 <option value="">— Pilih Driver —</option>
                 {allCrew.filter(crew => crew.role === 'Driver' || !crew.role).map(driver => <option key={driver.id} value={driver.id}>{driver.driver_name}</option>)}
@@ -310,10 +303,10 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           {/* ── Status Awal ── */}
           <Section icon={<Users className="h-4 w-4" />} title="Status Awal">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="STATUS">
+              <Field label="Status">
                 <div className="inp bg-gray-50 font-semibold text-indigo-700">In Transit (otomatis saat Buat Shipment)</div>
               </Field>
-              <Field label="WAKTU PROSES">
+              <Field label="Waktu proses">
                 <div className="inp bg-gray-50 text-gray-600">Diisi otomatis saat klik Buat Shipment</div>
               </Field>
             </div>
@@ -325,18 +318,16 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between border-t bg-gray-50 p-3 sm:p-4">
+        <div className={dialogFooterClass}>
           <p className="text-gray-500">
             Akan membuat <strong>{selectedPss.length}</strong> shipment sekaligus
           </p>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">
-              Batal
-            </button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button
               onClick={save}
               disabled={saving}
-              className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+              className={dialogPrimaryClass}
             >
               {saving
                 ? `Membuat ${selectedPss.length} Shipment…`
@@ -345,9 +336,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
@@ -359,14 +348,5 @@ function Section({ icon, title, children, className = '' }: { icon: React.ReactN
       </div>
       <div className="space-y-1">{children}</div>
     </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-0.5 block font-bold text-gray-700">{label}</span>
-      {children}
-    </label>
   )
 }

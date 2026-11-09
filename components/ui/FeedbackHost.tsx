@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useSyncExternalStore } from 'react'
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Check, CheckCircle2, Info, X } from 'lucide-react'
 import {
-  dismissToast, feedbackStore, settleConfirm,
-  type ConfirmRequest, type ToastTone,
+  dismissToast, feedbackStore, settleConfirm, settleSuccess,
+  type ConfirmRequest, type SuccessRequest, type ToastTone,
 } from '@/lib/feedback'
 
 const toastStyle: Record<ToastTone, { icon: typeof Info; bar: string; iconColor: string }> = {
@@ -94,8 +94,71 @@ function ConfirmModal({ request }: { request: ConfirmRequest }) {
   )
 }
 
+function SuccessModal({ request }: { request: SuccessRequest }) {
+  const actionRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    actionRef.current?.focus()
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        settleSuccess()
+      } else if (event.key === 'Tab') {
+        event.preventDefault()
+        actionRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-[92] flex items-center justify-center bg-black/40 p-4">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="success-title"
+        aria-describedby={request.message ? 'success-message' : undefined}
+        className="w-full max-w-sm overflow-hidden rounded-2xl bg-white text-center"
+      >
+        <div className="px-6 pb-5 pt-8">
+          <span className="lux-success-mark mx-auto grid h-16 w-16 place-items-center rounded-full bg-green-100 text-green-700">
+            <Check className="h-8 w-8" strokeWidth={2.5} aria-hidden="true" />
+          </span>
+          <h2 id="success-title" className="lux-display mt-5 text-2xl font-semibold text-indigo-900">{request.title}</h2>
+          {request.message && (
+            <p id="success-message" className="mt-2 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{request.message}</p>
+          )}
+          {!!request.details?.length && (
+            <dl className="mt-5 divide-y divide-gray-200 rounded-xl border border-gray-200 bg-gray-50 text-left">
+              {request.details.map(detail => (
+                <div key={detail.label} className="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                  <dt className="shrink-0 text-xs font-medium text-slate-500">{detail.label}</dt>
+                  <dd className="min-w-0 text-right text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">{detail.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+        <div className="px-6 pb-6">
+          <button
+            ref={actionRef}
+            type="button"
+            onClick={settleSuccess}
+            className="min-h-11 w-full rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+          >
+            {request.actionLabel ?? 'Selesai'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function FeedbackHost() {
-  const { toasts, confirm } = useSyncExternalStore(
+  const { toasts, confirm, success } = useSyncExternalStore(
     feedbackStore.subscribe,
     feedbackStore.getSnapshot,
     feedbackStore.getSnapshot,
@@ -104,6 +167,7 @@ export function FeedbackHost() {
   return (
     <>
       {confirm && <ConfirmModal key={confirm.title + confirm.message} request={confirm} />}
+      {success && <SuccessModal key={success.title + success.message} request={success} />}
       <div className="pointer-events-none fixed right-4 top-4 z-[95] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
         {toasts.map(toast => {
           const { icon: Icon, bar, iconColor } = toastStyle[toast.tone]

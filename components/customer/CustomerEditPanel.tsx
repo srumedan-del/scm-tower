@@ -1,8 +1,10 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Users } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { upsertCustomer, deleteCustomer } from '@/app/(app)/master-data/customers/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Customer = {
   id: number
@@ -103,7 +105,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteCustomer(customer.id)
-        notify.success('Customer dihapus'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Customer dihapus' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -130,8 +132,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
       }
       try {
         await upsertCustomer(payload, customer?.id)
-        notify.success('Customer tersimpan'); onSaved()
-        onClose()
+        onClose(); void showSuccess({ title: 'Customer tersimpan', message: form.customer_name ?? '' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -141,20 +142,16 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
   const embedUrl = hasCoord ? `https://maps.google.com/maps?q=${form.latitude},${form.longitude}&z=15&output=embed` : null
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
-          <h3 className="text-lg font-bold uppercase">{customer ? 'EDIT CUSTOMER' : 'TAMBAH CUSTOMER'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto">
-          <Field label="CUSTOMER CODE *"><input value={form.customer_code} onChange={e=>up('customer_code', e.target.value)} className="inp font-mono" placeholder="KLI000001" disabled={!!customer} /></Field>
-          <Field label="CUSTOMER NAME *"><input value={form.customer_name ?? ''} onChange={e=>up('customer_name', e.target.value)} className="inp" placeholder="KLINIK ..." /></Field>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={customer ? 'Edit Customer' : 'Tambah Customer'} subtitle={customer ? customer.customer_name : 'Daftarkan customer baru'} icon={Users} />
+        <div className={dialogBodyClass}>
+          <Field label="Customer code *"><input value={form.customer_code} onChange={e=>up('customer_code', e.target.value)} className="inp font-mono" placeholder="KLI000001" disabled={!!customer} /></Field>
+          <Field label="Customer name *"><input value={form.customer_name ?? ''} onChange={e=>up('customer_name', e.target.value)} className="inp" placeholder="KLINIK ..." /></Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="CITY"><input value={form.city ?? ''} onChange={e=>up('city', e.target.value)} className="inp" placeholder="MEDAN" /></Field>
-            <Field label="PROVINCE"><input value={form.province ?? ''} onChange={e=>up('province', e.target.value)} className="inp" placeholder="SUMATERA UTARA" /></Field>
+            <Field label="City"><input value={form.city ?? ''} onChange={e=>up('city', e.target.value)} className="inp" placeholder="MEDAN" /></Field>
+            <Field label="Province"><input value={form.province ?? ''} onChange={e=>up('province', e.target.value)} className="inp" placeholder="SUMATERA UTARA" /></Field>
           </div>
-          <Field label="ADDRESS"><textarea value={form.address ?? ''} onChange={e=>up('address', e.target.value)} className="inp" rows={2} placeholder="JL. ..." /></Field>
+          <Field label="Address"><textarea value={form.address ?? ''} onChange={e=>up('address', e.target.value)} className="inp" rows={2} placeholder="JL. ..." /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="DK / LK">
               <select value={form.dk_lk ?? 'DK'} onChange={e=>up('dk_lk', e.target.value)} className="inp">
@@ -162,10 +159,10 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
                 <option value="LK">LK — LUAR KOTA</option>
               </select>
             </Field>
-            <Field label="ACTIVE"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
+            <Field label="Active"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
           </div>
-          <Field label="JUMLAH MESIN HD"><input type="number" min={0} value={form.machine_count ?? ''} onChange={e=>up('machine_count', e.target.value === '' ? null : Number(e.target.value))} className="inp" placeholder="CONTOH: 12" /></Field>
-          <Field label="JENIS CUSTOMER">
+          <Field label="Jumlah mesin HD"><input type="number" min={0} value={form.machine_count ?? ''} onChange={e=>up('machine_count', e.target.value === '' ? null : Number(e.target.value))} className="inp" placeholder="CONTOH: 12" /></Field>
+          <Field label="Jenis customer">
             <select
               value={form.is_hd_customer ? 'HD' : 'NHD'}
               onChange={e => up('is_hd_customer', e.target.value === 'HD')}
@@ -183,7 +180,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
           <div className="border-t border-border pt-3">
             <div className="text-xs font-bold text-gray-700 mb-1">LOKASI — KOORDINAT GOOGLE MAPS</div>
             <div className="text-xs text-gray-500 mb-2">Buka Google Maps → cari customer → klik kanan di pin → <b>copy koordinat</b> → paste di bawah (1 baris).</div>
-            <Field label="KOORDINAT (LATITUDE, LONGITUDE)">
+            <Field label="Koordinat (latitude, longitude)">
               <input value={coordInput} onChange={e=>handleCoordChange(e.target.value)} className={`inp font-mono ${coordErr ? 'border-red-400 focus:border-red-500' : hasCoord ? 'border-green-400 focus:border-green-500' : ''}`} placeholder="3.5952, 98.6722" />
             </Field>
             {coordErr && <div className="text-xs text-red-600 mt-1">{coordErr}</div>}
@@ -201,35 +198,29 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
             )}
             {!coordInput.trim() && <div className="text-xs text-amber-600 mt-1">⚠ BELUM ADA KOORDINAT — KOLOM LOKASI AKAN “—”</div>}
             <div className="grid grid-cols-2 gap-3 mt-3">
-              <Field label="LEAD TIME (HARI)"><input type="number" value={form.lead_time_days ?? ''} onChange={e=>up('lead_time_days', e.target.value === '' ? null : Number(e.target.value))} className="inp" /></Field>
-              <Field label="SAFETY BUFFER (HARI)"><input type="number" value={form.safety_buffer_days ?? ''} onChange={e=>up('safety_buffer_days', e.target.value === '' ? null : Number(e.target.value))} className="inp" /></Field>
+              <Field label="Lead time (hari)"><input type="number" value={form.lead_time_days ?? ''} onChange={e=>up('lead_time_days', e.target.value === '' ? null : Number(e.target.value))} className="inp" /></Field>
+              <Field label="Safety buffer (hari)"><input type="number" value={form.safety_buffer_days ?? ''} onChange={e=>up('safety_buffer_days', e.target.value === '' ? null : Number(e.target.value))} className="inp" /></Field>
             </div>
           </div>
 
           {err && <div className="text-red-600 text-sm">{err}</div>}
         </div>
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {customer && (
-              <button onClick={del} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
-                {deleting ? 'MENGHAPUS…' : 'HAPUS'}
+              <button onClick={del} disabled={deleting} className={dialogDangerClass}>
+                {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || !form.customer_code || !form.customer_name}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-              {saving ? 'MENYIMPAN…' : 'SIMPAN'}
+              className={dialogPrimaryClass}>
+              {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
-}
-
-function Field({label, children}:{label:string;children:React.ReactNode}) {
-  return <label className="block"><span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>{children}</label>
 }

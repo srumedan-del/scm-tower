@@ -1,8 +1,10 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Package } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { upsertSku, deleteSku } from '@/app/(app)/master-data/sku/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Sku = {
   id: number
@@ -60,7 +62,7 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteSku(sku.id)
-        notify.success('SKU dihapus'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'SKU dihapus' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -99,29 +101,24 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
         return
       }
 
-      notify.success('SKU tersimpan'); onSaved()
-      onClose()
+      onClose(); void showSuccess({ title: 'SKU tersimpan', message: form.item_name }).then(onSaved)
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <h3 className="text-lg font-bold uppercase">{sku ? 'EDIT SKU' : 'NEW SKU'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3">
-          <Field label="SKU CODE *">
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={sku ? 'Edit SKU' : 'Tambah SKU'} subtitle={sku ? sku.sku_code : 'Daftarkan produk baru'} icon={Package} />
+        <div className={dialogBodyClass}>
+          <Field label="SKU code *">
             <input value={form.sku_code} onChange={e=>up('sku_code', e.target.value)} className="inp" placeholder="AVF1625-HC-N" disabled={!!sku}/>
           </Field>
-          <Field label="ITEM NAME *">
+          <Field label="Item name *">
             <input value={form.item_name} onChange={e=>up('item_name', e.target.value)} className="inp"/>
           </Field>
-          <Field label="CATEGORY">
+          <Field label="Category">
             <input value={form.category || ''} onChange={e=>up('category', e.target.value)} className="inp" placeholder="AV-FISTULA"/>
           </Field>
-          <Field label="GROUP">
+          <Field label="Group">
             <select value={form.group || ''} onChange={e=>up('group', e.target.value)} className="inp">
               <option value="">— NONE —</option>
               <option value="HD">HD</option>
@@ -131,10 +128,10 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
           <Field label="UOM *">
             <input value={form.uom} onChange={e=>up('uom', e.target.value)} className="inp" placeholder="PCS"/>
           </Field>
-          <Field label="SAFETY STOCK">
+          <Field label="Safety stock">
             <input type="number" value={form.safety_stock ?? ''} onChange={e=>up('safety_stock', e.target.value === '' ? null : Number(e.target.value))} className="inp"/>
           </Field>
-          <Field label="ACTIVE">
+          <Field label="Active">
             <label className="flex items-center gap-2 mt-2">
               <input type="checkbox" checked={form.is_active} onChange={e=>up('is_active', e.target.checked)} />
               <span className="text-sm">SKU aktif dipakai</span>
@@ -142,28 +139,22 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
           </Field>
           {err && <div className="text-red-600 text-sm">{err}</div>}
         </div>
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50">
+        <div className={dialogFooterClass}>
           <div>
             {sku && (
-              <button onClick={del} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
-                {deleting ? 'MENGHAPUS…' : 'HAPUS'}
+              <button onClick={del} disabled={deleting} className={dialogDangerClass}>
+                {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || !form.sku_code || !form.item_name}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-              {saving ? 'MENYIMPAN…' : 'SIMPAN'}
+              className={dialogPrimaryClass}>
+              {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
-}
-
-function Field({label, children}:{label:string;children:React.ReactNode}) {
-  return <label className="block"><span className="text-xs text-gray-600 mb-1 block">{label}</span>{children}</label>
 }

@@ -1,7 +1,9 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Truck } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { upsertFleet, deleteFleet } from '@/app/(app)/master-data/vehicles/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Fleet = {
   id: number
@@ -50,7 +52,7 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
     if (!fleet) return
     if (!(await confirmAction({ title: 'Hapus armada?', message: `Armada ${getNo(fleet)} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteFleet(fleet.id); notify.success('Armada dihapus'); onSaved(); onClose() }
+      try { await deleteFleet(fleet.id); onClose(); void showSuccess({ title: 'Armada dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -69,50 +71,46 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
         status:       form.is_active ? 'aktif' : 'nonaktif',
       }
       if (!payload.vehicle_no) { setErr('NOPOL wajib diisi'); return }
-      try { await upsertFleet(payload, fleet?.id); notify.success('Armada tersimpan'); onSaved(); onClose() }
+      try { await upsertFleet(payload, fleet?.id); onClose(); void showSuccess({ title: 'Armada tersimpan', message: form.vehicle_no }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
-          <h3 className="text-lg font-bold uppercase">{fleet ? 'EDIT ARMADA' : 'TAMBAH ARMADA'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto">
-          <Field label="NOPOL / VEHICLE NO *">
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={fleet ? 'Edit Armada' : 'Tambah Armada'} subtitle={fleet ? getNo(fleet) : 'Daftarkan kendaraan baru'} icon={Truck} />
+        <div className={dialogBodyClass}>
+          <Field label="Nopol / vehicle no *">
             <input value={form.vehicle_no} onChange={e => up('vehicle_no', e.target.value)}
               className="inp font-mono" placeholder="BK 8510 GY" disabled={!!fleet} />
           </Field>
-          <Field label="JENIS KENDARAAN">
+          <Field label="Jenis kendaraan">
             <input value={form.vehicle_type} onChange={e => up('vehicle_type', e.target.value)}
               className="inp" placeholder="CDD, CDE, Fuso, Tronton, Pickup..." />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="TONASE (TON)">
+            <Field label="Tonase (ton)">
               <input type="number" step="0.1" min={0}
                 value={form.capacity_kg ?? ''}
                 onChange={e => up('capacity_kg', e.target.value === '' ? null : Number(e.target.value))}
                 className="inp" placeholder="4" />
             </Field>
-            <Field label="VOLUME (M³)">
+            <Field label="Volume (m³)">
               <input type="number" step="0.1" min={0}
                 value={form.capacity_cbm ?? ''}
                 onChange={e => up('capacity_cbm', e.target.value === '' ? null : Number(e.target.value))}
                 className="inp" placeholder="15" />
             </Field>
           </div>
-          <Field label="DRIVER">
+          <Field label="Driver">
             <input value={form.driver_name} onChange={e => up('driver_name', e.target.value)}
               className="inp" placeholder="Nama driver" />
           </Field>
-          <Field label="DRIVER PHONE">
+          <Field label="Driver phone">
             <input value={form.driver_phone} onChange={e => up('driver_phone', e.target.value)}
               className="inp" placeholder="+62 ..." />
           </Field>
-          <Field label="ACTIVE">
+          <Field label="Active">
             <label className="flex items-center gap-2 mt-2">
               <input type="checkbox" checked={!!form.is_active} onChange={e => up('is_active', e.target.checked)} />
               <span className="text-sm">AKTIF</span>
@@ -120,34 +118,23 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
           </Field>
           {err && <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded p-2">{err}</div>}
         </div>
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {fleet && (
               <button onClick={del} disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
-                {deleting ? 'MENGHAPUS…' : 'HAPUS'}
+                className={dialogDangerClass}>
+                {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || !form.vehicle_no}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-              {saving ? 'MENYIMPAN…' : 'SIMPAN'}
+              className={dialogPrimaryClass}>
+              {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

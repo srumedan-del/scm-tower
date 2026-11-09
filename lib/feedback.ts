@@ -21,11 +21,20 @@ export type ConfirmOptions = {
 
 export type ConfirmRequest = ConfirmOptions & { resolve: (confirmed: boolean) => void }
 
-type State = { toasts: ToastItem[]; confirm: ConfirmRequest | null }
+export type SuccessOptions = {
+  title: string
+  message?: string
+  details?: Array<{ label: string; value: string }>
+  actionLabel?: string
+}
+
+export type SuccessRequest = SuccessOptions & { resolve: () => void }
+
+type State = { toasts: ToastItem[]; confirm: ConfirmRequest | null; success: SuccessRequest | null }
 
 const TOAST_DURATION: Record<ToastTone, number> = { success: 4000, info: 5000, error: 8000 }
 
-let state: State = { toasts: [], confirm: null }
+let state: State = { toasts: [], confirm: null, success: null }
 let nextToastId = 1
 const listeners = new Set<() => void>()
 
@@ -67,4 +76,15 @@ export function confirmAction(options: ConfirmOptions) {
 export function settleConfirm(confirmed: boolean) {
   state.confirm?.resolve(confirmed)
   setState({ confirm: null })
+}
+
+/** Pop-up berhasil; selesai saat user menutupnya, jadi aman untuk reload sesudahnya. */
+export function showSuccess(options: SuccessOptions) {
+  state.success?.resolve()
+  return new Promise<void>(resolve => setState({ success: { ...options, resolve } }))
+}
+
+export function settleSuccess() {
+  state.success?.resolve()
+  setState({ success: null })
 }

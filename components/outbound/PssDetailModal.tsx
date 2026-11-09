@@ -1,7 +1,8 @@
 'use client'
 
+import { DialogShell, DialogHeader } from '@/components/ui/FormDialog'
 import { useState, useEffect } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { Loader2, FileText } from 'lucide-react'
 import { getOutboundFullData } from '@/app/(app)/outbound/actions'
 
 interface DetailRow {
@@ -101,44 +102,21 @@ export default function PssDetailModal({ pssNo }: Props) {
 
       {/* Modal */}
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={handleClose}
-        >
-          <div
-            className="relative flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* ── Modal title bar ─────────────────────── */}
-            <div className="flex items-start justify-between border-b border-gray-200 px-6 py-4">
-              <div className="flex-1 min-w-0">
-                {/* PSS No — sama besar dengan Customer Name, di atas */}
-                <h2 className="text-lg font-bold text-gray-900 leading-tight font-mono">
-                  {pssNo.toUpperCase()}
-                </h2>
-
-                {/* Customer Name */}
-                <h3 className="text-lg font-bold text-gray-900 leading-tight mt-0.5">
-                  {customer?.customer_name ?? header?.customer_name ?? '—'}
-                </h3>
-
-                {/* Alamat */}
+        <DialogShell onClose={handleClose} size="3xl" guardDirty={false}>
+          <DialogHeader
+            title={pssNo.toUpperCase()}
+            icon={FileText}
+            subtitle={
+              <>
+                <span className="block font-medium text-slate-700">{customer?.customer_name ?? header?.customer_name ?? '—'}</span>
                 {customer?.address && (
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                    {customer.address}
-                    {customer.city ? `, ${customer.city}` : ''}
-                  </p>
+                  <span className="mt-0.5 block text-xs leading-relaxed">
+                    {customer.address}{customer.city ? `, ${customer.city}` : ''}
+                  </span>
                 )}
-              </div>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-shrink-0 ml-4 rounded-md p-1 text-gray-400 hover:bg-gray-100"
-                aria-label="Tutup"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+              </>
+            }
+          />
 
             {/* ── Modal body ──────────────────────────── */}
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -245,8 +223,7 @@ export default function PssDetailModal({ pssNo }: Props) {
                 </>
               )}
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </>
   )

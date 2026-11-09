@@ -1,8 +1,10 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Truck } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import { supabase as supabaseRaw } from '@/lib/supabase'
 import SearchableSelect from '@/components/ui/SearchableSelect'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 const supabase: any = supabaseRaw
 
 type FleetType = 'Internal' | 'Eksternal'
@@ -92,7 +94,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
     startDeleting(async()=>{
       const {error}=await supabase.from('shipments').delete().eq('id',shipment.id)
       if(error){setErr(error.message);return}
-      notify.success('Shipment dihapus'); onSaved();onClose()
+      onClose(); void showSuccess({ title: 'Shipment dihapus' }).then(onSaved)
     })
   }
   function save(){
@@ -137,18 +139,14 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
         }
       }
       if(error){setErr(error.message);return}
-      notify.success('Shipment tersimpan'); onSaved();onClose()
+      onClose(); void showSuccess({ title: 'Shipment tersimpan' }).then(onSaved)
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <h3 className="text-lg font-bold uppercase">{shipment ? 'EDIT SHIPMENT' : 'TAMBAH SHIPMENT'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto">
+    <DialogShell onClose={onClose} size="3xl">
+      <DialogHeader title={shipment ? 'Edit Shipment' : 'Tambah Shipment'} subtitle={shipment ? undefined : 'Catat pengiriman baru'} icon={Truck} />
+        <div className={dialogBodyClass}>
           {/* ── Fleet Type Selector (first step) ── */}
           <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
             <label className="block text-xs font-bold text-gray-700 mb-2">JENIS ARMADA *</label>
@@ -177,34 +175,34 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="SHIPMENT NO *"><input value={String(form.shipment_no ?? '')} onChange={e=>up('shipment_no',e.target.value)} className="inp font-mono" placeholder="SHP-2026-08-31-001" disabled={!!shipment} /></Field>
-            <Field label="DOCUMENT NO (PSS)"><input value={form.document_no ?? ''} onChange={e=>up('document_no',e.target.value)} className="inp font-mono" placeholder="PSS-..." /></Field>
+            <Field label="Shipment no *"><input value={String(form.shipment_no ?? '')} onChange={e=>up('shipment_no',e.target.value)} className="inp font-mono" placeholder="SHP-2026-08-31-001" disabled={!!shipment} /></Field>
+            <Field label="Document no (PSS)"><input value={form.document_no ?? ''} onChange={e=>up('document_no',e.target.value)} className="inp font-mono" placeholder="PSS-..." /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="TANGGAL KIRIM *"><input type="date" value={form.shipment_date ?? ''} onChange={e=>up('shipment_date',e.target.value)} className="inp" /></Field>
+            <Field label="Tanggal kirim *"><input type="date" value={form.shipment_date ?? ''} onChange={e=>up('shipment_date',e.target.value)} className="inp" /></Field>
             <Field label="ETA"><input type="date" value={form.eta ?? ''} onChange={e=>up('eta',e.target.value)} className="inp" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="ORIGIN"><input value={form.origin_warehouse ?? ''} onChange={e=>up('origin_warehouse',e.target.value)} className="inp" placeholder="SRU MEDAN" /></Field>
-            <Field label="DESTINATION CITY *"><input value={String(form.destination_city ?? '')} onChange={e=>up('destination_city',e.target.value)} className="inp" placeholder="BANDA ACEH" /></Field>
+            <Field label="Origin"><input value={form.origin_warehouse ?? ''} onChange={e=>up('origin_warehouse',e.target.value)} className="inp" placeholder="SRU MEDAN" /></Field>
+            <Field label="Destination city *"><input value={String(form.destination_city ?? '')} onChange={e=>up('destination_city',e.target.value)} className="inp" placeholder="BANDA ACEH" /></Field>
           </div>
-          <Field label="DESTINATION NAME"><input value={form.destination_name ?? ''} onChange={e=>up('destination_name',e.target.value)} className="inp" placeholder="NAMA CUSTOMER/SITE" /></Field>
+          <Field label="Destination name"><input value={form.destination_name ?? ''} onChange={e=>up('destination_name',e.target.value)} className="inp" placeholder="NAMA CUSTOMER/SITE" /></Field>
 
           {/* ── Vendor (only for Eksternal) ── */}
           {form.fleet_type === 'Eksternal' && (
-            <Field label="VENDOR *">
+            <Field label="Vendor *">
               <SearchableSelect value={form.vendor_name ?? ''} onChange={value => up('vendor_name', value)} placeholder="-- PILIH VENDOR --" options={vendors.map(v => ({ value: v.vendor_name, label: `${v.vendor_code} — ${v.vendor_name}` }))} />
             </Field>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="SHIPMENT TYPE">
+            <Field label="Shipment type">
               <select value={form.shipment_type ?? 'trucking'} onChange={e=>up('shipment_type',e.target.value)} className="inp">
                 <option value="trucking">TRUCKING</option><option value="courier">COURIER</option><option value="expedition">EXPEDITION</option><option value="retail_delivery">RETAIL DELIVERY</option>
               </select>
             </Field>
             {/* ── Vehicle No (Internal: from master armada; Eksternal: manual input) ── */}
-            <Field label="VEHICLE NO">
+            <Field label="Vehicle no">
               {form.fleet_type === 'Internal' ? (
                 <input value={form.vehicle_no ?? ''} onChange={e=>up('vehicle_no',e.target.value)} className="inp font-mono" placeholder="BK 1234 XX" />
               ) : (
@@ -213,7 +211,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="DRIVER">
+            <Field label="Driver">
               {form.fleet_type === 'Internal' ? (
                 <input value={form.driver_name ?? ''} onChange={e=>up('driver_name',e.target.value)} className="inp" placeholder="Driver internal SRU" />
               ) : (
@@ -225,7 +223,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="STATUS">
+            <Field label="Status">
               <select value={form.status ?? 'Draft'} onChange={e=>up('status',e.target.value)} className="inp">
                 {STATUS_OPTS.map(s=> <option key={s} value={s}>{s.toUpperCase()}</option>)}
               </select>
@@ -241,7 +239,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
               </select>
             </Field>
           </div>
-          <Field label="DELAY REASON"><input value={form.delay_reason ?? ''} onChange={e=>up('delay_reason',e.target.value)} className="inp" /></Field>
+          <Field label="Delay reason"><input value={form.delay_reason ?? ''} onChange={e=>up('delay_reason',e.target.value)} className="inp" /></Field>
           {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">{err}</div>}
 
           {shipment && (
@@ -264,16 +262,13 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
             </div>
           )}
         </div>
-        <div className="flex gap-2 justify-between border-t p-4 bg-gray-50 shrink-0">
-          <div>{shipment && <button onClick={del} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">{deleting?'MENGHAPUS…':'HAPUS'}</button>}</div>
+        <div className={dialogFooterClass}>
+          <div>{shipment && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting?'Menghapus…':'Hapus'}</button>}</div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">BATAL</button>
-            <button onClick={save} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">{saving?'MENYIMPAN…':'SIMPAN'}</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <button onClick={save} disabled={saving} className={dialogPrimaryClass}>{saving?'Menyimpan…':'Simpan'}</button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
-function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="block"><span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>{children}</label>}

@@ -1,10 +1,12 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Truck } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import {
   upsertTransporter, deleteTransporter, type TransporterRow,
 } from '@/app/(app)/master-data/transporters/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 const empty: Omit<TransporterRow, 'id'> = {
   transporter_code: '', name: '', type: 'Eksternal',
@@ -41,7 +43,7 @@ export default function TransporterEditPanel({
     if (!transporter) return
     if (!(await confirmAction({ title: 'Hapus transporter?', message: `Transporter ${transporter.name} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteTransporter(transporter.id); notify.success('Transporter dihapus'); onSaved(); onClose() }
+      try { await deleteTransporter(transporter.id); onClose(); void showSuccess({ title: 'Transporter dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -64,38 +66,32 @@ export default function TransporterEditPanel({
           is_active:        form.is_active,
           notes:            (form.notes    as string)?.trim() || null,
         })
-        notify.success('Transporter tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Transporter tersimpan', message: String(form.name ?? '') }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b p-4">
-          <h3 className="font-bold text-lg uppercase">
-            {transporter ? 'Edit Transporter' : 'Tambah Transporter'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={transporter ? 'Edit Transporter' : 'Tambah Transporter'} subtitle={transporter ? transporter.name : 'Daftarkan transporter baru'} icon={Truck} />
 
-        <div className="p-4 space-y-3 overflow-y-auto">
-          <Field label="KODE *">
+        <div className={dialogBodyClass}>
+          <Field label="Kode *">
             <input value={form.transporter_code} onChange={e => up('transporter_code', e.target.value)}
               className="inp font-mono" placeholder="TRANS-EXT-001" disabled={!!transporter} />
           </Field>
-          <Field label="NAMA TRANSPORTER *">
+          <Field label="Nama transporter *">
             <input value={form.name} onChange={e => up('name', e.target.value)}
               className="inp" placeholder="Nama perusahaan / armada" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="TIPE">
+            <Field label="Tipe">
               <select value={form.type} onChange={e => up('type', e.target.value)} className="inp">
                 <option value="Internal">Internal</option>
                 <option value="Eksternal">Eksternal</option>
               </select>
             </Field>
-            <Field label="MODEL LAYANAN">
+            <Field label="Model layanan">
               <select
                 value={form.type === 'Internal' ? '' : (form.service_model ?? 'Retail')}
                 onChange={e => up('service_model', e.target.value || null)}
@@ -113,25 +109,25 @@ export default function TransporterEditPanel({
               ℹ️ Internal: biaya dihitung dari biaya operasional aktual (BBM, gaji driver, maintenance), bukan per tarif rate card.
             </p>
           )}
-          <Field label="PIC NAME">
+          <Field label="PIC name">
             <input value={(form.pic_name as string) ?? ''} onChange={e => up('pic_name', e.target.value)}
               className="inp" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="PIC PHONE">
+            <Field label="PIC phone">
               <input value={(form.pic_phone as string) ?? ''} onChange={e => up('pic_phone', e.target.value)}
                 className="inp" placeholder="+62 ..." />
             </Field>
-            <Field label="PIC EMAIL">
+            <Field label="PIC email">
               <input value={(form.pic_email as string) ?? ''} onChange={e => up('pic_email', e.target.value)}
                 className="inp" placeholder="pic@..." />
             </Field>
           </div>
-          <Field label="CATATAN">
+          <Field label="Catatan">
             <textarea value={(form.notes as string) ?? ''} onChange={e => up('notes', e.target.value)}
               className="inp" rows={2} />
           </Field>
-          <Field label="STATUS">
+          <Field label="Status">
             <label className="flex items-center gap-2 mt-1">
               <input type="checkbox" checked={!!form.is_active} onChange={e => up('is_active', e.target.checked)} />
               <span className="text-sm">Aktif</span>
@@ -140,29 +136,23 @@ export default function TransporterEditPanel({
           {err && <p className="text-red-600 text-sm bg-red-50 rounded p-2">{err}</p>}
         </div>
 
-        <div className="flex justify-between border-t p-4 bg-gray-50">
+        <div className={dialogFooterClass}>
           <div>
             {transporter && (
               <button onClick={del} disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                className={dialogDangerClass}>
                 {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 disabled:opacity-50">
+              className={dialogPrimaryClass}>
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>{children}</label>
 }

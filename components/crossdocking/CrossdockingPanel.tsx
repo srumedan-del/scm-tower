@@ -1,5 +1,6 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import { Plus, Trash2, ArrowRightLeft, Loader2, AlertCircle, X } from 'lucide-react'
 import {
@@ -9,7 +10,7 @@ import {
   type CrossdockingHeader, type CrossdockingDetail,
   type SkuOption, type CustomerOption,
 } from '@/app/(app)/crossdocking/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 const STATUS_OPTS = ['Draft', 'Ready', 'Dispatched', 'Delivered'] as const
 
@@ -215,8 +216,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             await upsertCrossdockingDetail({ ...rest, id: rest.id ?? 0, crossdocking_id: crossdockingId! })
           }
         }
-        notify.success('Crossdocking tersimpan'); onSaved()
-        onClose()
+        onClose(); void showSuccess({ title: 'Crossdocking tersimpan', message: header.customer_name ?? undefined }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -225,7 +225,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
     if (!crossdockingId) return
     if (!(await confirmAction({ title: 'Hapus crossdocking?', message: 'Data crossdocking beserta seluruh detail itemnya akan dihapus.' }))) return
     startDeleting(async () => {
-      try { await deleteCrossdocking(crossdockingId); notify.success('Crossdocking dihapus'); onSaved(); onClose() }
+      try { await deleteCrossdocking(crossdockingId); onClose(); void showSuccess({ title: 'Crossdocking dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -233,38 +233,17 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
   const totalQty = details.reduce((s, d) => s + (Number(d.quantity) || 0), 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs font-sans">
-      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white text-[14px] shadow-2xl border border-slate-200">
-
-        {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <ArrowRightLeft className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-[18px] sm:text-[20px] font-bold text-slate-900 tracking-tight">
-                  {isEdit ? `Edit Crossdocking — ${(header as any).crossdocking_no ?? ''}` : 'Tambah Crossdocking'}
-                </h2>
-                <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[14px] font-bold text-indigo-700">
-                  {header.status || 'Draft'}
-                </span>
-              </div>
-              <p className="text-[14px] text-slate-500 mt-0.5">
-                Shipment dari Kantor Pusat via Medan — input manual
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
-            aria-label="Tutup"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <DialogShell onClose={onClose} size="4xl">
+      <DialogHeader
+        title={isEdit ? `Edit Crossdocking — ${(header as any).crossdocking_no ?? ''}` : 'Tambah Crossdocking'}
+        subtitle="Shipment dari Kantor Pusat via Medan"
+        icon={ArrowRightLeft}
+        actions={
+          <span className="mt-1.5 shrink-0 rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+            {header.status || 'Draft'}
+          </span>
+        }
+      />
 
         {/* ── Modal Body (Scrollable) ── */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-slate-50/40">
@@ -593,14 +572,14 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
         </div>
 
         {/* ── Modal Footer ── */}
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/80 px-6 py-4 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {isEdit && (
               <button
                 type="button"
                 onClick={del}
                 disabled={deleting}
-                className="rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-[14px] font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                className={dialogDangerClass}
               >
                 {deleting ? 'Menghapus…' : 'Hapus Crossdocking'}
               </button>
@@ -610,7 +589,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-xs cursor-pointer"
+              className={dialogCancelClass}
             >
               Batal
             </button>
@@ -618,7 +597,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
               type="button"
               onClick={save}
               disabled={saving}
-              className="rounded-xl bg-indigo-600 px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all shadow-xs hover:shadow active:scale-[0.99] flex items-center gap-2 cursor-pointer"
+              className={dialogPrimaryClass}
             >
               {saving ? (
                 <>
@@ -631,15 +610,14 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div className="space-y-1.5 text-[14px]">
-      <label className="text-[14px] font-bold text-slate-700 flex items-center gap-1">
+      <label className="flex items-center gap-1 text-[13px] font-medium text-slate-700">
         <span>{label}</span>
         {required && <span className="text-rose-500 font-bold">*</span>}
       </label>

@@ -1,7 +1,8 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogCancelClass } from '@/components/ui/FormDialog'
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import { Loader2, Package, X } from 'lucide-react'
+import { Loader2, Package } from 'lucide-react'
 import {
   getPtsDetailsForCrossdocking,
   getPtsRecords,
@@ -175,40 +176,17 @@ function PtsDetailModal({ record, onClose }: { record: PtsRecord; onClose: () =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs font-sans">
-      <div className="w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] text-[14px]">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-white shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <Package className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h3 className="text-[18px] sm:text-[20px] font-bold font-mono text-slate-900 tracking-tight">
-                  {record.pts_no}
-                </h3>
-                {record.transfer_order_no && (
-                  <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[14px] font-bold text-indigo-700 font-mono">
-                    TO: {record.transfer_order_no}
-                  </span>
-                )}
-              </div>
-              <p className="text-[14px] text-slate-500 mt-0.5">
-                Tgl Dokumen: <strong className="text-slate-800 font-semibold">{record.document_date ?? '—'}</strong> · Total:{' '}
-                <strong className="text-indigo-700 font-bold">{total.toLocaleString('id-ID')} unit</strong> ({items.length} baris lot)
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
-            aria-label="Tutup"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <DialogShell onClose={onClose} size="5xl" guardDirty={false}>
+      <DialogHeader
+        title={record.pts_no}
+        icon={Package}
+        subtitle={
+          <>
+            {record.transfer_order_no && <>TO: {record.transfer_order_no} · </>}
+            Tgl dokumen {record.document_date ?? '—'} · {total.toLocaleString('id-ID')} unit ({items.length} baris lot)
+          </>
+        }
+      />
 
         {/* Table */}
         <div className="overflow-auto flex-1">
@@ -283,12 +261,11 @@ function PtsDetailModal({ record, onClose }: { record: PtsRecord; onClose: () =>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-xs cursor-pointer"
+            className={dialogCancelClass}
           >
             Tutup
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }

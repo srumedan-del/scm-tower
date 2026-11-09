@@ -1,8 +1,10 @@
 'use client'
 
+import { DialogShell, DialogHeader } from '@/components/ui/FormDialog'
+import { showSuccess } from '@/lib/feedback'
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Loader2, Package, Check, ChevronDown } from 'lucide-react'
+import { Loader2, Package, Check, ChevronDown } from 'lucide-react'
 import { getReceivingFullData, updateReceivingTransportDetails, updateShipmentDate, getReceivingVendorHistory } from '@/app/(app)/receiving/actions'
 
 interface HeaderData {
@@ -189,7 +191,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
           container_no: c,
         })
         handleClose()
-        router.refresh()
+        void showSuccess({ title: 'Informasi transportasi tersimpan', message: ptrNo }).then(() => router.refresh())
       } catch (error: any) {
         setErrorMsg(error?.message || 'Gagal menyimpan informasi transportasi.')
       }
@@ -216,52 +218,19 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
       ) : null}
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs"
-          onClick={handleClose}
-        >
-          <div
-            className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white font-sans text-[14px] shadow-2xl border border-slate-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* ── Modal Header / Title Bar ── */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                  <Package className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[18px] sm:text-[20px] font-bold font-mono text-slate-900 tracking-tight">
-                      {ptrNo}
-                    </h2>
-                    {header?.transfer_order_no && (
-                      <span className="rounded-md bg-indigo-50 px-2.5 py-0.5 text-[14px] font-semibold text-indigo-700 font-mono">
-                        TO: {header.transfer_order_no}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[14px] text-slate-500 mt-0.5">
-                    {header?.transfer_from_code && header?.transfer_to_code ? (
-                      <span>
-                        Rute Transfer: <strong className="text-slate-700 font-semibold">{header.transfer_from_code}</strong> &rarr;{' '}
-                        <strong className="text-slate-700 font-semibold">{header.transfer_to_code}</strong>
-                      </span>
-                    ) : (
-                      'Rincian Dokumen Receiving & Detail Item'
-                    )}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                aria-label="Tutup"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <DialogShell onClose={handleClose} size="5xl">
+          <DialogHeader
+            title={ptrNo}
+            icon={Package}
+            subtitle={
+              <>
+                {header?.transfer_order_no && <>TO: {header.transfer_order_no} · </>}
+                {header?.transfer_from_code && header?.transfer_to_code
+                  ? <>Rute transfer {header.transfer_from_code} &rarr; {header.transfer_to_code}</>
+                  : 'Rincian dokumen receiving dan detail item'}
+              </>
+            }
+          />
 
             {/* ── Modal Body (Scrollable) ── */}
             <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-slate-100">
@@ -538,8 +507,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                 </>
               )}
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </>
   )

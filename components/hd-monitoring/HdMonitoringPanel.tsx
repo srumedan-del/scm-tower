@@ -1,5 +1,7 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Activity } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import {
@@ -7,7 +9,7 @@ import {
   getHdCustomers, getLastShipmentForCustomer,
   type HdMonitoringRow, type HdCustomerOption,
 } from '@/app/(app)/inventory/hd-monitoring/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 // Defaults sesuai PRD
 const DEFAULTS = {
@@ -136,7 +138,7 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
     if (!row) return
     if (!(await confirmAction({ title: 'Hapus snapshot HD?', message: `Snapshot ${row.customer_code} tanggal ${row.snapshot_date} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteHdMonitoring(row.id); notify.success('Snapshot HD dihapus'); onSaved(); onClose() }
+      try { await deleteHdMonitoring(row.id); onClose(); void showSuccess({ title: 'Snapshot HD dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -162,7 +164,7 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
           last_shipment_qty:             form.last_shipment_qty !== '' ? Number(form.last_shipment_qty) : 0,
           notes:                         (form.notes as string) || null,
         } as any)
-        notify.success('Snapshot HD tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Snapshot HD tersimpan' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -171,18 +173,10 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
     v == null ? '—' : v.toLocaleString('id-ID', { maximumFractionDigits: decimals })
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
+    <DialogShell onClose={onClose} size="3xl">
+      <DialogHeader title={row ? 'Edit Snapshot HD' : 'Input Snapshot HD'} subtitle={row ? (row.customer_name ?? row.customer_code) : 'Catat snapshot monitoring HD'} icon={Activity} />
 
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <h3 className="font-bold text-lg uppercase">
-            {row ? `Edit Snapshot — ${row.customer_name ?? row.customer_code}` : 'Input Snapshot HD Monitoring'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-
-        <div className="p-4 space-y-5 overflow-y-auto">
+        <div className={dialogBodyClass}>
 
           {/* Customer & Tanggal */}
           <Sec title="Customer & Snapshot">
@@ -307,44 +301,33 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between border-t p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {row && (
               <button onClick={del} disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                className={dialogDangerClass}>
                 {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50">
+              className={dialogPrimaryClass}>
               {saving ? 'Menyimpan…' : 'Simpan Snapshot'}
             </button>
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}.inp:disabled{background:#f9fafb;color:#9ca3af}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
 function Sec({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 border-b pb-1">{title}</div>
+      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">{title}</div>
       {children}
     </section>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
-      {children}
-    </label>
   )
 }

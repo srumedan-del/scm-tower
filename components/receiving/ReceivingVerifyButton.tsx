@@ -1,7 +1,8 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogPrimaryClass } from '@/components/ui/FormDialog'
 import { useState } from 'react'
-import { Search, Loader2, X } from 'lucide-react'
+import { Search, Loader2, ShieldCheck } from 'lucide-react'
 import { verifyReceivingData } from '@/app/(app)/receiving/actions'
 
 interface OrphanedDetail {
@@ -70,33 +71,13 @@ export default function ReceivingVerifyButton() {
         {loading ? 'Memverifikasi...' : 'Verifikasi Data'}
       </button>
 
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <div
-          className="relative w-full sm:max-w-2xl bg-white sm:rounded-xl shadow-xl border-t-4 border-t-indigo-600 sm:border-t-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Hasil Verifikasi Data
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Total: {result?.totalHeaders ?? 0} header, {result?.totalDetails ?? 0} detail
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setResult(null)
-                  setErrorMsg(null)
-                }}
-                className="rounded-md p-1 text-gray-400 hover:bg-gray-100"
-                aria-label="Tutup"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <DialogShell onClose={() => { setResult(null); setErrorMsg(null) }} size="2xl" guardDirty={false}>
+        <DialogHeader
+          title="Hasil Verifikasi Data"
+          subtitle={`Total: ${result?.totalHeaders ?? 0} header, ${result?.totalDetails ?? 0} detail`}
+          icon={ShieldCheck}
+        />
+          <div className={dialogBodyClass}>
 
             {errorMsg ? (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700 text-sm">
@@ -175,15 +156,14 @@ export default function ReceivingVerifyButton() {
                 type="button"
                 onClick={handleVerify}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed"
+                className={dialogPrimaryClass}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Verifikasi Ulang
               </button>
             </div>
           </div>
-        </div>
-      </div>
+      </DialogShell>
     </>
   )
 }

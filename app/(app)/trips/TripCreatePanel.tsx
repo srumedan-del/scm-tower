@@ -1,5 +1,7 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogCancelClass, dialogPrimaryClass } from '@/components/ui/FormDialog'
+import { Truck } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import {
   createTripFromShipments,
@@ -8,7 +10,7 @@ import {
   type VendorOption,
 } from './actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
-import { notify } from '@/lib/feedback'
+import { showSuccess } from '@/lib/feedback'
 
 type Props = { onClose: () => void }
 
@@ -51,8 +53,8 @@ export function TripCreatePanel({ onClose }: Props) {
           shipmentIds: [...selected],
           notes,
         })
-        notify.success(`Trip ${result.trip_no} berhasil dibuat`)
-        window.location.reload()
+        onClose()
+        void showSuccess({ title: 'Trip berhasil dibuat', details: [{ label: 'Nomor trip', value: result.trip_no }] }).then(() => window.location.reload())
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Gagal membuat trip')
       }
@@ -60,17 +62,10 @@ export function TripCreatePanel({ onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <header className="flex items-start justify-between border-b border-border p-5">
-          <div>
-            <h2 className="text-lg font-bold">Buat Trip</h2>
-            <p className="mt-1 text-xs text-gray-500">Pilih transporter dan shipment yang belum masuk trip.</p>
-          </div>
-          <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-800">Tutup</button>
-        </header>
+    <DialogShell onClose={onClose} size="3xl">
+      <DialogHeader title="Buat Trip" subtitle="Pilih transporter dan shipment yang belum masuk trip." icon={Truck} />
 
-        <div className="space-y-4 overflow-y-auto p-5">
+        <div className={dialogBodyClass}>
           {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
           <label className="block text-sm font-medium text-gray-700">
             Transporter
@@ -80,7 +75,7 @@ export function TripCreatePanel({ onClose }: Props) {
           </label>
           <label className="block text-sm font-medium text-gray-700">
             Catatan trip (opsional)
-            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-border p-2.5 text-sm" />
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="inp mt-1" />
           </label>
 
           <div className="overflow-x-auto rounded-xl border border-border">
@@ -109,13 +104,12 @@ export function TripCreatePanel({ onClose }: Props) {
           </div>
         </div>
 
-        <footer className="flex justify-end gap-2 border-t border-border p-4">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">Batal</button>
-          <button disabled={saving || !vendorId || selected.size === 0} onClick={submit} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">
+        <footer className="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
+          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <button disabled={saving || !vendorId || selected.size === 0} onClick={submit} className={dialogPrimaryClass}>
             {saving ? 'Membuat...' : `Buat Trip (${selected.size})`}
           </button>
         </footer>
-      </div>
-    </div>
+    </DialogShell>
   )
 }

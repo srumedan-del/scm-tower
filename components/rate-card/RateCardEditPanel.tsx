@@ -1,9 +1,11 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Receipt } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { upsertRateCard, deleteRateCard, getRateCardRoutes, type RateCardRouteOption } from '@/app/(app)/master-data/rate-card/actions'
 import { getVendors, type VendorRow } from '@/app/(app)/vendor/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Rate = {
   id: number
@@ -139,7 +141,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteRateCard(rate.id)
-        notify.success('Rate card dihapus'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Rate card dihapus' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -166,21 +168,17 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
       if (!payload.route_id) { setErr('RUTE wajib dipilih dari Master Routes'); return }
       try {
         await upsertRateCard(payload, rate?.id)
-        notify.success('Rate card tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Rate card tersimpan', message: form.rate_code }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
-          <h3 className="text-lg font-bold uppercase">{rate ? 'EDIT RATE CARD' : 'TAMBAH RATE CARD'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto">
-          <Field label="RATE CODE *"><input value={form.rate_code} onChange={e=>up('rate_code', e.target.value)} className="inp font-mono" placeholder="BIA-EKS-2137" disabled={!!rate} /></Field>
-          <Field label="VENDOR">
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title={rate ? 'Edit Rate Card' : 'Tambah Rate Card'} subtitle={rate ? rate.rate_code : 'Buat tarif pengiriman baru'} icon={Receipt} />
+        <div className={dialogBodyClass}>
+          <Field label="Rate code *"><input value={form.rate_code} onChange={e=>up('rate_code', e.target.value)} className="inp font-mono" placeholder="BIA-EKS-2137" disabled={!!rate} /></Field>
+          <Field label="Vendor">
             <SearchableSelect
               value={form.vendor_id ?? ''}
               onChange={(value: string) => up('vendor_id', value === '' ? null : Number(value))}
@@ -191,7 +189,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
               }))}
             />
           </Field>
-          <Field label="RUTE *">
+          <Field label="Rute *">
             <div className="relative">
               <input
                 value={routeSearch}
@@ -224,7 +222,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
             </div>
           </Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="TYPE TRUCK">
+            <Field label="Type truck">
               <select value={form.vehicle_type} onChange={e=>up('vehicle_type', e.target.value)} className="inp">
                 <option value="">-- Pilih Type Truck --</option>
                 {[...new Set([...(form.vehicle_type ? [form.vehicle_type] : []), ...TRUCK_TYPES])].map(type => (
@@ -232,7 +230,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
                 ))}
               </select>
             </Field>
-            <Field label="TONNAGE">
+            <Field label="Tonnage">
               <input
                 type="text"
                 inputMode="decimal"
@@ -264,7 +262,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="TARIFF MODEL">
+            <Field label="Tariff model">
               <select value={form.tariff_model} onChange={e=>up('tariff_model', e.target.value)} className="inp">
                 <option value="per_trip">PER_TRIP</option>
                 <option value="per_kg">PER_KG</option>
@@ -272,7 +270,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
                 <option value="per_unit">PER_UNIT</option>
               </select>
             </Field>
-            <Field label="PRICE *">
+            <Field label="Price *">
               <input
                 type="text"
                 inputMode="decimal"
@@ -288,7 +286,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
               />
             </Field>
           </div>
-          <Field label="SERVICE NAME">
+          <Field label="Service name">
             <input
               value={form.service_name}
               readOnly
@@ -297,8 +295,8 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="EFFECTIVE FROM"><input type="date" value={form.effective_from} onChange={e=>up('effective_from', e.target.value)} className="inp" /></Field>
-            <Field label="STATUS">
+            <Field label="Effective from"><input type="date" value={form.effective_from} onChange={e=>up('effective_from', e.target.value)} className="inp" /></Field>
+            <Field label="Status">
               <select value={form.status} onChange={e=>up('status', e.target.value)} className="inp">
                 <option value="aktif">AKTIF</option>
                 <option value="nonaktif">NONAKTIF</option>
@@ -307,18 +305,13 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
           </div>
           {err && <div className="text-red-600 text-sm">{err}</div>}
         </div>
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50 shrink-0">
-          <div>{rate && <button onClick={del} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">{deleting ? 'MENGHAPUS…' : 'HAPUS'}</button>}</div>
+        <div className={dialogFooterClass}>
+          <div>{rate && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting ? 'Menghapus…' : 'Hapus'}</button>}</div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
-            <button onClick={save} disabled={saving || !form.rate_code || !form.origin || !form.destination} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">{saving ? 'MENYIMPAN…' : 'SIMPAN'}</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <button onClick={save} disabled={saving || !form.rate_code || !form.origin || !form.destination} className={dialogPrimaryClass}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
-}
-function Field({label, children}:{label:string;children:React.ReactNode}) {
-  return <label className="block"><span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>{children}</label>
 }

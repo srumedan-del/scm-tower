@@ -1,9 +1,10 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
 import { useEffect, useState, useTransition } from 'react'
 import { upsertDriver, deleteDriver, getNextDriverCode, type DriverRow } from '@/app/(app)/master-data/drivers/actions'
-import { Sparkles, RefreshCw, KeyRound, Smartphone } from 'lucide-react'
-import { confirmAction, notify } from '@/lib/feedback'
+import { Sparkles, RefreshCw, KeyRound, Smartphone, UserRound } from 'lucide-react'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 const empty: Omit<DriverRow, 'id'> = {
   driver_code: '', driver_name: '', role: 'Driver',
@@ -73,7 +74,7 @@ export default function DriverEditPanel({
     if (!driver) return
     if (!(await confirmAction({ title: 'Hapus kru?', message: `${driver.role ?? 'Kru'} ${driver.driver_name} akan dihapus dari master data.` }))) return
     startDeleting(async () => {
-      try { await deleteDriver(driver.id); notify.success('Data kru dihapus'); onSaved(); onClose() }
+      try { await deleteDriver(driver.id); onClose(); void showSuccess({ title: 'Data kru dihapus', message: driver.driver_name }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -98,29 +99,22 @@ export default function DriverEditPanel({
           username:    (form.username as string)?.trim() || code.toLowerCase(),
           pin:         (form.pin as string)?.trim() || null,
         })
-        notify.success('Data kru tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Data kru tersimpan', details: [{ label: 'Kode', value: code.toUpperCase() }, { label: 'Nama', value: name.toUpperCase() }] }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 uppercase">
-              {driver ? `Edit ${driver.role ?? 'Kru'}` : 'Tambah Driver / Helper'}
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {driver ? `Perbarui data untuk kode ${driver.driver_code}` : 'Sistem otomatis mengalokasikan nomor kode berikutnya (DRV / HLP)'}
-            </p>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors text-xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader
+        title={driver ? `Edit ${driver.role ?? 'Kru'}` : 'Tambah Driver / Helper'}
+        subtitle={driver ? `Perbarui data untuk kode ${driver.driver_code}` : 'Sistem otomatis mengalokasikan nomor kode berikutnya (DRV / HLP)'}
+        icon={UserRound}
+      />
 
-        <div className="space-y-4 overflow-y-auto p-6">
+        <div className={dialogBodyClass}>
           {/* Role selector */}
-          <Field label="ROLE *">
+          <Field label="Role *">
             <div className="mt-1 flex gap-3">
               {(['Driver', 'Helper'] as const).map(r => (
                 <label key={r} className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-2.5 cursor-pointer transition-all ${
@@ -145,7 +139,7 @@ export default function DriverEditPanel({
 
           {/* Kode & Nama */}
           <div className="grid grid-cols-2 gap-4">
-            <Field label="KODE KRU *">
+            <Field label="Kode kru *">
               <div className="relative mt-1">
                 <input
                   type="text"
@@ -172,7 +166,7 @@ export default function DriverEditPanel({
               </div>
             </Field>
 
-            <Field label="NAMA LENGKAP *">
+            <Field label="Nama lengkap *">
               <input
                 type="text"
                 value={form.driver_name}
@@ -198,7 +192,7 @@ export default function DriverEditPanel({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="USERNAME LOGIN">
+              <Field label="Username login">
                 <input
                   type="text"
                   value={(form.username as string) ?? ''}
@@ -227,7 +221,7 @@ export default function DriverEditPanel({
 
           {/* SIM & HP */}
           <div className="grid grid-cols-2 gap-4">
-            <Field label="NO. SIM (OPSIONAL)">
+            <Field label="No. sim (opsional)">
               <input
                 type="text"
                 value={(form.sim_no as string) ?? ''}
@@ -237,7 +231,7 @@ export default function DriverEditPanel({
               />
             </Field>
 
-            <Field label="NO. TELEPON / WA (OPSIONAL)">
+            <Field label="No. telepon / wa (opsional)">
               <input
                 type="text"
                 value={(form.phone as string) ?? ''}
@@ -248,7 +242,7 @@ export default function DriverEditPanel({
             </Field>
           </div>
 
-          <Field label="CATATAN">
+          <Field label="Catatan">
             <textarea
               value={(form.notes as string) ?? ''}
               onChange={e => up('notes', e.target.value)}
@@ -258,7 +252,7 @@ export default function DriverEditPanel({
             />
           </Field>
 
-          <Field label="STATUS">
+          <Field label="Status">
             <label className="mt-1 inline-flex items-center gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
@@ -277,13 +271,13 @@ export default function DriverEditPanel({
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/80 px-6 py-4">
+        <div className={dialogFooterClass}>
           <div>
             {driver && (
               <button
                 onClick={del}
                 disabled={deleting}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                className={dialogDangerClass}
               >
                 {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
@@ -292,29 +286,19 @@ export default function DriverEditPanel({
           <div className="flex gap-2.5">
             <button
               onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className={dialogCancelClass}
             >
               Batal
             </button>
             <button
               onClick={save}
               disabled={saving || generatingCode}
-              className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-xs"
+              className={dialogPrimaryClass}
             >
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

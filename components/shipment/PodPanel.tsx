@@ -1,12 +1,13 @@
 'use client'
 
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
   getPodByTrackingId, getPodImageUrls, upsertPod, deletePod, confirmDelivery,
   type PodRow, type ShipmentTrackingRow,
 } from '@/app/(app)/shipment/actions'
 import { CheckCircle2, PackageCheck, Trash2 } from 'lucide-react'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Props = {
   shipment: ShipmentTrackingRow
@@ -66,7 +67,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
     if (!pod) return
     if (!(await confirmAction({ title: 'Hapus POD?', message: 'Data POD shipment ini akan dihapus. Status shipment tidak berubah.' }))) return
     startDeleting(async () => {
-      try { await deletePod(pod.id); setPod(null); notify.success('POD dihapus'); onSaved() }
+      try { await deletePod(pod.id); setPod(null); await showSuccess({ title: 'POD dihapus' }); onSaved() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -99,8 +100,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
           await confirmDelivery(shipment.id, receivedAtISO)
         }
 
-        notify.success('POD tersimpan'); onSaved()
-        onClose()
+        onClose(); void showSuccess({ title: 'POD tersimpan' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -108,20 +108,11 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
   const alreadyDelivered = shipment.status === 'Delivered'
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <PackageCheck className="h-5 w-5 text-green-600" />
-          <h3 className="font-bold uppercase">Proof of Delivery</h3>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+    <DialogShell onClose={onClose} size="2xl">
+      <DialogHeader title="Proof of Delivery" subtitle="Konfirmasi penerimaan barang" icon={PackageCheck} />
 
         {/* Shipment info */}
-        <div className="px-4 pt-4 shrink-0">
+        <div className="shrink-0 px-6 pt-5">
           <div className="rounded-xl bg-gray-50 border p-3 text-sm space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-500">Shipment</span>
@@ -161,7 +152,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
         {podLoading ? (
           <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-sm text-gray-400">Memuat data POD...</div>
         ) : (
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          <div className={dialogBodyClass}>
 
             {/* Sudah ada POD sebelumnya */}
             {pod && (
@@ -251,22 +242,22 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
         )}
 
         {/* Footer */}
-        <div className="flex justify-between border-t p-4 bg-gray-50 shrink-0">
+        <div className={dialogFooterClass}>
           <div>
             {pod && (
               <button onClick={del} disabled={deleting}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                className={dialogDangerClass}>
                 <Trash2 className="h-3.5 w-3.5" />
                 {deleting ? 'Menghapus…' : 'Hapus POD'}
               </button>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button
               onClick={save}
               disabled={saving || podLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-500 disabled:opacity-50"
+              className={dialogPrimaryClass}
             >
               <CheckCircle2 className="h-4 w-4" />
               {saving ? 'Menyimpan…' : pod ? 'Update POD' : 'Konfirmasi Terima'}
@@ -274,17 +265,6 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#16a34a}`}</style>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-sm font-semibold text-slate-700 mb-1 block">{label}</span>
-      {children}
-    </label>
+    </DialogShell>
   )
 }

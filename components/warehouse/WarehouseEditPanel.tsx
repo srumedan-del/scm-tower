@@ -1,7 +1,9 @@
 'use client'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { Warehouse } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { upsertWarehouse, deleteWarehouse } from '@/app/(app)/master-data/warehouses/actions'
-import { confirmAction, notify } from '@/lib/feedback'
+import { confirmAction, showSuccess } from '@/lib/feedback'
 
 type Wh = {
   id: number
@@ -37,7 +39,7 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteWarehouse(wh.id)
-        notify.success('Gudang dihapus'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Gudang dihapus' }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -55,38 +57,29 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
       if (!payload.warehouse_code) { setErr('CODE wajib diisi'); return }
       try {
         await upsertWarehouse(payload, wh?.id)
-        notify.success('Gudang tersimpan'); onSaved(); onClose()
+        onClose(); void showSuccess({ title: 'Gudang tersimpan', message: form.warehouse_code }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4 shrink-0">
-          <h3 className="text-lg font-bold uppercase">{wh ? 'EDIT GUDANG' : 'TAMBAH GUDANG'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto">
-          <Field label="CODE *"><input value={form.warehouse_code} onChange={e=>up('warehouse_code', e.target.value)} className="inp font-mono" disabled={!!wh} /></Field>
-          <Field label="NAMA *"><input value={form.warehouse_name} onChange={e=>up('warehouse_name', e.target.value)} className="inp" /></Field>
-          <Field label="CITY"><input value={form.city} onChange={e=>up('city', e.target.value)} className="inp" /></Field>
-          <Field label="ADDRESS"><textarea value={form.address} onChange={e=>up('address', e.target.value)} className="inp" rows={2} /></Field>
-          <Field label="ACTIVE"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
+    <DialogShell onClose={onClose} size="xl">
+      <DialogHeader title={wh ? 'Edit Gudang' : 'Tambah Gudang'} subtitle={wh ? wh.warehouse_code : 'Daftarkan gudang baru'} icon={Warehouse} />
+        <div className={dialogBodyClass}>
+          <Field label="Code *"><input value={form.warehouse_code} onChange={e=>up('warehouse_code', e.target.value)} className="inp font-mono" disabled={!!wh} /></Field>
+          <Field label="Nama *"><input value={form.warehouse_name} onChange={e=>up('warehouse_name', e.target.value)} className="inp" /></Field>
+          <Field label="City"><input value={form.city} onChange={e=>up('city', e.target.value)} className="inp" /></Field>
+          <Field label="Address"><textarea value={form.address} onChange={e=>up('address', e.target.value)} className="inp" rows={2} /></Field>
+          <Field label="Active"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
           {err && <div className="text-red-600 text-sm">{err}</div>}
         </div>
-        <div className="flex gap-2 justify-between border-t border-border p-4 bg-gray-50 shrink-0">
-          <div>{wh && <button onClick={del} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">{deleting ? 'MENGHAPUS…' : 'HAPUS'}</button>}</div>
+        <div className={dialogFooterClass}>
+          <div>{wh && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting ? 'Menghapus…' : 'Hapus'}</button>}</div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm">BATAL</button>
-            <button onClick={save} disabled={saving || !form.warehouse_code} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">{saving ? 'MENYIMPAN…' : 'SIMPAN'}</button>
+            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <button onClick={save} disabled={saving || !form.warehouse_code} className={dialogPrimaryClass}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
-      </div>
-    </div>
+    </DialogShell>
   )
-}
-function Field({label, children}:{label:string;children:React.ReactNode}) {
-  return <label className="block"><span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>{children}</label>
 }
