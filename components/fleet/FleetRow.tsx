@@ -17,7 +17,7 @@ type Fleet = {
   status: string | null
 }
 
-export function FleetRow({ fleet }: { fleet: Fleet }) {
+export function FleetRow({ fleet, odometer }: { fleet: Fleet; odometer: { km: number; trip_no: string } | null }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const isActive = fleet.is_active === true || String(fleet.status).toLowerCase() === 'active'
@@ -39,6 +39,14 @@ export function FleetRow({ fleet }: { fleet: Fleet }) {
         <td className="px-4 py-3 text-sm">
           {String(fleet.driver_name ?? '-').toUpperCase()}
           <div className="text-xs text-gray-500">{fleet.driver_phone ?? ''}</div>
+        </td>
+        <td className="px-4 py-3 text-right text-sm whitespace-nowrap">
+          {odometer ? (
+            <>
+              <span className="font-semibold text-slate-800">{odometer.km.toLocaleString('id-ID')} KM</span>
+              <div className="font-mono text-xs text-gray-500">{odometer.trip_no}</div>
+            </>
+          ) : <span className="text-gray-400">Belum ada data</span>}
         </td>
         <td className="px-4 py-3 text-center">
           <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${

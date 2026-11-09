@@ -1,6 +1,7 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { FleetRow } from '@/components/fleet/FleetRow'
 import FleetAddButton from '@/components/fleet/FleetAddButton'
+import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
 
 async function getFleet() {
   const { data } = await supabase.from('transport_fleet').select('*').order('id').limit(200)
@@ -8,7 +9,7 @@ async function getFleet() {
 }
 
 export default async function VehiclesPage() {
-  const fleet = await getFleet() as any[]
+  const [fleet, odometers] = await Promise.all([getFleet() as Promise<any[]>, getLatestVehicleOdometers()])
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
@@ -25,12 +26,13 @@ export default async function VehiclesPage() {
                 <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">JENIS</th>
                 <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">TONASE / VOLUME</th>
                 <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">DRIVER</th>
+                <th className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">KM TERAKHIR</th>
                 <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">STATUS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {fleet.map((r:any) => <FleetRow key={r.id} fleet={r} />)}
-              {fleet.length===0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">BELUM ADA ARMADA.</td></tr>}
+              {fleet.map((r:any) => <FleetRow key={r.id} fleet={r} odometer={odometers.get(Number(r.id)) ?? null} />)}
+              {fleet.length===0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">BELUM ADA ARMADA.</td></tr>}
             </tbody>
           </table>
         </div>

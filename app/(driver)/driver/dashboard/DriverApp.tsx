@@ -9,6 +9,7 @@ import {
   type DriverHistoryTrip, type DriverSession, type DriverTrip,
 } from '../actions'
 import { BarcodeScannerModal } from '@/components/driver/BarcodeScannerModal'
+import { confirmAction } from '@/lib/feedback'
 import { SignatureCanvas } from '@/components/driver/SignatureCanvas'
 import {
   Button, Card, ChoiceRow, ConfirmSheet, ErrorText, Field, Meta, PhotoField, StatusPill,
@@ -351,9 +352,16 @@ function TripScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
   if (!trip) return <Meta>Trip tidak ditemukan.</Meta>
   const allDone = trip.stops.every(isStopDone)
 
-  function start() {
+  async function start() {
     const value = parseInt(odometer, 10)
     if (!Number.isInteger(value) || value < 0) return setError('Isi odometer awal')
+    const lastKm = trip!.last_odometer
+    if (lastKm != null && value < lastKm && !(await confirmAction({
+      title: 'KM lebih kecil dari KM terakhir',
+      message: `KM terakhir kendaraan ini ${lastKm.toLocaleString('id-ID')}, yang diisi ${value.toLocaleString('id-ID')}. Pastikan angkanya benar.`,
+      confirmLabel: 'Tetap Mulai',
+      tone: 'info',
+    }))) return
     void run(() => startDriverTrip(tripNo, value), () => ctx.notify('Trip dimulai. Lokasi dikirim selama portal terbuka.'))
   }
 
@@ -369,6 +377,7 @@ function TripScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
     <>
       {!trip.started_at && (
         <Card>
+          {trip.last_odometer != null && <Meta>KM terakhir kendaraan: {trip.last_odometer.toLocaleString('id-ID')} KM</Meta>}
           <Field label="Odometer awal (KM)" value={odometer} onChange={setOdometer} inputMode="numeric" />
           {error ? <ErrorText>{error}</ErrorText> : null}
           <Button label="Mulai Trip" busy={busy} onClick={start} />

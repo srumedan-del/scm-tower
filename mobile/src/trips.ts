@@ -23,6 +23,7 @@ export type Trip = {
   trip_no: string
   started_at: string | null
   odometer_start: number | null
+  last_odometer?: number | null
   stops: Stop[]
 }
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
 import { DEFAULT_DRIVER_PIN, hashPin, isDefaultPin, isHashedPin, isValidNewPin, verifyPin } from '@/lib/driverAuth'
 
 /**
@@ -191,7 +192,7 @@ export async function listDriverTrips(driverId: number) {
     .select(`
       id, trip_id, pss_no, source_type, crossdocking_id, customer_name, destination_city,
       destination_address, dk_lk, document_date, status, dispatch_time, delivery_time,
-      delivery_sequence, failure_reason
+      delivery_sequence, failure_reason, vehicle_id
     `)
     .eq('driver_id', driverId)
     .not('trip_id', 'is', null)
@@ -222,6 +223,8 @@ export async function listDriverTrips(driverId: number) {
   ])
   for (const result of [trips, outboundItems, crossdockingItems, customers]) if (result.error) throw result.error
 
+  const vehicleIds = [...new Set(stops.map(row => row.vehicle_id).filter((id): id is number => id != null).map(Number))]
+  const odometers = await getLatestVehicleOdometers(vehicleIds)
   const tripByNo = new Map((trips.data ?? []).map(row => [row.trip_no, row]))
   const customerByName = new Map((customers.data ?? []).map((row: any) => [String(row.customer_name).trim().toLowerCase(), row]))
   const itemsFor = (stop: (typeof stops)[number]) => {
@@ -238,10 +241,12 @@ export async function listDriverTrips(driverId: number) {
 
   return openTripNos.map(tripNo => {
     const trip = tripByNo.get(tripNo)
+    const vehicleId = stops.find(row => row.trip_id === tripNo && row.vehicle_id != null)?.vehicle_id
     return {
       trip_no: tripNo,
       started_at: trip?.started_at ?? null,
       odometer_start: trip?.odometer_start ?? null,
+      last_odometer: vehicleId != null ? odometers.get(Number(vehicleId))?.km ?? null : null,
       stops: stops.filter(row => row.trip_id === tripNo).map(stop => {
         const customer = customerByName.get(String(stop.customer_name ?? '').trim().toLowerCase())
         return {

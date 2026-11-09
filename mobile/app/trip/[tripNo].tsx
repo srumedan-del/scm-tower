@@ -18,10 +18,23 @@ export default function TripScreen() {
 
   if (!trip) return <Screen><Text style={styles.meta}>Trip tidak ditemukan.</Text></Screen>
 
-  async function start() {
+  function start() {
     const value = parseInt(odometer, 10)
     if (!Number.isInteger(value) || value < 0) return setError('Isi odometer awal')
     setError('')
+    const lastKm = trip?.last_odometer
+    if (lastKm != null && value < lastKm) {
+      Alert.alert(
+        'KM lebih kecil dari KM terakhir',
+        `KM terakhir kendaraan ini ${lastKm.toLocaleString('id-ID')}, yang diisi ${value.toLocaleString('id-ID')}. Pastikan angkanya benar.`,
+        [{ text: 'Periksa Lagi', style: 'cancel' }, { text: 'Tetap Mulai', onPress: () => void beginTrip(value) }],
+      )
+      return
+    }
+    void beginTrip(value)
+  }
+
+  async function beginTrip(value: number) {
     enqueue('trip-start', `Mulai trip ${tripNo}`, { trip_id: tripNo, odometer_start: value })
     const tracking = await startTracking(tripNo)
     if (!tracking) {
@@ -35,6 +48,7 @@ export default function TripScreen() {
     <Screen>
       {!trip.started_at && (
         <Card>
+          {trip.last_odometer != null ? <Text style={styles.meta}>KM terakhir kendaraan: {trip.last_odometer.toLocaleString('id-ID')} KM</Text> : null}
           <Field label="Odometer awal (KM)" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" />
           {error ? <ErrorText>{error}</ErrorText> : null}
           <Button label="Mulai Trip" onPress={start} />
