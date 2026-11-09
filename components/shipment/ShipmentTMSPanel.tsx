@@ -17,6 +17,24 @@ import { confirmAction, showSuccess } from '@/lib/feedback'
 const STATUS_OPTS: readonly string[] = ['Draft', 'Dispatched', 'In Transit', 'Delivered']
 const FAILURE_REASONS = ['Customer tutup', 'Salah barang', 'Alamat tidak ditemukan', 'Ditolak penerima', 'Lainnya']
 
+// Kendaraan dan driver vendor tidak ada di master, jadi disimpan di catatan shipment.
+function readNoteField(notes: string | null | undefined, key: string) {
+  return notes?.match(new RegExp(`${key}:\\s*([^|]+)`, 'i'))?.[1]?.trim() ?? ''
+}
+
+function writeNoteField(notes: string | null | undefined, key: string, value: string) {
+  const parts = (notes ?? '').split('|').map(part => part.trim()).filter(Boolean)
+  const index = parts.findIndex(part => new RegExp(`^${key}:`, 'i').test(part))
+  const next = value.trim() ? `${key}: ${value.trim()}` : null
+  if (index >= 0) {
+    if (next) parts[index] = next
+    else parts.splice(index, 1)
+  } else if (next) {
+    parts.push(next)
+  }
+  return parts.join(' | ') || null
+}
+
 type Props = {
   shipment: ShipmentTrackingRow | null
   relatedShipments?: ShipmentTrackingRow[]
@@ -77,6 +95,10 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
   const [saving,   startSaving]   = useTransition()
   const [deleting, startDeleting] = useTransition()
   const [err, setErr] = useState<string | null>(null)
+  const [applyTo, setApplyTo] = useState<'trip' | 'single'>('trip')
+  const [externalNopol, setExternalNopol] = useState(() => readNoteField(shipment?.notes, 'Nopol'))
+  const [externalDriver, setExternalDriver] = useState(() => readNoteField(shipment?.notes, 'Driver'))
+  const tripRows = relatedShipments?.length ? relatedShipments : shipment ? [shipment] : []
 
   const up = (k: keyof ShipmentTrackingRow, v: any) =>
     setForm(f => ({ ...f, [k]: v }))
@@ -159,6 +181,14 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     ?? form.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim()
     ?? ''
   const isRetailCourier = /indah\s+logistik|jne/i.test(transporterName) || Boolean(String(form.no_resi ?? '').trim())
+  const hadExternalCrew = Boolean(readNoteField(shipment?.notes, 'Nopol') || readNoteField(shipment?.notes, 'Driver'))
+  const showExternalCrew = Boolean(shipment) && !isInternal && (hadExternalCrew || !isRetailCourier)
+
+  function notesFor(row: ShipmentTrackingRow | null) {
+    const base = row == null || row.id === shipment?.id ? form.notes : row.notes
+    if (!showExternalCrew) return base ?? null
+    return writeNoteField(writeNoteField(base, 'Nopol', externalNopol), 'Driver', externalDriver)
+  }
 
   useEffect(() => {
     if (form.transporter_id || !noteTransporter) return
@@ -178,6 +208,8 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     startSaving(async () => {
       setErr(null)
       if (!form.status) { setErr('Status wajib diisi'); return }
+      if (hadExternalCrew && !externalNopol.trim()) { setErr('Nomor polisi wajib diisi'); return }
+      if (hadExternalCrew && !externalDriver.trim()) { setErr('Nama driver wajib diisi'); return }
       try {
         const selectedVendor = transporters.find(t => t.id === Number(effectiveTransporterId))
         const retailFields = Boolean(String(form.no_resi ?? '').trim()) || form.cost_model === 'Retail' || isRetailCourier
@@ -199,10 +231,11 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
             ? null
             : Number(form.total_biaya_eksternal),
         }
-        const rowsToUpdate = shipment ? (relatedShipments?.length ? relatedShipments : [shipment]) : [null]
+        const rowsToUpdate = !shipment ? [null] : applyTo === 'single' ? [shipment] : tripRows
         await Promise.all(rowsToUpdate.map(row => upsertShipmentTracking({
           ...(row ?? form),
           ...sharedFields,
+          notes: notesFor(row),
           // Satu trip bisa berisi PSS yang sudah Delivered; jangan ikut dimundurkan.
           status: (row ?? form).status === 'Delivered' ? 'Delivered' : sharedFields.status,
           id: row?.id,
@@ -218,7 +251,13 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 : Number(form.total_biaya_eksternal),
             })))
         }
-        onClose(); void showSuccess({ title: 'Shipment tersimpan' }).then(onSaved)
+        onClose()
+        void showSuccess({
+          title: 'Shipment tersimpan',
+          message: shipment && tripRows.length > 1
+            ? (applyTo === 'single' ? `Hanya ${shipment.pss_no ?? 'dokumen ini'} yang diubah` : `${tripRows.length} dokumen dalam ${shipment.trip_id} diubah`)
+            : undefined,
+        }).then(onSaved)
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -309,6 +348,24 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
           </Section>
 
           <Section title={isInternal ? 'Transporter & Armada' : 'Transporter & Rute'}>
+            {tripRows.length > 1 && (
+              <fieldset className="mb-3">
+                <legend className="mb-1.5 block text-[13px] font-medium text-slate-700">Terapkan perubahan ke</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { value: 'trip' as const, label: `Seluruh trip (${tripRows.length} dokumen)` },
+                    { value: 'single' as const, label: `Hanya ${shipment?.pss_no ?? 'dokumen ini'}` },
+                  ].map(option => (
+                    <label key={option.value} className="cursor-pointer">
+                      <input type="radio" name="apply_to" checked={applyTo === option.value} onChange={() => setApplyTo(option.value)} className="peer sr-only" />
+                      <span className="flex min-h-11 items-center justify-center rounded-xl border border-gray-300 px-3 text-center text-sm font-medium text-slate-600 transition-colors hover:border-gold-400 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-800 peer-focus-visible:ring-2 peer-focus-visible:ring-gold-400">
+                        {option.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Model / Transporter">
                 <SearchableSelect value={effectiveTransporterId} onChange={value => up('transporter_id', value ? Number(value) : null)} placeholder={isInternal ? 'Internal' : '-- Pilih transporter --'} options={transporters.map(t => ({ value: t.id, label: t.name }))} disabled={optLoading} />
@@ -327,6 +384,16 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 </Field>
                 <Field label="Helper">
                   <SearchableSelect value={form.helper_id ?? ''} onChange={value => up('helper_id', value ? Number(value) : null)} placeholder="-- Pilih Helper --" options={helpers.map(d => ({ value: d.id, label: d.driver_name }))} />
+                </Field>
+              </div>
+            )}
+            {showExternalCrew && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field label="No. polisi kendaraan">
+                  <input value={externalNopol} onChange={e => setExternalNopol(e.target.value.toLocaleUpperCase('id-ID'))} className="inp font-mono" placeholder="BK 1234 AB" />
+                </Field>
+                <Field label="Nama driver">
+                  <input value={externalDriver} onChange={e => setExternalDriver(e.target.value.toLocaleUpperCase('id-ID'))} className="inp" placeholder="Nama lengkap driver" />
                 </Field>
               </div>
             )}
