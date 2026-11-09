@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { getDrivers, type DriverRow } from './actions'
 import DriverEditPanel from '@/components/driver/DriverEditPanel'
-import { Plus, UserCheck, UserX, Truck, Users } from 'lucide-react'
+import { Plus, UserCheck, UserX, Truck, Users, KeyRound, Smartphone } from 'lucide-react'
 
 const roleBadge = (role: string) =>
   role === 'Driver'
@@ -14,18 +14,23 @@ export default function DriversPage() {
   const [rows, setRows]         = useState<DriverRow[]>([])
   const [selected, setSelected] = useState<DriverRow | null>(null)
   const [adding, setAdding]     = useState(false)
-  const [loading, startLoad]    = useTransition()
-  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'Driver' | 'Helper'>('all')
+  const [loading, startLoading] = useTransition()
 
-  function load() {
-    startLoad(async () => {
-      try { setRows(await getDrivers()) } catch { /* ignore */ }
+  function reload() {
+    startLoading(async () => {
+      try {
+        const d = await getDrivers()
+        setRows(d)
+      } catch (e) {
+        console.error(e)
+      }
     })
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { reload() }, [])
 
-  const filtered = roleFilter === 'all' ? rows : rows.filter(r => r.role === roleFilter)
+  const filtered = rows.filter(r => roleFilter === 'all' || r.role === roleFilter)
   const driverCount = rows.filter(r => r.role === 'Driver').length
   const helperCount = rows.filter(r => r.role === 'Helper').length
 
@@ -35,12 +40,12 @@ export default function DriversPage() {
         <div>
           <h1 className="text-2xl font-bold">Master Driver & Helper</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Kru internal SRU — {driverCount} Driver · {helperCount} Helper
+            Kru internal SRU — {driverCount} Driver · {helperCount} Helper · Terhubung ke SCM Driver APK
           </p>
         </div>
         <button
           onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 shadow-xs transition-colors"
         >
           <Plus className="h-4 w-4" /> Tambah Kru
         </button>
@@ -61,27 +66,28 @@ export default function DriversPage() {
         ))}
       </div>
 
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kode</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Role</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">No. SIM</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">No. HP</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Catatan</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Kode</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Nama</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Role</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Akun Login APK</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">No. SIM</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">No. HP</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Catatan</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {loading && (
-              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Memuat...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-3 text-sm font-medium text-slate-600">Memuat...</td></tr>
             )}
             {!loading && filtered.length === 0 && (
-              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+              <tr><td colSpan={8} className="px-4 py-3 text-sm font-medium text-slate-600">
                 {rows.length === 0
-                  ? 'Belum ada data. Jalankan schema SQL di Supabase dulu.'
+                  ? 'Belum ada data driver.'
                   : 'Tidak ada kru dengan filter ini.'}
               </td></tr>
             )}
@@ -89,24 +95,35 @@ export default function DriversPage() {
               <tr
                 key={r.id}
                 onClick={() => setSelected(r)}
-                className="hover:bg-blue-50 cursor-pointer"
+                className="hover:bg-blue-50 cursor-pointer transition-colors"
               >
-                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.driver_code}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.driver_name}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
+                <td className="px-4 py-3 text-sm font-mono font-bold text-slate-800">{r.driver_code}</td>
+                <td className="px-4 py-3 text-sm font-semibold text-slate-900">{r.driver_name}</td>
+                <td className="px-4 py-3 text-sm text-center">
                   <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${roleBadge(r.role)}`}>
                     {r.role}
                   </span>
                 </td>
-                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.sim_no ?? '-'}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.phone ?? '-'}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
+                <td className="px-4 py-3 text-sm">
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold">
+                      {r.username ?? r.driver_code.toLowerCase()}
+                    </span>
+                    <span className="text-slate-400">/</span>
+                    <span className="bg-amber-50 border border-amber-100 text-amber-800 px-2 py-0.5 rounded tracking-wider font-bold">
+                      {r.pin_is_default ? 'PIN default' : '••••••'}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-600">{r.sim_no ?? '-'}</td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-600">{r.phone ?? '-'}</td>
+                <td className="px-4 py-3 text-sm text-center">
                   {r.is_active
                     ? <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 rounded-full px-2 py-0.5"><UserCheck className="h-3 w-3" /> Aktif</span>
                     : <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5"><UserX className="h-3 w-3" /> Nonaktif</span>
                   }
                 </td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.notes ?? '-'}</td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-600">{r.notes ?? '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -117,7 +134,7 @@ export default function DriversPage() {
         <DriverEditPanel
           driver={selected}
           onClose={() => { setSelected(null); setAdding(false) }}
-          onSaved={() => { setSelected(null); setAdding(false); load() }}
+          onSaved={() => { reload(); setSelected(null); setAdding(false) }}
         />
       )}
     </div>

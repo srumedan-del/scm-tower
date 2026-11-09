@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 const HD_SET_ITEM_NO = 'A016-R-V604R'
 const ZAINOEL_CUSTOMER_CODE = 'RSP000036'
@@ -14,6 +15,7 @@ export type LatestCustomerOrder = {
 }
 
 export async function getLatestCustomerOrders(customerCodes: string[]) {
+  await requireAuthenticatedUser()
   const codes = [...new Set(customerCodes.map((code) => code.trim()).filter(Boolean))]
   if (!codes.length) return {} as Record<string, LatestCustomerOrder>
 

@@ -38,14 +38,39 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
 
   const analysis = useMemo(() => {
     const leadTimes = rows
-      .map(row => row.ship_to_posting_days)
-      .filter(value => value !== null && value !== undefined && String(value).trim() !== '')
-      .map(value => Number(value))
-      .filter(value => Number.isFinite(value) && value >= 0)
+      .map(row => {
+        if (row.ship_to_posting_days !== null && row.ship_to_posting_days !== undefined && String(row.ship_to_posting_days).trim() !== '') {
+          const val = Number(row.ship_to_posting_days)
+          if (Number.isFinite(val) && val >= 0) return val
+        }
+        // Fallback: hitung selisih posting_date dan shipment_date
+        if (row.posting_date && row.shipment_date) {
+          const postDate = new Date(row.posting_date).getTime()
+          const shipDate = new Date(row.shipment_date).getTime()
+          if (!isNaN(postDate) && !isNaN(shipDate) && postDate >= shipDate) {
+            return Math.round((postDate - shipDate) / (1000 * 60 * 60 * 24))
+          }
+        }
+        return null
+      })
+      .filter((value): value is number => value !== null)
+
     const averageLeadTime = leadTimes.length
       ? Math.round((leadTimes.reduce((sum, value) => sum + value, 0) / leadTimes.length) * 10) / 10
       : 0
-    const lateRows = rows.filter(row => Number(row.ship_to_posting_days) > 18)
+
+    const lateRows = rows.filter(row => {
+      let days = Number(row.ship_to_posting_days)
+      if ((!Number.isFinite(days) || days <= 0) && row.posting_date && row.shipment_date) {
+        const postDate = new Date(row.posting_date).getTime()
+        const shipDate = new Date(row.shipment_date).getTime()
+        if (!isNaN(postDate) && !isNaN(shipDate)) {
+          days = Math.round((postDate - shipDate) / (1000 * 60 * 60 * 24))
+        }
+      }
+      return Number.isFinite(days) && days > 18
+    })
+
     const missingReceiptDates = rows.filter(row => !row.receipt_date).length
     const agentCounts = new Map<string, number>()
     rows.forEach(row => {
@@ -53,6 +78,7 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
       agentCounts.set(agent, (agentCounts.get(agent) ?? 0) + 1)
     })
     const topAgent = [...agentCounts.entries()].sort((a, b) => b[1] - a[1])[0]
+
     const load = calculateReceivingLoad(details, packaging)
     const packagingMap = new Map(packaging.map(item => [String(item.sku_code ?? '').trim().toUpperCase(), item]))
     const missingPackagingItems = [...new Map(
@@ -71,6 +97,7 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
         .filter(entry => entry.missing.length > 0)
         .map(entry => [entry.item, entry])
     ).values()].slice(0, 10)
+
     const trendMap = new Map<string, number>()
     rows.forEach(row => {
       const month = row.posting_date?.slice(0, 7) ?? 'Tanpa tanggal'
@@ -80,6 +107,7 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-6)
       .map(([month, count]) => ({ month, count }))
+
     const itemMap = new Map<string, { quantity: number; lines: number }>()
     details.forEach(detail => {
       const item = String(detail.item_no ?? detail.description ?? 'Item tidak diketahui').trim() || 'Item tidak diketahui'
@@ -110,7 +138,7 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
       <button
         type="button"
         onClick={startAnalysis}
-        className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#3B5BDB] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F4FC5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         <Sparkles className="h-4 w-4" />
         Analisis AI
@@ -145,9 +173,9 @@ export default function ReceivingAIAnalysis({ rows, details, packaging }: Props)
                     <Metric label="Rata-rata lead time kirim" value={analysis.averageLeadTime > 0 ? `${Number(analysis.averageLeadTime ?? 0)} hari` : '—'} />
                     <Metric label="PTR terlambat" value={Number(analysis.lateRows.length ?? 0)} />
                     <Metric label="Total quantity" value={details.length ? Number(analysis.load.quantity ?? 0).toLocaleString('id-ID') : '—'} />
-                    <Metric label="Volume" value={details.length ? `${Number(analysis.load.volumeCbm ?? 0).toFixed(2)} m³` : '—'} />
-                    <Metric label="Tonase" value={details.length ? `${Number(analysis.load.tonnage ?? 0).toFixed(2)} ton` : '—'} />
-                    <Metric label="Pallet" value={details.length ? Number(analysis.load.pallets ?? 0).toLocaleString('id-ID') : '—'} />
+                    <Metric label="Volume" value={details.length && analysis.load.volumeCbm > 0 ? `${Number(analysis.load.volumeCbm ?? 0).toFixed(2)} m³` : '—'} />
+                    <Metric label="Tonase" value={details.length && analysis.load.tonnage > 0 ? `${Number(analysis.load.tonnage ?? 0).toFixed(2)} ton` : '—'} />
+                    <Metric label="Pallet" value={details.length && analysis.load.pallets > 0 ? Number(analysis.load.pallets ?? 0).toLocaleString('id-ID') : '—'} />
                   </div>
 
                   {(analysis.load.volumeRows === 0 || analysis.load.weightRows === 0 || analysis.load.palletRows === 0) && analysis.missingPackagingItems.length > 0 && (

@@ -2,8 +2,10 @@
 
 import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { calculateReceivingLoad, type ReceivingDetailForAnalytics, type ReceivingPackaging } from './receiving-analytics'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function getLandingPageData() {
+  await requireAuthenticatedUser()
   const today = new Date().toISOString().slice(0, 10)
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
@@ -34,7 +36,7 @@ export async function getLandingPageData() {
     supabase.from('receiving_header').select('*', { count: 'exact', head: true }),
     supabase.from('issue_log').select('*', { count: 'exact', head: true }).in('status', ['Open', 'In Progress']),
     supabase.from('outbound_header').select('*', { count: 'exact', head: true }),
-    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).not('status', 'eq', 'Delivered'),
+    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).not('status', 'in', '("Delivered","Closed")'),
     supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'Draft'),
     supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'Dispatched'),
     supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'In Transit'),
@@ -55,7 +57,7 @@ export async function getLandingPageData() {
     supabase.from('shipment_tracking')
       .select('id, pss_no, customer_name, promised_delivery_date, status, dispatch_time, destination_city, dk_lk')
       .lt('promised_delivery_date', today)
-      .not('status', 'eq', 'Delivered')
+      .not('status', 'in', '("Delivered","Closed")')
       .not('promised_delivery_date', 'is', null)
       .order('promised_delivery_date', { ascending: true })
       .limit(20),

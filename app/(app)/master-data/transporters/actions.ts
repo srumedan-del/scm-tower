@@ -17,6 +17,7 @@ export type TransporterRow = {
 }
 
 export async function getTransporters() {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('master_transporter')
     .select('*')

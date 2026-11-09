@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export type RealizationSummary = {
 // ─── Realisasi otomatis dari shipment_tracking ────────────────────────────────
 
 export async function getRealizationSummary(period: string): Promise<RealizationSummary> {
+  await requireAuthenticatedUser()
   // period: "2026-09" → filter document_date antara 2026-09-01 dan 2026-09-30
   const [year, month] = period.split('-').map(Number)
   const from = `${period}-01`
@@ -72,6 +74,7 @@ export async function getRealizationSummary(period: string): Promise<Realization
 // ─── Budget Request CRUD ──────────────────────────────────────────────────────
 
 export async function getBudgetRequests(): Promise<BudgetRequestRow[]> {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('budget_request')
     .select('*')
@@ -85,6 +88,7 @@ export async function getBudgetRequestById(id: number): Promise<{
   approvals: BudgetApprovalRow[]
   realization: RealizationSummary | null
 } | null> {
+  await requireAuthenticatedUser()
   const [{ data: req }, { data: approvals }] = await Promise.all([
     supabaseAdmin.from('budget_request').select('*').eq('id', id).single(),
     supabaseAdmin.from('budget_approval_log').select('*').eq('budget_request_id', id).order('sequence_no'),
@@ -106,6 +110,7 @@ export async function getBudgetRequestById(id: number): Promise<{
 export async function upsertBudgetRequest(
   row: Partial<BudgetRequestRow> & { period: string }
 ) {
+  await requireAuthenticatedUser()
   const { id, total_projected, subtotal, ...payload } = row as any  // GENERATED excluded
 
   if (id) {
@@ -120,6 +125,7 @@ export async function upsertBudgetRequest(
 }
 
 export async function deleteBudgetRequest(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('budget_request').delete().eq('id', id)
   if (error) throw error
 }
@@ -127,6 +133,7 @@ export async function deleteBudgetRequest(id: number) {
 // ─── Approval Log CRUD ────────────────────────────────────────────────────────
 
 export async function upsertApproval(row: Partial<BudgetApprovalRow> & { budget_request_id: number; approver_name: string; sequence_no: number }) {
+  await requireAuthenticatedUser()
   const { id, ...payload } = row
   if (id) {
     const { error } = await supabaseAdmin.from('budget_approval_log').update(payload).eq('id', id)
@@ -138,6 +145,7 @@ export async function upsertApproval(row: Partial<BudgetApprovalRow> & { budget_
 }
 
 export async function updateApprovalStatus(id: number, status: 'Pending' | 'Approved') {
+  await requireAuthenticatedUser()
   const payload: any = { status }
   if (status === 'Approved') payload.approved_at = new Date().toISOString()
   const { error } = await supabaseAdmin.from('budget_approval_log').update(payload).eq('id', id)
@@ -145,6 +153,7 @@ export async function updateApprovalStatus(id: number, status: 'Pending' | 'Appr
 }
 
 export async function deleteApproval(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('budget_approval_log').delete().eq('id', id)
   if (error) throw error
 }

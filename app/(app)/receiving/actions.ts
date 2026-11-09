@@ -1,8 +1,10 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function getExistingReceivingHeaderPtrs(ptrs: string[]) {
+  await requireAuthenticatedUser()
   if (!ptrs.length) return { data: [], error: null }
 
   const { data, error } = await supabaseAdmin
@@ -14,6 +16,7 @@ export async function getExistingReceivingHeaderPtrs(ptrs: string[]) {
 }
 
 export async function insertReceivingHeaderRows(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   if (!rows.length) return { inserted: 0 }
 
   const { data, error } = await supabaseAdmin
@@ -31,6 +34,7 @@ export async function insertReceivingHeaderRows(rows: Record<string, any>[]) {
 /* ── PTR Detail helpers ─────────────────────────────────── */
 
 export async function getReceivingHeadersByPtrs(ptrs: string[]) {
+  await requireAuthenticatedUser()
   if (!ptrs.length) return { data: [], error: null }
 
   const { data, error } = await supabaseAdmin
@@ -42,6 +46,7 @@ export async function getReceivingHeadersByPtrs(ptrs: string[]) {
 }
 
 export async function getExistingReceivingDetailKeys(docNos: string[]) {
+  await requireAuthenticatedUser()
   if (!docNos.length) return { data: [], error: null }
 
   const { data, error } = await supabaseAdmin
@@ -53,6 +58,7 @@ export async function getExistingReceivingDetailKeys(docNos: string[]) {
 }
 
 export async function insertReceivingDetailRows(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   if (!rows.length) return { inserted: 0 }
 
   const { data, error } = await supabaseAdmin
@@ -68,6 +74,7 @@ export async function insertReceivingDetailRows(rows: Record<string, any>[]) {
 }
 
 export async function verifyReceivingData() {
+  await requireAuthenticatedUser()
   const { data: headers, error: headerError } = await supabaseAdmin
     .from('receiving_header')
     .select('id, ptr_no')
@@ -124,6 +131,7 @@ export async function verifyReceivingData() {
 }
 
 export async function getItemMasterNames(itemNos: string[]) {
+  await requireAuthenticatedUser()
   if (!itemNos.length) return { data: [], error: null }
 
   const { data, error } = await supabaseAdmin
@@ -135,6 +143,7 @@ export async function getItemMasterNames(itemNos: string[]) {
 }
 
 export async function getReceivingFullData(ptrNo: string) {
+  await requireAuthenticatedUser()
   if (!ptrNo) return { header: null, details: [], error: null }
 
   const { data: header, error: headerError } = await supabaseAdmin
@@ -172,6 +181,7 @@ export async function getReceivingFullData(ptrNo: string) {
 }
 
 export async function updateShipmentDate(headerId: string | number, newDate: string) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin
     .from('receiving_header')
     .update({ shipment_date: newDate, updated_at: new Date().toISOString() })
@@ -192,6 +202,7 @@ export async function updateReceivingTransportDetails(
     container_no: string | null
   }
 ) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin
     .from('receiving_header')
     .update({
@@ -203,3 +214,38 @@ export async function updateReceivingTransportDetails(
   if (error) throw error
 }
 
+export async function getReceivingVendorHistory(): Promise<string[]> {
+  await requireAuthenticatedUser()
+  try {
+    const { data: receivingData } = await supabaseAdmin
+      .from('receiving_header')
+      .select('sea_vendor_code, land_vendor_code, air_vendor_code, shipping_agent_code')
+      .limit(1000)
+
+    const vendors = new Set<string>()
+
+    for (const r of receivingData ?? []) {
+      for (const val of [r.sea_vendor_code, r.land_vendor_code, r.air_vendor_code, r.shipping_agent_code]) {
+        if (typeof val === 'string' && val.trim()) {
+          vendors.add(val.trim().toUpperCase())
+        }
+      }
+    }
+
+    const { data: vData } = await supabaseAdmin
+      .from('vendors')
+      .select('name')
+      .limit(100)
+
+    for (const v of vData ?? []) {
+      if (typeof v?.name === 'string' && v.name.trim()) {
+        vendors.add(v.name.trim().toUpperCase())
+      }
+    }
+
+    return Array.from(vendors).sort()
+  } catch (error) {
+    console.error('Error fetching vendor history:', error)
+    return []
+  }
+}

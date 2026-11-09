@@ -28,10 +28,15 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  const publicPaths = ['/login', '/_next', '/favicon', '/api']
+  // Portal driver memakai sesi cookie sendiri (lib/driverAuth.ts), bukan Supabase Auth.
+  const publicPaths = ['/login', '/_next', '/favicon', '/api', '/driver']
   const isPublic = publicPaths.some((path) => pathname.startsWith(path))
 
-  if (!user && !isPublic) {
+  // Redirect 307 pada POST Server Action hanya membuat client menerima respons
+  // yang tidak dikenal. Sesi habis ditangani requireAuthenticatedUser di action.
+  const isServerAction = request.method === 'POST' && request.headers.has('next-action')
+
+  if (!user && !isPublic && !isServerAction) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
     loginUrl.searchParams.set('redirectTo', pathname)

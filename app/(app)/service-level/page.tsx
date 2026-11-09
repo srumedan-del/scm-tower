@@ -17,7 +17,7 @@ type GroupRow = {
   open: number
 }
 
-const STATUS_ORDER = ['Draft', 'Dispatched', 'In Transit', 'Delivered'] as const
+const STATUS_ORDER = ['Draft', 'Dispatched', 'In Transit', 'Delivered', 'Closed'] as const
 
 function currentMonth(offset = 0) {
   const now = new Date()
@@ -59,7 +59,7 @@ function isOnTime(row: ServiceLevelShipmentRow) {
 
 function needsAttention(row: ServiceLevelShipmentRow, now = new Date()) {
   const dueAt = slaDueAt(row)
-  if (!dueAt) return false
+  if (!dueAt || row.status === 'Closed') return false
   if (row.status === 'Delivered') return !isOnTime(row)
   return now > dueAt
 }
@@ -105,7 +105,7 @@ function groupRows(rows: ServiceLevelShipmentRow[], key: (row: ServiceLevelShipm
       item.delivered += 1
       if (isOnTime(row)) item.onTime += 1
       else item.late += 1
-    } else item.open += 1
+    } else if (row.status !== 'Closed') item.open += 1
     grouped.set(name, item)
   }
   return [...grouped.values()].sort((a, b) => b.total - a.total)
@@ -121,6 +121,7 @@ function StatusBadge({ status, compact = false }: { status: string; compact?: bo
     Dispatched: 'bg-blue-100 text-blue-700',
     'In Transit': 'bg-amber-100 text-amber-700',
     Delivered: 'bg-green-100 text-green-700',
+    Closed: 'bg-slate-100 text-slate-500',
   }
   return <span className={`rounded-full font-medium ${compact ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs'} ${colors[status] ?? 'bg-gray-100 text-gray-600'}`}>{status}</span>
 }
@@ -132,27 +133,27 @@ function PerformanceTable({ title, rows }: { title: string; rows: GroupRow[] }) 
         <h2 className="font-semibold text-gray-800">{title}</h2>
         <p className="text-xs text-gray-500 mt-0.5">OTD dihitung dari shipment yang sudah Delivered.</p>
       </div>
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Total</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Selesai</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">OTD</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tertunda</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Nama</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Total</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Selesai</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">OTD</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tertunda</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {rows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Belum ada data pada filter ini.</td></tr> : rows.map(row => (
               <tr key={row.name}>
-                <td className="max-w-48 truncate px-4 py-3 font-medium text-gray-700" title={row.name}>{row.name}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{row.total}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{row.delivered}</td>
-                <td className={`px-3 py-3 text-center font-semibold ${pct(row.onTime, row.delivered) >= 95 ? 'text-green-700' : 'text-amber-700'}`}>
+                <td className="max-w-48 truncate px-4 py-3 text-xs font-medium text-slate-700" title={row.name}>{row.name}</td>
+                <td className="px-4 py-3 text-xs font-medium text-center text-slate-600">{row.total}</td>
+                <td className="px-4 py-3 text-xs font-medium text-center text-slate-600">{row.delivered}</td>
+                <td className={`px-4 py-3 text-center text-xs font-bold ${pct(row.onTime, row.delivered) >= 95 ? 'text-green-700' : 'text-amber-700'}`}>
                   {row.delivered ? `${pct(row.onTime, row.delivered)}%` : '-'}
                 </td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{row.open}</td>
+                <td className="px-4 py-3 text-xs font-medium text-center text-slate-600">{row.open}</td>
               </tr>
             ))}
           </tbody>
@@ -226,7 +227,8 @@ export default function ServiceLevelPage() {
   const delivered = statusCounts.Delivered ?? 0
   const onTime = filtered.filter(row => row.status === 'Delivered' && isOnTime(row)).length
   const late = filtered.filter(row => row.status === 'Delivered' && slaDueAt(row) && !isOnTime(row)).length
-  const open = filtered.length - delivered
+  // Closed = ditutup administratif (data lama), bukan pekerjaan yang masih terbuka.
+  const open = filtered.length - delivered - (statusCounts.Closed ?? 0)
   const customerRows = useMemo(() => groupRows(filtered, row => row.customer_name || 'Belum tercatat'), [filtered])
   const vendorRows = useMemo(() => groupRows(filtered, vendorName), [filtered])
   const attentionRows = useMemo(() => filtered
@@ -286,7 +288,7 @@ export default function ServiceLevelPage() {
 
       {subMenu === 'all-pss' ? (
         <section className="overflow-hidden rounded-xl border border-border bg-white">
-          <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm h-[36.5rem] max-h-[calc(100vh-170px)]">
+          <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm h-[36.5rem] max-h-[calc(100vh-170px)]">
             <table className="w-full min-w-[1000px] table-fixed font-sans text-[11px]">
               <colgroup>
                 <col className="w-32" /><col className="w-36" /><col className="w-64" />
@@ -294,18 +296,18 @@ export default function ServiceLevelPage() {
                 <col className="w-52" /><col className="w-36" /><col className="w-24" />
                 <col className="w-24" />
               </colgroup>
-              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS No.</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Doc Date Time</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip ID</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip Created Date Time</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transporter</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Cust Received</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Hari</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">PSS No.</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Doc Date Time</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Customer</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Kota Tujuan</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Trip ID</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Trip Created Date Time</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Transporter</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Cust Received</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Hari</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -319,17 +321,17 @@ export default function ServiceLevelPage() {
                       ? row.dispatch_time
                       : row.document_created_at
                   const customerReceived = isUntracked ? null : row.delivery_time
-                  return <tr key={`${isUntracked ? 'untracked' : 'tracked'}-${row.id}`} ref={element => { listRowRefs.current[row.pss_no ?? String(row.id)] = element }} onClick={() => { if (isUntracked) setSelectedBacklog([row]); else setSelectedShipment(row) }} className={`h-8 transition-colors ${isUntracked ? 'cursor-pointer bg-orange-50/40 hover:bg-orange-100' : 'cursor-pointer hover:bg-indigo-50'}`}>
-                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{row.pss_no ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{formatNullableDateTime(customerDateTime)}</td>
-                    <td className="max-w-64 truncate whitespace-nowrap px-2 py-1 text-left" title={row.customer_name ?? ''}>{row.customer_name ?? '-'}</td>
-                    <td className="max-w-32 truncate whitespace-nowrap px-2 py-1 text-left" title={row.destination_city ?? ''}>{row.destination_city ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{isUntracked ? '-' : row.trip_id ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{isUntracked ? '-' : formatNullableDateTime(row.trip_created_at)}</td>
-                    <td className="max-w-52 truncate whitespace-nowrap px-2 py-1 text-left" title={displayVendor}>{displayVendor}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-left whitespace-nowrap text-[#475569]">{formatNullableDateTime(customerReceived)}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-center whitespace-nowrap text-[#475569]">{formatDeliveryDurationDays(customerDateTime, customerReceived)}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-left text-[#475569]">
+                  return <tr key={`${isUntracked ? 'untracked' : 'tracked'}-${row.id}`} ref={element => { listRowRefs.current[row.pss_no ?? String(row.id)] = element }} onClick={() => { if (isUntracked) setSelectedBacklog([row]); else setSelectedShipment(row) }} className={`transition-colors ${isUntracked ? 'cursor-pointer bg-orange-50/40 hover:bg-orange-100' : 'cursor-pointer hover:bg-indigo-50'}`}>
+                    <td className="px-4 py-3 text-xs font-medium text-left whitespace-nowrap text-slate-600">{row.pss_no ?? '-'}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-left whitespace-nowrap text-slate-600">{formatNullableDateTime(customerDateTime)}</td>
+                    <td className="max-w-64 truncate whitespace-nowrap px-4 py-3 text-left text-xs font-medium text-slate-700" title={row.customer_name ?? ''}>{row.customer_name ?? '-'}</td>
+                    <td className="max-w-32 truncate whitespace-nowrap px-4 py-3 text-left text-xs font-medium text-slate-700" title={row.destination_city ?? ''}>{row.destination_city ?? '-'}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-left whitespace-nowrap text-slate-600">{isUntracked ? '-' : row.trip_id ?? '-'}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-left whitespace-nowrap text-slate-600">{isUntracked ? '-' : formatNullableDateTime(row.trip_created_at)}</td>
+                    <td className="max-w-52 truncate whitespace-nowrap px-4 py-3 text-left text-xs font-medium text-slate-700" title={displayVendor}>{displayVendor}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-left whitespace-nowrap text-slate-600">{formatNullableDateTime(customerReceived)}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-center whitespace-nowrap text-slate-600">{formatDeliveryDurationDays(customerDateTime, customerReceived)}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-left text-slate-600">
                       <button
                         type="button"
                         onClick={event => {
@@ -391,11 +393,11 @@ export default function ServiceLevelPage() {
 
       <section className="rounded-xl border border-border bg-white overflow-hidden">
         <div className="border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Shipment Butuh Perhatian</h2><p className="text-xs text-gray-500 mt-0.5">Melewati SLA dari Document Created Date/Time: DK 24 jam · LK 72 jam.</p></div>
-        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Vendor</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Batas SLA</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th></tr></thead>
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50"><tr><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">PSS</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Customer</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Vendor</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Batas SLA</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Status</th></tr></thead>
             <tbody className="divide-y">
-              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pss_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.customer_name ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{vendorName(row)}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]"><StatusBadge status={row.status} /></td></tr>)}
+              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-3 text-xs font-medium font-medium text-slate-600">{row.pss_no ?? '-'}</td><td className="px-4 py-3 text-xs font-medium text-slate-600">{row.customer_name ?? '-'}</td><td className="px-4 py-3 text-xs font-medium text-slate-600">{vendorName(row)}</td><td className="px-4 py-3 text-xs font-medium text-slate-600"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-3 text-xs font-medium text-center text-slate-600"><StatusBadge status={row.status} /></td></tr>)}
             </tbody>
           </table>
         </div>

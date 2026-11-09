@@ -1,8 +1,10 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function getOutboundExportData(months?: string[]) {
+  await requireAuthenticatedUser()
   let q = supabaseAdmin
     .from('outbound_header')
     .select(
@@ -29,6 +31,7 @@ export async function getOutboundExportData(months?: string[]) {
 }
 
 export async function getOutboundDetailExportData(months?: string[]) {
+  await requireAuthenticatedUser()
   // Ambil detail berdasarkan outbound_header yang sama (join via document_no)
   let q = supabaseAdmin
     .from('outbound_detail')

@@ -7,6 +7,7 @@ import {
   getHdCustomers, getLastShipmentForCustomer,
   type HdMonitoringRow, type HdCustomerOption,
 } from '@/app/(app)/inventory/hd-monitoring/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 // Defaults sesuai PRD
 const DEFAULTS = {
@@ -131,11 +132,11 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
   const selectedCust = customers.find(c => c.id === Number(form.customer_id))
   const preview = calcPreview(form, selectedCust?.machine_count ?? row?.hd_machine_count ?? null)
 
-  function del() {
+  async function del() {
     if (!row) return
-    if (!confirm(`Hapus snapshot ${row.customer_code} tanggal ${row.snapshot_date}?`)) return
+    if (!(await confirmAction({ title: 'Hapus snapshot HD?', message: `Snapshot ${row.customer_code} tanggal ${row.snapshot_date} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteHdMonitoring(row.id); onSaved(); onClose() }
+      try { await deleteHdMonitoring(row.id); notify.success('Snapshot HD dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -161,7 +162,7 @@ export default function HdMonitoringPanel({ row, onClose, onSaved }: Props) {
           last_shipment_qty:             form.last_shipment_qty !== '' ? Number(form.last_shipment_qty) : 0,
           notes:                         (form.notes as string) || null,
         } as any)
-        onSaved(); onClose()
+        notify.success('Snapshot HD tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { upsertSku, deleteSku } from '@/app/(app)/master-data/sku/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Sku = {
   id: number
@@ -53,13 +54,13 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
 
   const up = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  function del() {
+  async function del() {
     if (!sku) return
-    if (!confirm(`HAPUS SKU ${sku.sku_code} — ${sku.item_name}?`)) return
+    if (!(await confirmAction({ title: 'Hapus SKU?', message: `SKU ${sku.sku_code} — ${sku.item_name} akan dihapus.` }))) return
     startDeleting(async () => {
       try {
         await deleteSku(sku.id)
-        onSaved(); onClose()
+        notify.success('SKU dihapus'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -98,7 +99,7 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
         return
       }
 
-      onSaved()
+      notify.success('SKU tersimpan'); onSaved()
       onClose()
     })
   }

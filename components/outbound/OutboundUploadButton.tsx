@@ -1,10 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
 import { ReactNode } from 'react'
-import { Modal } from '@/components/ui/Modal'
+import Swal from 'sweetalert2'
 import {
   getExistingOutboundHeaderPssNos,
   insertOutboundHeaderRows,
@@ -17,6 +18,9 @@ import {
   updateOutboundDetailCreatedTimes,
   updateOutboundHeaderCreatedTimes,
 } from '@/app/(app)/outbound/actions'
+
+// Import helper batch RPC (single SQL query replaces thousands of calls)
+import { rpcBulkInsertOutboundDetail } from '@/app/(app)/outbound/actions-batch'
 
 // Load SheetJS only for an actual upload instead of while this page is compiled.
 let XLSX: typeof XLSXModule
@@ -110,57 +114,28 @@ function formatError(error: any): string {
   return JSON.stringify(error)
 }
 
-type AlertState = { type: 'success' | 'error' | 'info'; title: string; message: string } | null
-
-function useAlert() {
-  const [alert, setAlert] = useState<AlertState>(null)
-  const showAlert = (type: 'success' | 'error' | 'info', title: string, message: string) =>
-    setAlert({ type, title, message })
-  const closeAlert = () => setAlert(null)
-  return { alert, showAlert, closeAlert }
-}
-
 function UploadButtonShell({
   label,
   loading,
   onClick,
-  alert,
-  closeAlert,
-  color = 'indigo',
   children,
 }: {
   label: string
   loading: boolean
   onClick: () => void
-  alert: AlertState
-  closeAlert: () => void
-  color?: 'indigo' | 'emerald'
   children: ReactNode
 }) {
-  const colorClasses =
-    color === 'emerald'
-      ? 'bg-emerald-600 hover:bg-emerald-500'
-      : 'bg-indigo-600 hover:bg-indigo-500'
-
   return (
     <div className="flex flex-col items-end gap-2">
       <button
         type="button"
         onClick={onClick}
-        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${colorClasses}`}
+        className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 hover:shadow-md active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
         disabled={loading}
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
         {loading ? 'Uploading...' : label}
       </button>
-
-      <Modal
-        isOpen={!!alert}
-        onClose={closeAlert}
-        type={alert?.type ?? 'info'}
-        title={alert?.title ?? ''}
-        message={alert?.message ?? ''}
-      />
       {children}
     </div>
   )
@@ -208,7 +183,7 @@ function normalizeDocumentDate(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10)
 }
 
-function normalizePaoToPss(
+export function normalizePaoToPss(
   rows: Record<string, any>[],
   existingHeaders: Record<string, any>[] = []
 ): { normalized: string[]; remappedCount: number; unmappedPaos: string[] } {
@@ -360,13 +335,31 @@ const mapHeaderRow = (raw: Record<string, any>, fileName: string) => {
     Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
   )
   const now = new Date().toISOString()
+  const documentDateValue = pickValue(row, ['document_date', 'doc_date', 'order_date'])
+  const documentDate = documentDateValue ? toISODate(documentDateValue) : null
+  const documentCreatedAt = toISODateTime(
+    pickValue(row, [
+      'document_data_time',
+      'document_date_time',
+      'document_created_date_time',
+      'document_created_datetime',
+      'document_created_at',
+      'created_date_time',
+      'created_datetime',
+      'created_date',
+      'document_datetime',
+      'doc_datetime',
+      'doc_date_time',
+    ])
+  )
 
   const record: Record<string, any> = {
     pss_no: pickValue(row, ['pss_no', 'pss', 'no', 'document_no', 'doc_no', 'shipment_no']) ?? null,
     shipment_no: pickValue(row, ['shipment_no', 'pss_no', 'pss', 'no', 'document_no']) ?? null,
     psi_no: pickValue(row, ['psi_no', 'psi', 'posted_sales_invoice_no', 'invoice_no', 'sales_invoice_no']) ?? null,
     posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date', 'posting_dt'])),
-    document_date: toISODate(pickValue(row, ['document_date', 'doc_date', 'order_date'])),
+    document_date: documentDate,
+    document_created_at: documentCreatedAt ?? (documentDate ? `${documentDate}T00:00:00+07:00` : null),
     document_type: pickValue(row, ['document_type', 'doc_type', 'type']) ?? null,
     location_code: pickValue(row, ['location_code', 'location', 'loc']) ?? null,
     branch_representative: pickValue(row, ['cabang_perwakilan', 'branch_representative', 'branch', 'cabang']) ?? null,
@@ -402,16 +395,15 @@ const mapHeaderRow = (raw: Record<string, any>, fileName: string) => {
 }
 
 export function OutboundHeaderUploadButton() {
+  const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    closeAlert()
 
     try {
       await loadXlsx()
@@ -454,13 +446,20 @@ export function OutboundHeaderUploadButton() {
       const result = await insertOutboundHeaderRows(toInsert)
       const dbSkipped = (result as any).skipped ?? 0
       const totalSkipped = skipped + dbSkipped
-      showAlert(
-        'success',
-        'Upload Berhasil',
-        `${toInsert.length - dbSkipped} PSS Header berhasil ditambahkan${totalSkipped ? `, ${totalSkipped} dilewati (sudah ada)` : ''}.`
-      )
+      await Swal.fire({
+        icon: 'success',
+        title: 'Upload Berhasil',
+        text: `${toInsert.length - dbSkipped} PSS Header berhasil ditambahkan${totalSkipped ? `, ${totalSkipped} dilewati (sudah ada)` : ''}.`,
+        confirmButtonColor: '#1F3F6E',
+      })
+      router.refresh()
     } catch (error: any) {
-      showAlert('error', 'Upload Gagal', formatError(error))
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload Gagal',
+        text: formatError(error),
+        confirmButtonColor: '#1F3F6E',
+      })
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -472,9 +471,6 @@ export function OutboundHeaderUploadButton() {
       label="Upload PSS Header"
       loading={loading}
       onClick={() => inputRef.current?.click()}
-      alert={alert}
-      closeAlert={closeAlert}
-      color="indigo"
     >
       <input
         ref={inputRef}
@@ -557,14 +553,12 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
 export function OutboundDetailUploadButton() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    closeAlert()
 
     try {
       await loadXlsx()
@@ -575,9 +569,39 @@ export function OutboundDetailUploadButton() {
 
       if (!rows.length) throw new Error('File kosong.')
 
-      // Step 1: Map semua baris
-      const mappedRows = rows
-        .map((r) => mapDetailRow(r, file.name))
+      // --- Filter hanya Posted Assembly dan Sales Shipment ---
+      const filteredRows = rows.filter((raw) => {
+        const row = Object.fromEntries(
+          Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
+        )
+        const docType = pickValue(row, ['document_type', 'document type'])
+        if (!docType) return false
+        const normalized = normalizeKey(String(docType))
+        return normalized === normalizeKey('Posted Assembly') || normalized === normalizeKey('Sales Shipment')
+      })
+
+      if (!filteredRows.length) {
+        throw new Error(
+          'Tidak ada baris dengan Document Type = "Posted Assembly" atau "Sales Shipment". ' +
+          'File ini hanya akan memproses Posted Assembly dan Sales Shipment.'
+        )
+      }
+
+      // Tampilkan status progress — simulasi bulk processing (opsional: progress nyata per baris)
+      const totalToProcess = filteredRows.length
+      let processed = 0
+      const updateProgress = () => {
+        processed++
+        // Tampilkan status loading? Ini akan terlalu sering trigger UI update → pertimbangkan interval
+      }
+
+      // Step 1: Map semua baris (tambahkan progress per batch)
+      const mappedRows = filteredRows
+        .map((r) => {
+          const mapped = mapDetailRow(r, file.name)
+          updateProgress()
+          return mapped
+        })
         .filter((r) => r.document_no)
 
       if (!mappedRows.length)
@@ -597,6 +621,12 @@ export function OutboundDetailUploadButton() {
       // Peringatan jika ada PAO yang tidak bisa di-remap
       if (unmappedPaos.length > 0) {
         console.warn('PAO tidak bisa di-remap (tidak ada PSS dalam konteks yang sama):', unmappedPaos)
+        await Swal.fire({
+          icon: 'info',
+          title: 'Peringatan Normalisasi',
+          text: `PAO yang tidak dapat dipetakan: ${unmappedPaos.join(', ')}`,
+          confirmButtonColor: '#1F3F6E',
+        })
       }
 
       // Step 3: Cari PSS yang unik untuk link ke outbound_header
@@ -667,45 +697,30 @@ export function OutboundDetailUploadButton() {
         maintenanceWarnings.push(`Timestamp header PSS tidak diperbarui: ${message}`)
       }
 
-      // Step 5: Deduplicate berdasarkan entry_no
-      const entryNos = rowsWithHeaderId
-        .map((r) => r['entry_no'] as number | null | undefined)
-        .filter((n): n is number => n !== null && n !== undefined)
-
-      const existingEntrySet = new Set<number>()
-      if (entryNos.length > 0) {
-        const { data: existingEntries, error: existingEntriesError } = await getExistingOutboundDetailEntryNos(entryNos)
-        if (existingEntriesError) {
-          throw new Error(`Gagal memeriksa entry_no Outbound Detail: ${formatError(existingEntriesError)}`)
-        }
-        for (const e of existingEntries ?? []) {
-          existingEntrySet.add(Number(e.entry_no))
-        }
+      // --- Langkah 7: Insert sekaligus via SQL RPC (batch 1000 baris per request) ---
+      const BATCH_SIZE = 1000
+      let totalInserted = 0
+      let totalSkipped = 0
+      for (let i = 0; i < rowsWithHeaderId.length; i += BATCH_SIZE) {
+        const batch = rowsWithHeaderId.slice(i, i + BATCH_SIZE)
+        const { inserted } = await rpcBulkInsertOutboundDetail(batch)
+        totalInserted += inserted ?? 0
       }
+      totalSkipped = rowsWithHeaderId.length - totalInserted
 
-      const seenEntryNos = new Set<number>()
-      const toInsert = rowsWithHeaderId.filter((row) => {
-        const entryNo = row['entry_no'] as number | null | undefined
-        if (entryNo !== null && entryNo !== undefined) {
-          const en = Number(entryNo)
-          if (existingEntrySet.has(en) || seenEntryNos.has(en)) return false
-          seenEntryNos.add(en)
-        }
-        return true
-      })
-
-      const skipped = rowsWithHeaderId.length - toInsert.length
-
-      if (!toInsert.length) {
-        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris sudah ada di database.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`)
-        return
-      }
-
-      await insertOutboundDetailRows(toInsert)
+      if (totalInserted === 0) {
+              await Swal.fire({
+                icon: 'info',
+                title: 'Tidak Ada Data Baru',
+                text: `${rowsWithHeaderId.length} baris sudah ada di database.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`,
+                confirmButtonColor: '#1F3F6E',
+              })
+              return
+            }
 
       // Verifikasi akhir: setiap header yang terdampak harus memiliki detail.
       const affectedHeaderIds = [...new Set(
-        toInsert
+        rowsWithHeaderId
           .map((row) => Number(row.outbound_header_id))
           .filter((id) => Number.isFinite(id) && id > 0)
       )]
@@ -721,13 +736,19 @@ export function OutboundDetailUploadButton() {
 
       const remapNote = remappedCount > 0 ? ` (${remappedCount} nomor PAO diremap ke PSS)` : ''
 
-      showAlert(
-        'success',
-        'Upload Berhasil',
-        `${toInsert.length} baris berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail lama dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${remapNote}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`
-      )
+      await Swal.fire({
+        icon: 'success',
+        title: 'Upload Berhasil',
+        text: `${totalInserted} baris berhasil ditambahkan${totalSkipped ? `, ${totalSkipped} dilewati` : ''}.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail lama dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${remapNote}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`,
+        confirmButtonColor: '#1F3F6E',
+      })
     } catch (error: any) {
-      showAlert('error', 'Upload Gagal', formatError(error))
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload Gagal',
+        text: formatError(error),
+        confirmButtonColor: '#1F3F6E',
+      })
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -739,9 +760,6 @@ export function OutboundDetailUploadButton() {
       label="Upload Outbound Detail"
       loading={loading}
       onClick={() => inputRef.current?.click()}
-      alert={alert}
-      closeAlert={closeAlert}
-      color="emerald"
     >
       <input
         ref={inputRef}

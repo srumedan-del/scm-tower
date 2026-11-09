@@ -8,6 +8,7 @@ import {
   type BudgetRequestRow, type BudgetApprovalRow, type RealizationSummary,
 } from '@/app/(app)/shipment/budget-request/actions'
 import { CheckCircle2, Circle, Trash2, Plus, Copy, Check } from 'lucide-react'
+import { confirmAction, notify } from '@/lib/feedback'
 
 function fmtRp(v: number | null | undefined) {
   if (v == null) return '—'
@@ -94,11 +95,11 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
     }
   }, [subtotal])
 
-  function del() {
+  async function del() {
     if (!request) return
-    if (!confirm(`Hapus pengajuan periode ${periodLabel(request.period)}?`)) return
+    if (!(await confirmAction({ title: 'Hapus pengajuan dana?', message: `Pengajuan periode ${periodLabel(request.period)} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteBudgetRequest(request.id); onSaved(); onClose() }
+      try { await deleteBudgetRequest(request.id); notify.success('Pengajuan dana dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -129,7 +130,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
             status: 'Pending',
           })
         }
-        onSaved(); onClose()
+        notify.success('Pengajuan dana tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

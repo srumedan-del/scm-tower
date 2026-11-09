@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { upsertDriver, deleteDriver, type DriverRow } from '@/app/(app)/master-data/drivers/actions'
+import { useEffect, useState, useTransition } from 'react'
+import { upsertDriver, deleteDriver, getNextDriverCode, type DriverRow } from '@/app/(app)/master-data/drivers/actions'
+import { Sparkles, RefreshCw, KeyRound, Smartphone } from 'lucide-react'
+import { confirmAction, notify } from '@/lib/feedback'
 
 const empty: Omit<DriverRow, 'id'> = {
   driver_code: '', driver_name: '', role: 'Driver',
   sim_no: null, phone: null, is_active: true, notes: null,
+  username: '', pin: '',
 }
 
 export default function DriverEditPanel({
@@ -24,18 +27,53 @@ export default function DriverEditPanel({
       phone:       driver.phone  ?? '',
       is_active:   driver.is_active,
       notes:       driver.notes  ?? '',
+      username:    driver.username ?? driver.driver_code?.toLowerCase() ?? '',
+      pin:         '',
     } : { ...empty, sim_no: '', phone: '', notes: '' }
   )
   const [saving,   startSaving]   = useTransition()
   const [deleting, startDeleting] = useTransition()
+  const [generatingCode, setGeneratingCode] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const up = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  function del() {
+  // Auto-numbering on modal mount for new driver/helper
+  useEffect(() => {
+    if (!driver && !form.driver_code) {
+      loadNextCode(form.role)
+    }
+  }, [driver])
+
+  async function loadNextCode(role: 'Driver' | 'Helper') {
+    try {
+      setGeneratingCode(true)
+      const nextCode = await getNextDriverCode(role)
+      setForm(f => ({
+        ...f,
+        role,
+        driver_code: nextCode,
+        username: f.username || nextCode.toLowerCase(),
+      }))
+    } catch (e: any) {
+      console.error('Error generating driver code:', e)
+    } finally {
+      setGeneratingCode(false)
+    }
+  }
+
+  function handleRoleChange(newRole: 'Driver' | 'Helper') {
+    if (driver) {
+      up('role', newRole)
+    } else {
+      loadNextCode(newRole)
+    }
+  }
+
+  async function del() {
     if (!driver) return
-    if (!confirm(`HAPUS ${driver.role ?? 'KRU'} ${driver.driver_name}?`)) return
+    if (!(await confirmAction({ title: 'Hapus kru?', message: `${driver.role ?? 'Kru'} ${driver.driver_name} akan dihapus dari master data.` }))) return
     startDeleting(async () => {
-      try { await deleteDriver(driver.id); onSaved(); onClose() }
+      try { await deleteDriver(driver.id); notify.success('Data kru dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -43,108 +81,240 @@ export default function DriverEditPanel({
   function save() {
     startSaving(async () => {
       setErr(null)
-      if (!form.driver_code.trim()) { setErr('Kode wajib diisi'); return }
-      if (!form.driver_name.trim()) { setErr('Nama wajib diisi'); return }
+      const code = form.driver_code.trim()
+      const name = form.driver_name.trim()
+      if (!code) { setErr('Kode wajib diisi'); return }
+      if (!name) { setErr('Nama wajib diisi'); return }
       try {
         await upsertDriver({
           id:          driver?.id,
-          driver_code: form.driver_code.trim().toUpperCase(),
-          driver_name: form.driver_name.trim().toUpperCase(),
+          driver_code: code.toUpperCase(),
+          driver_name: name.toUpperCase(),
           role:        form.role,
           sim_no:      (form.sim_no as string)?.trim() || null,
           phone:       (form.phone  as string)?.trim() || null,
           is_active:   form.is_active,
           notes:       (form.notes  as string)?.trim() || null,
+          username:    (form.username as string)?.trim() || code.toLowerCase(),
+          pin:         (form.pin as string)?.trim() || null,
         })
-        onSaved(); onClose()
+        notify.success('Data kru tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
-        <div className="flex items-center justify-between border-b p-4">
-          <h3 className="font-bold text-lg uppercase">
-            {driver ? `Edit ${driver.role ?? 'Kru'}` : 'Tambah Driver / Helper'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 uppercase">
+              {driver ? `Edit ${driver.role ?? 'Kru'}` : 'Tambah Driver / Helper'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {driver ? `Perbarui data untuk kode ${driver.driver_code}` : 'Sistem otomatis mengalokasikan nomor kode berikutnya (DRV / HLP)'}
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors text-xl leading-none">×</button>
         </div>
 
-        <div className="p-4 space-y-3 overflow-y-auto">
+        <div className="space-y-4 overflow-y-auto p-6">
           {/* Role selector */}
           <Field label="ROLE *">
-            <div className="flex gap-2 mt-1">
+            <div className="mt-1 flex gap-3">
               {(['Driver', 'Helper'] as const).map(r => (
-                <label key={r} className={`flex-1 flex items-center justify-center gap-2 rounded-lg border-2 py-2 cursor-pointer transition-colors ${
+                <label key={r} className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-2.5 cursor-pointer transition-all ${
                   form.role === r
-                    ? r === 'Driver' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-bold'
-                                     : 'border-purple-500 bg-purple-50 text-purple-700 font-bold'
-                    : 'border-gray-200 text-gray-500'
+                    ? r === 'Driver' ? 'border-indigo-600 bg-indigo-50/70 text-indigo-700 font-bold shadow-xs'
+                                     : 'border-purple-600 bg-purple-50/70 text-purple-700 font-bold shadow-xs'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}>
-                  <input type="radio" name="role" value={r} checked={form.role === r}
-                    onChange={() => up('role', r)} className="sr-only" />
-                  <span className="text-sm">{r}</span>
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r}
+                    checked={form.role === r}
+                    onChange={() => handleRoleChange(r)}
+                    className="sr-only"
+                  />
+                  <span>{r === 'Driver' ? '🚗 Driver' : '👥 Helper'}</span>
                 </label>
               ))}
             </div>
           </Field>
 
-          <Field label="KODE *">
-            <input value={form.driver_code} onChange={e => up('driver_code', e.target.value)}
-              className="inp font-mono" placeholder={form.role === 'Driver' ? 'DRV-001' : 'HLP-001'} disabled={!!driver} />
-          </Field>
-          <Field label="NAMA *">
-            <input value={form.driver_name} onChange={e => up('driver_name', e.target.value)}
-              className="inp" placeholder="Nama lengkap" />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={form.role === 'Driver' ? 'NO. SIM' : 'NO. SIM (opsional)'}>
-              <input value={(form.sim_no as string) ?? ''} onChange={e => up('sim_no', e.target.value)}
-                className="inp" placeholder={form.role === 'Driver' ? 'SIM A/B' : '-'} />
+          {/* Kode & Nama */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="KODE KRU *">
+              <div className="relative mt-1">
+                <input
+                  type="text"
+                  value={form.driver_code}
+                  onChange={e => {
+                    const c = e.target.value.toUpperCase()
+                    up('driver_code', c)
+                    if (!form.username) up('username', c.toLowerCase())
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 font-mono text-sm font-bold uppercase text-slate-800 transition-all focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder="DRV-001"
+                />
+                {!driver && (
+                  <button
+                    type="button"
+                    onClick={() => loadNextCode(form.role)}
+                    disabled={generatingCode}
+                    title="Generate ulang kode berikutnya"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${generatingCode ? 'animate-spin text-indigo-600' : ''}`} />
+                  </button>
+                )}
+              </div>
             </Field>
-            <Field label="NO. HP">
-              <input value={(form.phone as string) ?? ''} onChange={e => up('phone', e.target.value)}
-                className="inp" placeholder="+62 ..." />
+
+            <Field label="NAMA LENGKAP *">
+              <input
+                type="text"
+                value={form.driver_name}
+                onChange={e => up('driver_name', e.target.value.toUpperCase())}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold uppercase text-slate-800 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                placeholder="CONTOH: AHMAD SUBARKAH"
+              />
             </Field>
           </div>
+
+          {/* Akun Login APK Driver (Khusus Android) */}
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-4 w-4 text-indigo-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-900">
+                  Akun Login APK Driver (Android)
+                </span>
+              </div>
+              <span className="text-[11px] font-medium text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-md">
+                Kredensial SCM Driver
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="USERNAME LOGIN">
+                <input
+                  type="text"
+                  value={(form.username as string) ?? ''}
+                  onChange={e => up('username', e.target.value.toLowerCase().trim())}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder={form.driver_code ? form.driver_code.toLowerCase() : 'drv-001'}
+                />
+              </Field>
+
+              <Field label={driver ? 'PIN BARU (KOSONGKAN JIKA TETAP)' : 'PIN KEAMANAN (6 ANGKA)'}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={(form.pin as string) ?? ''}
+                  onChange={e => up('pin', e.target.value.replace(/\D/g, ''))}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm tracking-widest font-mono text-slate-800 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder="••••••"
+                />
+              </Field>
+            </div>
+            <p className="text-[11px] text-indigo-600/80">
+              Driver memasukkan Username dan PIN ini untuk masuk ke aplikasi di smartphone. Jika PIN dikosongkan, driver diminta membuat PIN sendiri saat login pertama.
+            </p>
+          </div>
+
+          {/* SIM & HP */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="NO. SIM (OPSIONAL)">
+              <input
+                type="text"
+                value={(form.sim_no as string) ?? ''}
+                onChange={e => up('sim_no', e.target.value.toUpperCase())}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm uppercase text-slate-800 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                placeholder="SIM B1 / B2 UMUM"
+              />
+            </Field>
+
+            <Field label="NO. TELEPON / WA (OPSIONAL)">
+              <input
+                type="text"
+                value={(form.phone as string) ?? ''}
+                onChange={e => up('phone', e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                placeholder="+62 8..."
+              />
+            </Field>
+          </div>
+
           <Field label="CATATAN">
-            <textarea value={(form.notes as string) ?? ''} onChange={e => up('notes', e.target.value)}
-              className="inp" rows={2} placeholder="Opsional" />
+            <textarea
+              value={(form.notes as string) ?? ''}
+              onChange={e => up('notes', e.target.value)}
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              rows={2}
+              placeholder="Catatan tambahan (opsional)"
+            />
           </Field>
+
           <Field label="STATUS">
-            <label className="flex items-center gap-2 mt-1">
-              <input type="checkbox" checked={!!form.is_active}
-                onChange={e => up('is_active', e.target.checked)} />
-              <span className="text-sm">Aktif</span>
+            <label className="mt-1 inline-flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!form.is_active}
+                onChange={e => up('is_active', e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm font-medium text-slate-700">Aktif</span>
             </label>
           </Field>
-          {err && <p className="text-red-600 text-sm bg-red-50 rounded p-2">{err}</p>}
+
+          {err && (
+            <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-600">
+              {err}
+            </p>
+          )}
         </div>
 
-        <div className="flex justify-between border-t p-4 bg-gray-50">
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/80 px-6 py-4">
           <div>
             {driver && (
-              <button onClick={del} disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+              <button
+                onClick={del}
+                disabled={deleting}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
                 {deleting ? 'Menghapus…' : 'Hapus'}
               </button>
             )}
           </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
-            <button onClick={save} disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 disabled:opacity-50">
+          <div className="flex gap-2.5">
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={save}
+              disabled={saving || generatingCode}
+              className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-xs"
+            >
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
-        <style>{`.inp{width:100%;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#3b82f6}.inp:disabled{background:#f3f4f6;color:#6b7280}`}</style>
       </div>
     </div>
   )
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>{children}</label>
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">{label}</span>
+      {children}
+    </label>
+  )
 }

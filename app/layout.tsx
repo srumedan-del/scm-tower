@@ -1,31 +1,42 @@
-﻿import './globals.css'
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import NumericFieldAdapter from '@/components/ui/NumericFieldAdapter'
-import AppHealthMonitor from '@/components/monitor/AppHealthMonitor'
+'use client'
 
-export const metadata: Metadata = { title: 'SCM Control Tower', description: 'SCM dashboard and operations app' }
+import './globals.css'
+import { useEffect, useState } from 'react'
+import { Inter, Playfair_Display } from 'next/font/google'
+import dynamic from 'next/dynamic'
+import { FeedbackHost } from '@/components/ui/FeedbackHost'
 
-/**
- * SF Pro is a proprietary Apple typeface and is not installed on Windows.
- * Inter is the closest freely-licensed, metric-compatible substitute and is
- * self-hosted by next/font (no external request, identical rendering for
- * every operator). The CSS font stack still prefers real SF Pro when the
- * machine happens to have it (macOS / iOS).
- */
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
 })
 
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['500', '600'],
+  variable: '--font-playfair',
+})
+
+const NumericFieldAdapter = dynamic(
+  () => import('@/components/ui/NumericFieldAdapter'),
+  { ssr: false }
+)
+
+const AppHealthMonitor = dynamic(
+  () => import('@/components/monitor/AppHealthMonitor'),
+  { ssr: false }
+)
+
 export default function RootLayout({children}:{children:React.ReactNode}){
   return (
-    <html lang="id" data-scroll-behavior="smooth" suppressHydrationWarning className={inter.variable}>
-      <body>
+    <html lang="id" data-scroll-behavior="smooth" className={`${inter.variable} ${playfair.variable} ${inter.className}`}>
+      <body className={inter.className}>
         <NumericFieldAdapter />
         <AppHealthMonitor />
         {children}
+        <FeedbackHost />
       </body>
     </html>
   )

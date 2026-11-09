@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
 @source not "../.kilo/worktrees";
+@source not "../mobile";
 
 @theme {
   /* === ONE FONT FOR THE WHOLE APP: Inter (self-hosted via next/font) === */
   --font-family-sans: var(--font-inter);
+  --font-display: var(--font-playfair);
+  --color-gold-50: #FBF7EC; --color-gold-100: #F5ECD4; --color-gold-200: #EEDFB9;
+  --color-gold-300: #E8D5A3; --color-gold-400: #D9BE7E; --color-gold-500: #C5A25D;
+  --color-gold-600: #A8863F; --color-gold-700: #856828; --color-gold-800: #64501F;
   --font-family-mono: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   /* Apple-inspired Design System - UI/UX Pro Max */
   /* Primitive Colors - Apple System Colors */
@@ -20,80 +25,80 @@
 
   /* Semantic Colors - Light Mode */
     --color-background-primary: #FFFFFF;
-    --color-background-secondary: #F2F2F7;
-    --color-background-tertiary: #E5E5EA;
+    --color-background-secondary: #F7F5F0;
+    --color-background-tertiary: #EFEBE2;
     --color-background-elevated: #FFFFFF;
-    --color-background-elevated-hover: #FAFAFA;
+    --color-background-elevated-hover: #FBF9F5;
 
-    --color-foreground-primary: #000000;
-    --color-foreground-secondary: #3C3C4399;
-    --color-foreground-tertiary: #3C3C434D;
+    --color-foreground-primary: #111827;
+    --color-foreground-secondary: #4C5361;
+    --color-foreground-tertiary: #6A6E76;
     --color-foreground-inverse: #FFFFFF;
-    --color-foreground-disabled: #3C3C432E;
+    --color-foreground-disabled: #A39C8E;
 
-    --color-border-default: #C6C6C8;
-    --color-border-light: #E5E5EA;
-    --color-border-focus: #007AFF;
-    --color-border-error: #FF3B30;
+    --color-border-default: #E0DACD;
+    --color-border-light: #ECE7DC;
+    --color-border-focus: #C5A25D;
+    --color-border-error: #C8372D;
 
     /* Additional semantic tokens (used by components) */
-    --color-blue: #007AFF;
-    --color-blue-hover: #0066CC;
-    --color-blue-pressed: #0052A3;
-    --color-blue-muted: #E8F0FE;
+    --color-blue: #1F3F6E;
+    --color-blue-hover: #183358;
+    --color-blue-pressed: #122745;
+    --color-blue-muted: #E1E9F5;
 
-    --color-red: #FF3B30;
-    --color-red-hover: #E03028;
-    --color-red-pressed: #C02820;
-    --color-red-muted: #FDEDEA;
+    --color-red: #C8372D;
+    --color-red-hover: #AE2E25;
+    --color-red-pressed: #93261F;
+    --color-red-muted: #FBECEA;
 
-    --color-green: #34C759;
-    --color-green-hover: #2EBB4F;
-    --color-green-pressed: #28A045;
-    --color-green-muted: #E8F8EE;
+    --color-green: #1F8A5B;
+    --color-green-hover: #1A754D;
+    --color-green-pressed: #156040;
+    --color-green-muted: #E5F4EC;
 
-    --color-orange: #FF9F0A;
-    --color-orange-hover: #E08C09;
-    --color-orange-pressed: #C07608;
-    --color-orange-muted: #FFF4E5;
+    --color-orange: #C77D1A;
+    --color-orange-hover: #AD6C15;
+    --color-orange-pressed: #925B11;
+    --color-orange-muted: #FAF0E0;
 
-    --color-gray: #8E8E93;
-    --color-gray-muted: #F2F2F7;
+    --color-gray: #736D62;
+    --color-gray-muted: #F3F0E9;
 
-    --color-text: #1D1D1F;
-    --color-text-secondary: #3C3C4399;
-    --color-text-tertiary: #3C3C434D;
-    --color-text-muted: #8E8E93;
+    --color-text: #111827;
+    --color-text-secondary: #4C5361;
+    --color-text-tertiary: #6A6E76;
+    --color-text-muted: #6A6E76;
     --color-text-inverse: #FFFFFF;
 
-    --color-border: #C6C6C8;
-    --color-border-light: #E5E5EA;
-    --color-border-subtle: #F3F4F6;
-    --color-border-muted: #E5E7EB;
+    --color-border: #E7E2D7;
+    --color-border-light: #ECE7DC;
+    --color-border-subtle: #F3F0E9;
+    --color-border-muted: #E7E2D7;
 
-    --color-bg-muted: #F9FAFB;
-    --color-bg-table-header: #F9FAFB;
+    --color-bg-muted: #FAF8F4;
+    --color-bg-table-header: #FAF8F4;
 
-    --color-brand-primary: #007AFF;
-    --color-brand-primary-hover: #0066CC;
-    --color-brand-primary-pressed: #0052A3;
-    --color-brand-secondary: #5856D6;
-    --color-brand-accent: #FF2D55;
+    --color-brand-primary: #1F3F6E;
+    --color-brand-primary-hover: #183358;
+    --color-brand-primary-pressed: #122745;
+    --color-brand-secondary: #C5A25D;
+    --color-brand-accent: #A8863F;
 
-    --color-status-success: #34C759;
-    --color-status-warning: #FF9F0A;
-    --color-status-error: #FF3B30;
-    --color-status-info: #007AFF;
+    --color-status-success: #1F8A5B;
+    --color-status-warning: #C77D1A;
+    --color-status-error: #C8372D;
+    --color-status-info: #1F3F6E;
 
     /* Standard Tailwind Color Palette (generated) — replaces hardcoded #hex usage */
-    --color-slate-50: #f8fafc; --color-slate-100: #f1f5f9; --color-slate-200: #e2e8f0;
-    --color-slate-300: #cbd5e1; --color-slate-400: #94a3b8; --color-slate-500: #64748b;
-    --color-slate-600: #475569; --color-slate-700: #334155; --color-slate-800: #1e293b;
-    --color-slate-900: #0f172a; --color-slate-950: #020617;
-    --color-gray-50: #f9fafb; --color-gray-100: #f3f4f6; --color-gray-200: #e5e7eb;
-    --color-gray-300: #d1d5db; --color-gray-400: #9ca3af; --color-gray-500: #6b7280;
-    --color-gray-600: #4b5563; --color-gray-700: #374151; --color-gray-800: #1f2937;
-    --color-gray-900: #111827; --color-gray-950: #030712;
+    --color-slate-50: #FAF8F4; --color-slate-100: #F3F0E9; --color-slate-200: #E7E2D7;
+    --color-slate-300: #CFCCC4; --color-slate-400: #98989A; --color-slate-500: #6A6E76;
+    --color-slate-600: #4C5361; --color-slate-700: #353D4C; --color-slate-800: #1F2736;
+    --color-slate-900: #111827; --color-slate-950: #0A0F1A;
+    --color-gray-50: #FAF8F4; --color-gray-100: #F3F0E9; --color-gray-200: #E7E2D7;
+    --color-gray-300: #D3CDBF; --color-gray-400: #A39C8E; --color-gray-500: #736D62;
+    --color-gray-600: #57524A; --color-gray-700: #403C36; --color-gray-800: #2A2825;
+    --color-gray-900: #1A1917; --color-gray-950: #0F0E0D;
     --color-red-50: #fef2f2; --color-red-100: #fee2e2; --color-red-200: #fecaca;
     --color-red-300: #fca5a5; --color-red-400: #f87171; --color-red-500: #ef4444;
     --color-red-600: #dc2626; --color-red-700: #b91c1c; --color-red-800: #991b1b;
@@ -130,14 +135,14 @@
     --color-cyan-300: #67e8f9; --color-cyan-400: #22d3ee; --color-cyan-500: #06b6d4;
     --color-cyan-600: #0891b2; --color-cyan-700: #0e7490; --color-cyan-800: #155e75;
     --color-cyan-900: #164e63; --color-cyan-950: #083344;
-    --color-blue-50: #eff6ff; --color-blue-100: #dbeafe; --color-blue-200: #bfdbfe;
-    --color-blue-300: #93c5fd; --color-blue-400: #60a5fa; --color-blue-500: #3b82f6;
-    --color-blue-600: #2563eb; --color-blue-700: #1d4ed8; --color-blue-800: #1e40af;
-    --color-blue-900: #1e3a8a; --color-blue-950: #172554;
-    --color-indigo-50: #eef2ff; --color-indigo-100: #e0e7ff; --color-indigo-200: #c7d2fe;
-    --color-indigo-300: #a5b4fc; --color-indigo-400: #818cf8; --color-indigo-500: #6366f1;
-    --color-indigo-600: #4f46e5; --color-indigo-700: #4338ca; --color-indigo-800: #3730a3;
-    --color-indigo-900: #312e81; --color-indigo-950: #1e1b4b;
+    --color-blue-50: #EFF5FC; --color-blue-100: #DCE8F7; --color-blue-200: #BDD3EE;
+    --color-blue-300: #8FB3E0; --color-blue-400: #5F8FCF; --color-blue-500: #3B6FB8;
+    --color-blue-600: #2A5CA8; --color-blue-700: #234B8A; --color-blue-800: #1C3B6D;
+    --color-blue-900: #162E55; --color-blue-950: #0E1E39;
+    --color-indigo-50: #F1F5FB; --color-indigo-100: #E1E9F5; --color-indigo-200: #C4D3E9;
+    --color-indigo-300: #9AB3D6; --color-indigo-400: #6C8DBE; --color-indigo-500: #43689F;
+    --color-indigo-600: #1F3F6E; --color-indigo-700: #183358; --color-indigo-800: #122745;
+    --color-indigo-900: #0D1C33; --color-indigo-950: #081222;
     --color-violet-50: #f5f3ff; --color-violet-100: #ede9fe; --color-violet-200: #ddd6fe;
     --color-violet-300: #c4b5fd; --color-violet-400: #a78bfa; --color-violet-500: #8b5cf6;
     --color-violet-600: #7c3aed; --color-violet-700: #6d28d9; --color-violet-800: #5b21b6;
@@ -173,8 +178,8 @@
   --shadow-level-4: 0 8px 16px rgba(0, 0, 0, 0.08), 0 8px 8px rgba(0, 0, 0, 0.05);
   --shadow-level-5: 0 16px 32px rgba(0, 0, 0, 0.1), 0 16px 16px rgba(0, 0, 0, 0.06);
 
-  --shadow-focus: 0 0 0 3px rgba(0, 122, 255, 0.4);
-  --shadow-focus-inset: inset 0 0 0 2px #007AFF;
+  --shadow-focus: 0 0 0 3px rgba(197, 162, 93, 0.45);
+  --shadow-focus-inset: inset 0 0 0 2px #C5A25D;
 
   --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.05);
   --shadow-glass-strong: 0 8px 32px rgba(0, 0, 0, 0.08);
@@ -201,13 +206,25 @@ html {
 body {
   background: var(--color-background-secondary);
   color: var(--color-foreground-primary);
-  font-family: var(--font-inter);
+  font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body, button, input, select, textarea {
+  font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 /* Focus ring utility - Apple style */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
 .focus-ring:focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
@@ -277,9 +294,9 @@ body {
 /* High contrast mode */
 @media (prefers-contrast: high) {
   :root {
-    --color-border-default: #000000;
-    --color-foreground-secondary: #000000;
-    --color-foreground-tertiary: #333333;
+    --color-border-default: #E0DACD;
+    --color-foreground-secondary: #4C5361;
+    --color-foreground-tertiary: #6A6E76;
   }
 }
 
@@ -698,4 +715,407 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Mobile Driver App Animations */
+@keyframes mobile-toast-enter {
+  0% { transform: translateY(-120%) scale(0.9); opacity: 0; }
+  65% { transform: translateY(6px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes mobile-sheet-enter {
+  0% { transform: translateY(100%); opacity: 0.5; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes mobile-pulse-glow {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes mobile-progress-shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.animate-mobile-toast {
+  animation: mobile-toast-enter 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-mobile-sheet {
+  animation: mobile-sheet-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-mobile-glow {
+  animation: mobile-pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-toast-progress {
+  animation: mobile-progress-shrink 3.5s linear forwards;
+}
+
+/* ==========================================================================
+   Midnight & Champagne
+   Lapisan tampilan global: berlaku ke semua halaman tanpa mengubah markup.
+   Warna dasar diatur oleh token @theme di atas.
+   ========================================================================== */
+
+:root {
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-card: 0 1px 2px rgba(13, 28, 51, 0.04), 0 8px 24px -16px rgba(13, 28, 51, 0.14);
+  --shadow-card-hover: 0 2px 4px rgba(13, 28, 51, 0.05), 0 18px 36px -18px rgba(13, 28, 51, 0.28);
+  --gradient-gold: linear-gradient(135deg, #E8D5A3 0%, #C5A25D 55%, #A8863F 100%);
+  --gradient-midnight: linear-gradient(165deg, #122745 0%, #0D1C33 48%, #081222 100%);
+}
+
+body {
+  background:
+    radial-gradient(1000px 520px at 100% -10%, rgba(197, 162, 93, 0.10), transparent 60%),
+    radial-gradient(800px 480px at 0% 110%, rgba(31, 63, 110, 0.07), transparent 60%),
+    var(--color-background-secondary);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(197, 162, 93, 0.32);
+  color: #0D1C33;
+}
+
+/* Interaksi dasar */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+summary,
+select,
+label[for] {
+  cursor: pointer;
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold-500);
+  outline-offset: 2px;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* Judul halaman */
+.app-main h1 {
+  position: relative;
+  width: fit-content;
+  padding-bottom: 0.45rem;
+  font-family: var(--font-display), Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  color: var(--color-indigo-900);
+}
+
+.app-main h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 44px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--gradient-gold);
+  transform-origin: left;
+  animation: lux-underline 620ms var(--ease-out-soft) 120ms backwards;
+}
+
+/* Tombol utama */
+.bg-indigo-600 {
+  background-image: linear-gradient(135deg, #2A5088 0%, #1F3F6E 55%, #122745 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 6px 14px -8px rgba(13, 28, 51, 0.55);
+  transition: filter 180ms ease, box-shadow 180ms ease, transform 180ms var(--ease-out-soft);
+}
+
+button.bg-indigo-600:not(:disabled):hover,
+a.bg-indigo-600:hover {
+  filter: brightness(1.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 20px -10px rgba(13, 28, 51, 0.7);
+}
+
+/* Kartu yang bisa diklik: naik halus dengan aksen emas */
+.app-main a[class*='rounded-xl'][class*='border'],
+.app-main a[class*='rounded-2xl'][class*='border'] {
+  transition: transform 240ms var(--ease-out-soft), box-shadow 240ms ease, border-color 240ms ease;
+}
+
+.app-main a[class*='rounded-xl'][class*='border']:hover,
+.app-main a[class*='rounded-2xl'][class*='border']:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-gold-400);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Permukaan kartu dan panel */
+.app-main section[class*='rounded-'][class*='border'],
+.app-main div[class*='rounded-xl'][class*='border'][class*='bg-white'],
+.app-main div[class*='rounded-2xl'][class*='border'][class*='bg-white'] {
+  box-shadow: var(--shadow-card);
+}
+
+/* Kartu masuk berurutan saat halaman dibuka */
+.app-page .grid > a,
+.app-page .grid > section {
+  animation: lux-rise 420ms var(--ease-out-soft) backwards;
+}
+
+.app-page .grid > :nth-child(2) { animation-delay: 40ms; }
+.app-page .grid > :nth-child(3) { animation-delay: 80ms; }
+.app-page .grid > :nth-child(4) { animation-delay: 120ms; }
+.app-page .grid > :nth-child(5) { animation-delay: 160ms; }
+.app-page .grid > :nth-child(6) { animation-delay: 200ms; }
+.app-page .grid > :nth-child(n + 7) { animation-delay: 240ms; }
+
+/* Tabel */
+.app-main table thead th {
+  letter-spacing: 0.035em;
+  color: var(--color-slate-600);
+}
+
+.app-main table tbody tr {
+  transition: background-color 160ms ease;
+}
+
+.app-main table tbody tr:hover {
+  background-color: #FBF7EC;
+}
+
+/* Modal dan overlay */
+.fixed.inset-0[class*='bg-black'],
+.fixed.inset-0[class*='bg-slate-9'] {
+  background-color: rgba(8, 18, 34, 0.56);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  animation: lux-fade 200ms ease backwards;
+}
+
+.fixed.inset-0[class*='bg-black'] > :not(style),
+.fixed.inset-0[class*='bg-slate-9'] > :not(style) {
+  border-top: 2px solid var(--color-gold-500);
+  box-shadow: 0 32px 64px -24px rgba(8, 18, 34, 0.6);
+  animation: lux-modal 300ms var(--ease-out-soft) backwards;
+}
+
+/* SweetAlert mengikuti tema */
+.swal2-popup {
+  border-top: 2px solid var(--color-gold-500) !important;
+  border-radius: 1rem !important;
+  color: var(--color-slate-800) !important;
+}
+
+.swal2-container.swal2-backdrop-show {
+  background: rgba(8, 18, 34, 0.56) !important;
+}
+
+/* Sidebar */
+.lux-sidebar {
+  position: relative;
+  background: var(--gradient-midnight);
+  color: #C9CFDA;
+}
+
+.lux-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(197, 162, 93, 0.45) 30%, rgba(197, 162, 93, 0.12) 80%, transparent);
+  pointer-events: none;
+}
+
+.lux-brand-mark {
+  background: var(--gradient-gold);
+  color: #0D1C33;
+  box-shadow: 0 6px 16px -6px rgba(197, 162, 93, 0.7);
+}
+
+.lux-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: #C9CFDA;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.lux-nav-link:hover {
+  color: #FFFFFF;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.lux-nav-link svg {
+  color: #9AA5B8;
+  transition: transform 220ms var(--ease-out-soft), color 180ms ease;
+}
+
+.lux-nav-link:hover svg {
+  color: var(--color-gold-300);
+  transform: translateX(2px);
+}
+
+.lux-nav-link[aria-current='page'] {
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.lux-nav-link[aria-current='page'] svg {
+  color: var(--color-gold-400);
+}
+
+.lux-nav-active {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.625rem;
+  background: linear-gradient(90deg, rgba(197, 162, 93, 0.20), rgba(197, 162, 93, 0.05));
+  box-shadow: inset 2px 0 0 var(--color-gold-400);
+}
+
+.lux-nav-heading {
+  padding: 1rem 0.75rem 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #94A0B4;
+}
+
+/* Halaman login */
+.lux-login-panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-midnight);
+}
+
+.lux-login-panel::before {
+  content: '';
+  position: absolute;
+  top: -22%;
+  right: -18%;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(197, 162, 93, 0.24), transparent 66%);
+  pointer-events: none;
+}
+
+.lux-route-line {
+  stroke-dasharray: 6 8;
+  animation: lux-route 2.8s linear infinite;
+}
+
+.lux-display {
+  font-family: var(--font-display), Georgia, 'Times New Roman', serif;
+}
+
+/* Skeleton */
+.lux-skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(100deg, #EFEBE2 30%, #FAF8F4 50%, #EFEBE2 70%);
+  background-size: 220% 100%;
+  animation: lux-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Lompat ke konten untuk pengguna keyboard */
+.lux-skip-link {
+  position: fixed;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  background: var(--color-indigo-900);
+  color: #FFFFFF;
+  transition: top 160ms ease;
+}
+
+.lux-skip-link:focus {
+  top: 0.75rem;
+}
+
+@keyframes lux-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lux-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lux-modal {
+  from { opacity: 0; transform: translateY(14px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes lux-underline {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes lux-route {
+  to { stroke-dashoffset: -28; }
+}
+
+@keyframes lux-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lux-route-line,
+  .lux-skeleton {
+    animation: none;
+  }
+
+  button:not(:disabled):active,
+  .app-main a[class*='rounded-xl'][class*='border']:hover,
+  .app-main a[class*='rounded-2xl'][class*='border']:hover {
+    transform: none;
+  }
+}
+
+/* Scrollbar sidebar menyatu dengan latar gelap */
+.lux-sidebar .custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.lux-sidebar .custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.lux-sidebar .custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lux-sidebar .custom-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Toast */
+.lux-toast {
+  box-shadow: 0 16px 32px -16px rgba(13, 28, 51, 0.4);
+  animation: lux-toast-in 280ms var(--ease-out-soft) backwards;
+}
+
+@keyframes lux-toast-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
 }

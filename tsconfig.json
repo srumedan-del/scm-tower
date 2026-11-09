@@ -36,7 +36,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "scm-tower"
-  ]
+      "node_modules",
+      "mobile"
+    ]
 }

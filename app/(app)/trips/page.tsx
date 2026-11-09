@@ -45,28 +45,28 @@ export default async function TripsPage() {
           <span className="text-xs text-gray-400">{trips.length} trip</span>
         </div>
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Trip</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Transporter</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Armada / Driver</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Stop</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Biaya Trip</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Trip</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Transporter</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Armada / Driver</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Stop</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Biaya Trip</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {trips.length === 0 && (
-              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Belum ada trip v1.6.</td></tr>
+              <tr><td className="px-4 py-3 text-xs font-medium text-slate-600">Belum ada trip v1.6.</td></tr>
             )}
             {trips.map((trip) => (
-              <tr key={trip.id} className="group border-t border-[#EEF0F4] hover:bg-gray-50">
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.trip_no}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{displayVendorName(trip.vendor_name) || '-'}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{trip.stop_count}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{rupiah(trip.total_expense)}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
+              <tr key={trip.id} className="group hover:bg-slate-50/70 transition-colors">
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{trip.trip_no}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{displayVendorName(trip.vendor_name) || '-'}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{[trip.vehicle_no, trip.driver_name].filter(Boolean).join(' · ') || '-'}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{trip.stop_count}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{rupiah(trip.total_expense)}</td>
+                <td className="px-4 py-3 text-xs font-medium text-center text-slate-600">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[trip.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {trip.status}
                   </span>

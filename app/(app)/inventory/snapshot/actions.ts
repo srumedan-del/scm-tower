@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type InventorySnapshotRow = {
   id: number
@@ -34,6 +35,7 @@ export async function getSnapshotOptions(): Promise<{
   warehouses: WarehouseOption[]
   skus: SkuOption[]
 }> {
+  await requireAuthenticatedUser()
   const [{ data: wh }, { data: sk }] = await Promise.all([
     supabaseAdmin.from('warehouses').select('warehouse_code, warehouse_name').eq('is_active', true).order('warehouse_code'),
     supabaseAdmin.from('master_sku').select('sku_code, item_name, safety_stock, uom').eq('is_active', true).order('sku_code'),
@@ -47,6 +49,7 @@ export async function getSnapshotOptions(): Promise<{
 // ─── Snapshot list (current = snapshot terbaru per SKU per gudang) ─────────────
 
 export async function getCurrentInventory(warehouseCode?: string): Promise<InventorySnapshotRow[]> {
+  await requireAuthenticatedUser()
   // Ambil snapshot terbaru per SKU per gudang via view
   const { data, error } = await supabaseAdmin
     .from('vw_inventory_current')
@@ -83,6 +86,7 @@ export async function getCurrentInventory(warehouseCode?: string): Promise<Inven
 export async function upsertSnapshot(
   row: Omit<InventorySnapshotRow, 'id' | 'qty_available' | 'days_of_supply' | 'alert_status' | 'created_at' | 'updated_at' | 'item_name' | 'category' | 'safety_stock' | 'uom'> & { id?: number }
 ) {
+  await requireAuthenticatedUser()
   const { id, ...payload } = row
 
   if (id) {
@@ -95,6 +99,7 @@ export async function upsertSnapshot(
 }
 
 export async function deleteSnapshot(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('inventory_snapshot').delete().eq('id', id)
   if (error) throw error
 }
@@ -103,6 +108,7 @@ export async function deleteSnapshot(id: number) {
 export async function bulkUpsertSnapshots(
   rows: Omit<InventorySnapshotRow, 'id' | 'qty_available' | 'days_of_supply' | 'alert_status' | 'created_at' | 'updated_at' | 'item_name' | 'category' | 'safety_stock' | 'uom'>[]
 ) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin
     .from('inventory_snapshot')
     .upsert(rows, { onConflict: 'snapshot_date,warehouse_code,sku_code', ignoreDuplicates: false })

@@ -2,10 +2,11 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import {
-  getPodByTrackingId, upsertPod, deletePod, confirmDelivery,
+  getPodByTrackingId, getPodImageUrls, upsertPod, deletePod, confirmDelivery,
   type PodRow, type ShipmentTrackingRow,
 } from '@/app/(app)/shipment/actions'
 import { CheckCircle2, PackageCheck, Trash2 } from 'lucide-react'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Props = {
   shipment: ShipmentTrackingRow
@@ -22,6 +23,7 @@ function nowLocal() {
 export default function PodPanel({ shipment, onClose, onSaved }: Props) {
   const [pod,        setPod]        = useState<PodRow | null>(null)
   const [podLoading, setPodLoading] = useState(true)
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
 
   const [form, setForm] = useState({
     receiver_name: '',
@@ -49,6 +51,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
     getPodByTrackingId(shipment.id).then(p => {
       if (p) {
         setPod(p)
+        getPodImageUrls(p).then(setImageUrls).catch(() => setImageUrls({}))
         setForm({
           receiver_name: p.receiver_name,
           received_at:   p.received_at.slice(0, 16),
@@ -59,11 +62,11 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
     }).catch(() => setPodLoading(false))
   }, [shipment.id])
 
-  function del() {
+  async function del() {
     if (!pod) return
-    if (!confirm('Hapus data POD ini?')) return
+    if (!(await confirmAction({ title: 'Hapus POD?', message: 'Data POD shipment ini akan dihapus. Status shipment tidak berubah.' }))) return
     startDeleting(async () => {
-      try { await deletePod(pod.id); setPod(null); onSaved() }
+      try { await deletePod(pod.id); setPod(null); notify.success('POD dihapus'); onSaved() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -96,7 +99,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
           await confirmDelivery(shipment.id, receivedAtISO)
         }
 
-        onSaved()
+        notify.success('POD tersimpan'); onSaved()
         onClose()
       } catch (e: any) { setErr(e.message) }
     })
@@ -121,21 +124,21 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
         <div className="px-4 pt-4 shrink-0">
           <div className="rounded-xl bg-gray-50 border p-3 text-sm space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">Shipment</span>
-              <span className="font-mono text-xs font-medium text-indigo-700">
+              <span className="text-sm font-medium text-slate-500">Shipment</span>
+              <span className="font-mono text-sm font-semibold text-slate-800 text-indigo-700">
                 {shipment.pss_no ?? `#${shipment.id}`}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">Customer</span>
-              <span className="text-xs font-medium">{shipment.customer_name ?? '—'}</span>
+              <span className="text-sm font-medium text-slate-500">Customer</span>
+              <span className="text-sm font-semibold text-slate-800">{shipment.customer_name ?? '—'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">Promised Date</span>
+              <span className="text-sm font-medium text-slate-500">Promised Date</span>
               <span className="text-xs">{shipment.promised_delivery_date?.slice(0,10) ?? '—'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">Status Sekarang</span>
+              <span className="text-sm font-medium text-slate-500">Status Sekarang</span>
               <span className={`text-xs font-bold rounded-full px-2 py-0.5 ${
                 alreadyDelivered
                   ? 'bg-green-100 text-green-700'
@@ -146,7 +149,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
             </div>
             {shipment.is_on_time !== null && alreadyDelivered && (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">OTD</span>
+                <span className="text-sm font-medium text-slate-500">OTD</span>
                 <span className={`text-xs font-bold ${shipment.is_on_time ? 'text-green-600' : 'text-red-600'}`}>
                   {shipment.is_on_time ? '✓ On Time' : '✗ Late'}
                 </span>
@@ -213,7 +216,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
                   title="Ketik jam secara manual, contoh 15:25"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Jam dapat diketik manual, contoh: 15:25</p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Jam dapat diketik manual, contoh: 15:25</p>
             </Field>
 
             <Field label="Catatan (opsional)">
@@ -226,11 +229,22 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
               />
             </Field>
 
-            {/* Foto POD — placeholder untuk future upload */}
-            <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-xs text-gray-400">
-              <PackageCheck className="h-6 w-6 mx-auto mb-1 text-gray-300" />
-              Upload foto bukti terima — tersedia setelah integrasi Supabase Storage
-            </div>
+            {(pod?.photo_url || pod?.signature_url) && (
+              <div className="grid grid-cols-2 gap-3">
+                {[['Foto bukti terima', pod.photo_url], ['Tanda tangan', pod.signature_url]].map(([label, path]) => path && (
+                  <div key={label}>
+                    <p className="mb-1 text-xs font-semibold text-slate-600">{label}</p>
+                    {imageUrls[path] ? (
+                      <a href={imageUrls[path]} target="_blank" rel="noreferrer">
+                        <img src={imageUrls[path]} alt={label ?? ''} className="h-40 w-full rounded-lg border object-cover" />
+                      </a>
+                    ) : (
+                      <p className="rounded-lg border border-dashed p-4 text-center text-xs text-slate-500">Foto belum bisa ditampilkan</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {err && <p className="text-red-600 text-sm bg-red-50 rounded p-2">{err}</p>}
           </div>
@@ -269,7 +283,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
+      <span className="text-sm font-semibold text-slate-700 mb-1 block">{label}</span>
       {children}
     </label>
   )

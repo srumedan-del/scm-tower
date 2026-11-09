@@ -127,7 +127,7 @@ export default function HdMonitoringPage() {
       {tmsAvail === false && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <strong>Tabel HD Monitoring belum dibuat.</strong> Jalankan{' '}
-          <code className="bg-amber-100 px-1 rounded font-mono">supabase/schema_v15.sql</code>{' '}
+          <code className="bg-amber-100 px-1 rounded font-medium">supabase/schema_v15.sql</code>{' '}
           di Supabase SQL Editor terlebih dahulu.
         </div>
       )}
@@ -173,24 +173,46 @@ export default function HdMonitoringPage() {
       )}
 
       {/* Tabel */}
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Mesin HD</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Pemakaian/Hari</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Stok Estimasi</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOI</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Est. Habis</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tanggal FU-PO</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sisa FU-PO</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Pengiriman Terakhir</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-            </tr>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Customer</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Kota</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Mesin<br/>HD</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Pemakaian/<br/>Hari</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Stok<br/>Estimasi</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">DOI</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Est.<br/>Habis</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Tanggal<br/>FU-PO</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Sisa<br/>FU-PO</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Pengiriman<br/>Terakhir</div>
+                          </th>
+                          <th className="px-3 py-2.5 text-[11px] text-left font-bold uppercase tracking-wider text-slate-500 align-top whitespace-nowrap">
+                            <div className="line-clamp-3">Status</div>
+                          </th>
+                        </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
             )}
@@ -202,62 +224,62 @@ export default function HdMonitoringPage() {
               </tr>
             )}
             {sorted.map(r => {
-              const status = getStatus(r)
-              const rowBg = status === 'kritis' ? 'bg-red-50' : status === 'mendekati' ? 'bg-yellow-50' : ''
-              return (
-                <tr
-                  key={r.id}
-                  onClick={() => setSelected(r)}
-                  className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
-                >
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                    <div className="font-medium text-xs">{r.customer_name ?? r.customer_code}</div>
-                    <div className="text-gray-400 text-xs font-mono">{r.customer_code}</div>
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.city ?? '—'}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    {r.hd_machine_count ?? '—'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    {r.daily_usage != null ? r.daily_usage.toLocaleString('id-ID') : '—'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    <span className={`text-sm font-bold ${(r.estimated_stock ?? 0) < 0 ? 'text-red-600' : 'text-gray-800'}`}>
-                      {r.estimated_stock != null ? r.estimated_stock.toLocaleString('id-ID') : '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    <span className={`text-sm font-bold ${(r.doi_days ?? 0) < (r.rop_days ?? 8) ? 'text-red-600' : 'text-gray-700'}`}>
-                      {r.doi_days != null ? Math.round(r.doi_days) : '—'}
-                    </span>
-                    {r.doi_days != null && <span className="text-xs text-gray-400 ml-0.5">h</span>}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{fmtDate(r.estimated_stockout_date)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">{fmtDate(r.fu_po_date)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    <DaysBadge date={r.fu_po_date} />
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                    {r.last_shipment_date ? (
-                      <div>
-                        <span className="font-medium">{fmtDate(r.last_shipment_date)}</span>
-                        {r.last_shipment_qty != null && (
-                          <span className="text-gray-400 ml-1">+{r.last_shipment_qty.toLocaleString('id-ID')}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-red-400 font-medium">— belum ada data</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    <StatusBadge status={status} />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                          const status = getStatus(r)
+                          const rowBg = status === 'kritis' ? 'bg-red-50' : status === 'mendekati' ? 'bg-yellow-50' : ''
+                          return (
+                            <tr
+                              key={r.id}
+                              onClick={() => setSelected(r)}
+                              className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
+                            >
+                              <td className="px-3 py-3 text-xs font-medium text-slate-700 whitespace-nowrap">
+                                <div className="font-medium text-xs">{r.customer_name ?? r.customer_code}</div>
+                                <div className="text-gray-400 text-xs font-medium">{r.customer_code}</div>
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-slate-700 whitespace-nowrap">{r.city ?? '—'}</td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                {r.hd_machine_count ?? '—'}
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                {r.daily_usage != null ? r.daily_usage.toLocaleString('id-ID') : '—'}
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                <span className={`text-sm font-bold ${(r.estimated_stock ?? 0) < 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                                  {r.estimated_stock != null ? r.estimated_stock.toLocaleString('id-ID') : '—'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                <span className={`text-sm font-bold ${(r.doi_days ?? 0) < (r.rop_days ?? 8) ? 'text-red-600' : 'text-gray-700'}`}>
+                                  {r.doi_days != null ? Math.round(r.doi_days) : '—'}
+                                </span>
+                                {r.doi_days != null && <span className="text-xs text-gray-400 ml-0.5">h</span>}
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">{fmtDate(r.estimated_stockout_date)}</td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">{fmtDate(r.fu_po_date)}</td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                <DaysBadge date={r.fu_po_date} />
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                {r.last_shipment_date ? (
+                                  <div>
+                                    <span className="font-medium">{fmtDate(r.last_shipment_date)}</span>
+                                    {r.last_shipment_qty != null && (
+                                      <span className="text-gray-400 ml-1">+{r.last_shipment_qty.toLocaleString('id-ID')}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-red-400 font-medium">— belum ada data</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-3 text-xs font-medium text-center text-slate-700 whitespace-nowrap">
+                                <StatusBadge status={status} />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
       {/* Catatan metodologi */}
       {tmsAvail === true && sorted.length > 0 && (

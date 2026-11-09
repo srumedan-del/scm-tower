@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type RateCardRouteOption = {
   id: number
@@ -10,6 +11,7 @@ export type RateCardRouteOption = {
 }
 
 export async function getRateCardRoutes() {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('routes')
     .select('id, route_code, origin, destination')
@@ -20,6 +22,7 @@ export async function getRateCardRoutes() {
 }
 
 export async function upsertRateCard(payload: Record<string, any>, id?: number) {
+  await requireAuthenticatedUser()
   const save = (data: Record<string, any>) => id
     ? supabaseAdmin.from('transport_rate_card').update(data).eq('id', id)
     : supabaseAdmin.from('transport_rate_card').insert(data)
@@ -41,6 +44,7 @@ export async function upsertRateCard(payload: Record<string, any>, id?: number) 
 }
 
 export async function deleteRateCard(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('transport_rate_card').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }

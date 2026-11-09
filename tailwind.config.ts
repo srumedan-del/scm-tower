@@ -62,7 +62,13 @@ const config: Config = {
       // Typography Scale - Apple San Francisco inspired
       fontFamily: {
         sans: [
-          '"SF Pro Text"',
+          'var(--font-inter)',
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          'sans-serif',
         ],
         mono: [
           '"SF Mono"',

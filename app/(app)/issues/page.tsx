@@ -44,27 +44,27 @@ export default async function Issues() {
         <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">{sorted.length} TOTAL</span>
       </div>
 
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">NO</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">KATEGORI</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">JUDUL</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PIC</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">IMPACT</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">UMUR</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DUE</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">NO</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">KATEGORI</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">JUDUL</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">PIC</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">IMPACT</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">STATUS</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">UMUR</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">DUE</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {sorted.map((r: any) => (
               <IssueRow key={r.id} issue={r} />
             ))}
             {!sorted.length && (
               <tr>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Belum ada issue.</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">Belum ada issue.</td>
               </tr>
             )}
           </tbody>

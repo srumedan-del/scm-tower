@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { upsertCustomer, deleteCustomer } from '@/app/(app)/master-data/customers/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Customer = {
   id: number
@@ -96,13 +97,13 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
     setForm(f => ({ ...f, latitude: parsed.lat, longitude: parsed.lng }))
   }
 
-  function del() {
+  async function del() {
     if (!customer) return
-    if (!confirm(`HAPUS CUSTOMER ${customer.customer_code}?`)) return
+    if (!(await confirmAction({ title: 'Hapus customer?', message: `Customer ${customer.customer_code} akan dihapus.` }))) return
     startDeleting(async () => {
       try {
         await deleteCustomer(customer.id)
-        onSaved(); onClose()
+        notify.success('Customer dihapus'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -129,7 +130,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
       }
       try {
         await upsertCustomer(payload, customer?.id)
-        onSaved()
+        notify.success('Customer tersimpan'); onSaved()
         onClose()
       } catch (e: any) { setErr(e.message) }
     })

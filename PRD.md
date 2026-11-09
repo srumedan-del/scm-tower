@@ -1,9 +1,11 @@
 # Product Requirements Document (PRD)
 ## SCM Control Tower
 
-**Versi:** 2.0
-**Tanggal:** 17 September 2026
+**Versi:** 2.1
+**Tanggal:** 5 November 2026
 **Status:** In Development  
+
+**Catatan perubahan v2.1 (5 November 2026):** Menambahkan Section 4.1.2 (Dashboard Redesign — Data Filter & SLA-based Alerts) yang mendokumentasikan filtering semua data dashboard ke Nov 2026+, penggunaan SLA internal (DK=1 hari, LK=5 hari dari `document_date`) untuk alert overdue dan OTD Rate — menggantikan `promised_delivery_date` dari NAV yang merupakan janji customer, bukan SLA internal. Menambahkan Section 4.1.3 (KPI Ringkasan Pengiriman — Rencana) yang mendokumentasikan plan tiga fase untuk menampilkan Total DO per hari/minggu/bulan, Backlog Aging, Volume (koli/tonase/CBM), Order Fill Rate, dan OTIF. Menambahkan Section 12.15 (Bug Fix Crossdocking Status Sync) yang mendokumentasikan penambahan sync otomatis `crossdocking_header.status` saat shipment dibuat/diupdate/Delivered melalui trigger di tiga API endpoint: `upsertShipmentTracking`, `bulkCreateShipments`, dan `confirmDelivery`. Changelog Section 12 diperbarui dengan implementasi November 2026.
 
 **Catatan perubahan v2.0:** Menambahkan rencana modul Warehouse Capacity pada Section 4.4.3 dengan tiga ukuran kapasitas: CBM, pallet position, dan tonase. Rencana mencakup konfigurasi kapasitas per warehouse, perhitungan utilisasi dari `inventory_snapshot` dan atribut packaging `master_sku`, view dashboard, status Normal/Warning/Critical/Incomplete, serta kebutuhan data dan tahapan aktivasi. Changelog Section 12 diperbarui untuk mencatat perbaikan upload Outbound Detail, penyempurnaan Crossdocking PTS, dashboard Customer Stock Map/HD, dan Shipment Tracking Retail.
 
@@ -99,6 +101,129 @@ Metrik biaya dapat dipecah lebih detail menjadi:
 - Event status, POD, dan waktu aktual menjadi basis perhitungan OTD dan lead time; detail item per stop menjadi basis OTIF.
 - Biaya aktual dicatat sekali pada level trip dan dialokasikan ke stop untuk analitik Cost per Delivery dan Cost Ratio. `master_rate_card` hanya menjadi referensi estimasi/proyeksi.
 - Dashboard KPI cards (4.1) menampilkan ringkasan OTD/OTIF dan alert keterlambatan; detail breakdown (failure reason, cost trend) ditampilkan di modul **Workflow** (4.6) atau halaman KPI tersendiri.
+
+#### 4.1.2 Dashboard Redesign — Data Filter & SLA-based Alerts **[UPDATED v2.1]**
+
+**Tujuan:** Memperbaiki akurasi dashboard dengan memfilter data sesuai tanggal sistem aktual dan menggunakan SLA internal untuk alert overdue & perhitungan OTD, bukan menggunakan `promised_delivery_date` dari NAV yang merupakan janji ke customer.
+
+**Latar belakang masalah:**
+- Alert overdue menampilkan terlalu banyak shipment overdue karena sebelumnya membandingkan `promised_delivery_date` (NAV) dengan tanggal hari ini — padahal ini janji ke customer, bukan deadline SLA internal operasional cabang
+- Data dashboard menampilkan semua data historis termasuk backfill NAV dari periode sebelum sistem TMS aktif (sebelum November 2026), sehingga angka-angka tidak mencerminkan kinerja aktual TMS
+
+**Implementasi (November 2026):**
+
+**1. Filter Data Dashboard ke November 2026+**
+- Semua query dashboard (status counts, crossdocking aktif, overdue alerts, active today) sekarang memfilter `document_date >= '2026-11-01'`
+- Alasan: Sistem TMS baru aktif November 2026. Data sebelum November adalah backfill NAV yang tidak memiliki tracking TMS aktual, sehingga tidak relevan untuk KPI operasional
+- `availableMonths()` di UI hanya menampilkan bulan November 2026 ke atas
+- Implementasi di: `app/(app)/dashboard/page.tsx` — semua Server Action query
+
+**2. SLA Internal untuk Alert Overdue & OTD**
+
+**Definisi SLA Internal (Ship-to-Posting Days):**
+- Customer **DK** (Dalam Kota): **1 hari** dari `document_date`
+- Customer **LK** (Luar Kota): **5 hari** dari `document_date`
+
+**SLA ini berbeda dari `promised_delivery_date`:**
+| Field | Sumber | Tujuan | Dipakai untuk |
+|---|---|---|---|
+| `promised_delivery_date` | NAV (PSS Header) | Janji ke customer | Target operasional eksternal, basis complaint customer |
+| SLA internal (document_date + 1/5 hari) | Aturan operasional cabang berdasarkan klasifikasi DK/LK customer | SLA operasional internal | Alert overdue, OTD Rate operasional, tracking kinerja internal |
+
+**Perhitungan:**
+```javascript
+// SLA deadline calculation
+const slaDays = dk_lk === 'DK' ? 1 : 5
+const deadline = new Date(document_date)
+deadline.setDate(deadline.getDate() + slaDays)
+const isOverdue = new Date(today) > deadline
+```
+
+**Implementasi Overdue Alert:**
+- Query mengambil semua shipment non-Delivered dengan `document_date >= '2026-11-01'`
+- Filtering overdue dilakukan di JavaScript (bukan di Supabase) menggunakan SLA deadline
+- Shipment dianggap overdue jika: `today > (document_date + slaDays)` dan status bukan `Delivered`
+
+**Implementasi OTD Rate:**
+- Hanya menghitung shipment berstatus `Delivered` dengan `delivery_time` tersedia
+- `isOnTime = delivery_time <= (document_date + slaDays)`
+- Formula: `(jumlah onTime / jumlah delivered) x 100%`
+- Tampilan breakdown: Total OTD, OTD-DK, OTD-LK
+
+**Implementasi UI Deadline:**
+- Badge deadline di alert overdue dan active today menampilkan: `Deadline: [document_date + slaDays]`
+- Kolom "Days Late" dihitung dari SLA deadline, bukan `promised_delivery_date`
+- Komponen `DaysLate` menerima parameter `deadlineDate` (SLA deadline)
+
+**Tabel data yang dibutuhkan:**
+- `customers.dk_lk` (region_type): klasifikasi DK/LK per customer
+- Query shipment harus select `document_date` dan `dk_lk` untuk kalkulasi SLA di JavaScript
+
+**Catatan penting:**
+- `promised_delivery_date` tetap tersimpan dan ditampilkan untuk referensi janji ke customer
+- Tetapi untuk operasional internal (alert, OTD), pakai SLA internal
+- Migration data tidak diperlukan — ini hanya perubahan logika perhitungan di aplikasi
+
+#### 4.1.3 KPI Ringkasan Pengiriman — Rencana **[UPDATED v2.1]**
+
+**Tujuan:** Menambahkan panel KPI Ringkasan Pengiriman di dashboard utama untuk visibilitas cepat volume, backlog, dan kinerja pengiriman harian/mingguan/bulanan.
+
+**Status:** Rencana fitur — belum diimplementasikan. Section ini mendokumentasikan desain dan hasil audit data.
+
+**KPI yang direncanakan:**
+
+| KPI | Deskripsi | Sumber Data | Status Data |
+|---|---|---|---|
+| **Total DO Hari Ini** | Jumlah PSS/CD dengan `document_date = today` | `outbound_header`, `crossdocking_header` | ✅ Tersedia |
+| **Total DO Minggu Ini** | Jumlah PSS/CD dalam 7 hari terakhir | `outbound_header`, `crossdocking_header` | ✅ Tersedia |
+| **Total DO Bulan Ini** | Jumlah PSS/CD dalam bulan berjalan | `outbound_header`, `crossdocking_header` | ✅ Tersedia |
+| **Backlog Aging** | Jumlah PSS/CD belum Delivered, breakdown umur: <3 hari, 3-7 hari, >7 hari | `shipment_tracking` (status bukan Delivered) | ✅ Tersedia (menggunakan SLA deadline, bukan document_date mentah) |
+| **Volume Hari Ini** | Total koli/tonase/CBM dari DO hari ini | `vw_pss_load_summary`, packaging `master_sku` | ⚠️ Parsial — perlu aktivasi migration v28 & import master volume |
+| **Order Fill Rate** | % item terkirim lengkap dari yang direncanakan | `trip_stop_line` (qty_planned vs qty_delivered) | ❌ Belum tersedia — `trip_stop_line` belum diisi |
+| **OTIF (On-Time In-Full)** | % order tepat waktu DAN lengkap | Kombinasi OTD + Fill Rate dari `trip_stop_line` | ❌ Belum tersedia — `trip_stop_line` belum diisi |
+
+**Rencana implementasi 3 fase:**
+
+**Fase 1 — Volume & Backlog (sudah bisa diimplementasikan):**
+- Total DO per hari/minggu/bulan
+- Backlog aging berdasarkan SLA internal (DK=1 hari, LK=5 hari)
+- Volume koli/tonase/CBM (setelah migration v28 dan import master volume selesai)
+
+**Fase 2 — Order Fill Rate (butuh aktivasi trip_stop_line):**
+- Aktifkan pencatatan `trip_stop_line` di modul Shipment/TMS
+- Isi `qty_planned` dari PSS/CD detail saat membuat shipment
+- Isi `qty_delivered` saat confirm delivery/POD
+- Hitung Fill Rate: `SUM(qty_delivered) / SUM(qty_planned) x 100%`
+
+**Fase 3 — OTIF (butuh OTD + Fill Rate):**
+- Gabungkan perhitungan OTD (sudah tersedia) dengan Fill Rate (dari Fase 2)
+- OTIF = shipment yang memenuhi kedua syarat:
+  - On-Time: `delivery_time <= (document_date + slaDays)`
+  - In-Full: `qty_delivered = qty_planned` untuk semua item dalam shipment
+
+**Hasil audit data (November 2026):**
+- ✅ Field SLA sudah tersedia: `document_date`, `customers.dk_lk`
+- ✅ Field OTD sudah tersedia: `delivery_time`, status `Delivered`
+- ⚠️ Volume CBM/tonase: migration v28 sudah disiapkan, menunggu eksekusi + import master volume
+- ❌ Fill Rate & OTIF: butuh aktivasi `trip_stop_line` terlebih dahulu
+- Kesimpulan: Fase 1 (Volume & Backlog) bisa dimulai setelah migration v28; Fase 2-3 memerlukan perubahan alur operasional TMS
+
+**Desain UI (draft):**
+```
+┌─────────────────────────────────────────────────────┐
+│ RINGKASAN PENGIRIMAN                                │
+├──────────────┬──────────────┬──────────────┬────────┤
+│ DO Hari Ini  │ DO Minggu    │ DO Bulan     │ Volume │
+│     12       │     87       │    342       │ Hari Ini│
+│              │              │              │ 245 koli│
+├──────────────┴──────────────┴──────────────┴────────┤
+│ BACKLOG AGING                                       │
+│ <3 hari: 5  |  3-7 hari: 3  |  >7 hari: 2          │
+├─────────────────────────────────────────────────────┤
+│ Order Fill Rate: [Belum tersedia]                   │
+│ OTIF: [Belum tersedia]                              │
+└─────────────────────────────────────────────────────┘
+```
 
 ### 4.2 Receiving / Inbound
 **Tujuan:** Mencatat dan memvalidasi penerimaan barang transfer antar gudang (PTR — Purchase Transfer Receipt)
@@ -902,7 +1027,28 @@ notes
 
 ---
 
-## 12. Changelog Implementasi (September 2026)
+## 12. Changelog Implementasi
+
+### November 2026 (v2.1)
+
+**Dashboard Accuracy Fix — Data Filter & SLA-based Alerts:**
+- Semua data dashboard sekarang difilter ke November 2026+ (sistem TMS launch date)
+- Alert overdue & OTD Rate menggunakan SLA internal (DK=1 hari, LK=5 hari dari `document_date`) bukan `promised_delivery_date`
+- `promised_delivery_date` tetap tersimpan sebagai referensi janji customer, tapi operasional internal pakai SLA
+- Lihat detail: Section 4.1.2
+
+**Crossdocking Status Sync Bug Fix:**
+- Status `crossdocking_header` sekarang sync otomatis saat shipment dibuat/diupdate/delivered
+- Penambahan sync logic di 3 API endpoints: `upsertShipmentTracking`, `bulkCreateShipments`, `confirmDelivery`
+- Migration SQL v36 disiapkan untuk backfill data existing (belum dijalankan, menunggu approval)
+- Lihat detail: Section 12.15
+
+**KPI Planning Documentation:**
+- Mendokumentasikan rencana KPI Ringkasan Pengiriman (Total DO, Backlog Aging, Volume, Fill Rate, OTIF)
+- Audit ketersediaan data: Volume parsial tersedia (butuh migration v28), Fill Rate & OTIF butuh aktivasi `trip_stop_line`
+- Lihat detail: Section 4.1.3
+
+### September 2026 (v2.0)
 
 ### 12.1 Issue Log
 
@@ -1146,6 +1292,109 @@ File berikut dihapus dan kontennya diarsipkan ke **PRD section 11**:
 - Judul kolom tabel monitoring stok dapat membungkus menjadi dua baris dengan lebar kolom yang lebih ringkas.
 
 **Catatan status dokumentasi:** Perubahan di atas sudah diterapkan pada working tree dan build Next.js berhasil. Deployment/push ke GitHub tetap merupakan langkah terpisah.
+
+### 12.15 Bug Fix: Crossdocking Status Sync **[NEW v2.1]**
+
+**Status: ✅ Diimplementasikan (5 November 2026)**
+
+**Masalah:**
+- Status `crossdocking_header.status` tidak otomatis terupdate ketika shipment terkait dibuat atau didelivered
+- Crossdocking header tetap menampilkan status lama meskipun shipment tracking sudah berubah status ke `Dispatched` atau `Delivered`
+- Menyebabkan dashboard crossdocking menampilkan data tidak akurat
+
+**Root cause:**
+- Tiga API endpoint yang mengubah status shipment tidak melakukan sync status ke `crossdocking_header`:
+  1. `app/actions/shipment-tracking.ts` → `upsertShipmentTracking()` — create/update shipment
+  2. `app/actions/shipment-tracking.ts` → `bulkCreateShipments()` — bulk create dari For Transport Planning
+  3. `app/actions/shipment-tracking.ts` → `confirmDelivery()` — confirm POD & set status Delivered
+
+**Solusi diimplementasikan:**
+
+**1. Penambahan fungsi `syncCrossdockingStatus()` di ketiga endpoint:**
+
+```typescript
+// Logic sync status crossdocking berdasarkan shipment
+if (crossdocking_id) {
+  const { data: shipments } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('status')
+    .eq('crossdocking_id', crossdocking_id)
+
+  let newStatus = 'Pending Shipment'
+  if (shipments?.some(s => s.status === 'Delivered')) {
+    newStatus = 'Delivered'
+  } else if (shipments?.some(s => ['Dispatched','In Transit'].includes(s.status))) {
+    newStatus = 'In Progress'
+  }
+
+  await supabaseAdmin
+    .from('crossdocking_header')
+    .update({ status: newStatus })
+    .eq('id', crossdocking_id)
+}
+```
+
+**2. Logika status crossdocking:**
+- `Delivered`: Jika minimal 1 shipment berstatus `Delivered`
+- `In Progress`: Jika minimal 1 shipment berstatus `Dispatched` atau `In Transit` (dan belum ada yang `Delivered`)
+- `Pending Shipment`: Jika belum ada shipment atau semua shipment masih `Draft`
+
+**3. Trigger points:**
+- **upsertShipmentTracking**: Sync setelah insert/update shipment berhasil
+- **bulkCreateShipments**: Sync untuk setiap CD yang dibuat shipment-nya (saat bulk create dari For Transport Planning)
+- **confirmDelivery**: Sync setelah status shipment diupdate ke `Delivered`
+
+**4. Migration SQL untuk backfill data existing:**
+
+File: `supabase/migration_v36_sync_crossdocking_status.sql`
+
+```sql
+-- Backfill crossdocking status untuk data Nov 2026+
+UPDATE crossdocking_header ch
+SET status = CASE 
+  WHEN EXISTS(
+    SELECT 1 FROM shipment_tracking st 
+    WHERE st.crossdocking_id = ch.id 
+      AND st.status = 'Delivered'
+  ) THEN 'Delivered'
+  WHEN EXISTS(
+    SELECT 1 FROM shipment_tracking st 
+    WHERE st.crossdocking_id = ch.id 
+      AND st.status IN ('Dispatched','In Transit')
+  ) THEN 'In Progress'
+  ELSE 'Pending Shipment'
+END
+WHERE ch.received_from_hq_date >= '2026-11-01'
+  AND ch.status IS DISTINCT FROM CASE 
+    WHEN EXISTS(
+      SELECT 1 FROM shipment_tracking st 
+      WHERE st.crossdocking_id = ch.id 
+        AND st.status = 'Delivered'
+    ) THEN 'Delivered'
+    WHEN EXISTS(
+      SELECT 1 FROM shipment_tracking st 
+      WHERE st.crossdocking_id = ch.id 
+        AND st.status IN ('Dispatched','In Transit')
+    ) THEN 'In Progress'
+    ELSE 'Pending Shipment'
+  END;
+```
+
+**Catatan migration:**
+- Hanya update data November 2026+ (sesuai data filter dashboard)
+- Migration bersifat idempotent (bisa dijalankan ulang tanpa side effect)
+- `IS DISTINCT FROM` memastikan hanya row yang benar-benar berubah yang di-update
+- Migration belum dijalankan di production — menunggu approval user
+
+**Hasil:**
+- ✅ Crossdocking status sekarang sync otomatis saat shipment dibuat/diupdate/delivered
+- ✅ Dashboard crossdocking menampilkan count yang akurat
+- ✅ Alert "CD Deadline" di dashboard menggunakan status terbaru
+- ⏳ Migration backfill siap dijalankan untuk memperbaiki data existing
+
+**Files changed:**
+- `app/actions/shipment-tracking.ts` — 3 functions updated
+- `supabase/migration_v36_sync_crossdocking_status.sql` — SQL backfill created
 
 ## 11. Archived Documentation
 

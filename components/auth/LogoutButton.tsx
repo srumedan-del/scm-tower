@@ -36,7 +36,7 @@ export function LogoutButton() {
         type="button"
         onClick={handleLogout}
         disabled={loading}
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#D2D2D7] bg-white px-4 py-2 text-sm font-medium text-[#1D1D1F] transition-colors hover:bg-[#F5F5F7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] disabled:cursor-wait disabled:opacity-60 lg:w-full lg:justify-start"
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-background-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-wait disabled:opacity-60 lg:w-full lg:justify-start"
       >
         {loading ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : <LogOut size={16} aria-hidden="true" />}
         {loading ? 'Keluar...' : 'Keluar'}

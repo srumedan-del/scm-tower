@@ -8,6 +8,7 @@ import {
   type VendorOption,
 } from './actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { notify } from '@/lib/feedback'
 
 type Props = { onClose: () => void }
 
@@ -50,7 +51,7 @@ export function TripCreatePanel({ onClose }: Props) {
           shipmentIds: [...selected],
           notes,
         })
-        window.alert(`Trip ${result.trip_no} berhasil dibuat.`)
+        notify.success(`Trip ${result.trip_no} berhasil dibuat`)
         window.location.reload()
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Gagal membuat trip')
@@ -88,19 +89,19 @@ export function TripCreatePanel({ onClose }: Props) {
               <span className="text-xs text-gray-500">{selected.size} dipilih</span>
             </div>
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
-                <tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Pilih</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Referensi</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Janji Kirim</th></tr>
+              <thead className="sticky top-0 z-10 border-b border-gray-200 bg-slate-50">
+                <tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Pilih</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Referensi</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Kota</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Janji Kirim</th></tr>
               </thead>
-              <tbody className="divide-y divide-[#EEF0F4]">
+              <tbody className="divide-y divide-gray-100">
                 {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
                 {!loading && shipments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada shipment yang tersedia.</td></tr>}
                 {shipments.map((shipment) => (
-                  <tr key={shipment.id} className="group border-t border-[#EEF0F4] hover:bg-indigo-50">
-                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><input type="checkbox" checked={selected.has(shipment.id)} onChange={() => toggle(shipment.id)} /></td>
-                    <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{shipment.reference_no}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{shipment.customer_name ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{shipment.destination_city ?? '-'}</td>
-                    <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{shipment.promised_delivery_date ?? '-'}</td>
+                  <tr key={shipment.id} className="group border-t border-gray-100 hover:bg-indigo-50">
+                    <td className="px-4 py-0.25 text-xs font-medium text-slate-600"><input type="checkbox" checked={selected.has(shipment.id)} onChange={() => toggle(shipment.id)} /></td>
+                    <td className="px-4 py-0.25 text-xs font-medium font-medium text-slate-600">{shipment.reference_no}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-slate-600">{shipment.customer_name ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-slate-600">{shipment.destination_city ?? '-'}</td>
+                    <td className="px-4 py-0.25 text-xs font-medium text-slate-600">{shipment.promised_delivery_date ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

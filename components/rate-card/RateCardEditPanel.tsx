@@ -3,6 +3,7 @@ import { useEffect, useState, useTransition } from 'react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { upsertRateCard, deleteRateCard, getRateCardRoutes, type RateCardRouteOption } from '@/app/(app)/master-data/rate-card/actions'
 import { getVendors, type VendorRow } from '@/app/(app)/vendor/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Rate = {
   id: number
@@ -132,13 +133,13 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
     return routeLabel(route).toLowerCase().includes(query)
   }).slice(0, 100)
 
-  function del() {
+  async function del() {
     if (!rate) return
-    if (!confirm(`HAPUS RATE ${rate.rate_code}?`)) return
+    if (!(await confirmAction({ title: 'Hapus rate card?', message: `Rate ${rate.rate_code} akan dihapus.` }))) return
     startDeleting(async () => {
       try {
         await deleteRateCard(rate.id)
-        onSaved(); onClose()
+        notify.success('Rate card dihapus'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -165,7 +166,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
       if (!payload.route_id) { setErr('RUTE wajib dipilih dari Master Routes'); return }
       try {
         await upsertRateCard(payload, rate?.id)
-        onSaved(); onClose()
+        notify.success('Rate card tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

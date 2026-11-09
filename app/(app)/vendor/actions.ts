@@ -18,6 +18,7 @@ export type VendorRow = {
 }
 
 export async function getVendors() {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('vendors')
     .select('*')

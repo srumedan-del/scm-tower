@@ -104,27 +104,27 @@ export default function BudgetRequestPage() {
       )}
 
       {/* Daftar pengajuan */}
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Periode</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Proyeksi DK</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Proyeksi LK</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Buffer SCM</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Subtotal Pengajuan</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Final Pengajuan</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Bank</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Catatan</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Periode</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Proyeksi DK</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Proyeksi LK</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Buffer SCM</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Subtotal Pengajuan</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Final Pengajuan</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Bank</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Catatan</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {loading && (
-              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Memuat...</td></tr>
+              <tr><td className="px-4 py-3 text-xs font-medium text-slate-600">Memuat...</td></tr>
             )}
             {!loading && rows.length === 0 && avail !== false && (
               <tr>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">
                   Belum ada pengajuan dana. Klik <strong>+ Buat Pengajuan</strong>.
                 </td>
               </tr>
@@ -137,18 +137,18 @@ export default function BudgetRequestPage() {
                   onClick={() => setSelected(r)}
                   className="hover:bg-blue-50 cursor-pointer"
                 >
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                  <td className="px-4 py-3 text-xs font-medium text-slate-600">
                     <div className="font-semibold">{periodLabel(r.period)}</div>
                     <div className="text-xs text-gray-400 font-mono">{r.period}</div>
                   </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(r.dk_amount_projected)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(r.lk_amount_projected)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(r.buffer_amount)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{fmtRp(subtotal)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">
+                  <td className="px-4 py-3 text-xs font-medium text-right text-slate-600">{fmtRp(r.dk_amount_projected)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right text-slate-600">{fmtRp(r.lk_amount_projected)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right text-slate-600">{fmtRp(r.buffer_amount)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right text-slate-600">{fmtRp(subtotal)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right text-slate-600">
                     <span className="font-bold text-indigo-700">{fmtRp(r.rounded_request_amount)}</span>
                   </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                  <td className="px-4 py-3 text-xs font-medium text-slate-600">
                     {r.bank_name ? (
                       <div>
                         <div className="font-medium">{r.bank_name}</div>
@@ -156,7 +156,7 @@ export default function BudgetRequestPage() {
                       </div>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.notes ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-slate-600">{r.notes ?? '—'}</td>
                 </tr>
               )
             })}

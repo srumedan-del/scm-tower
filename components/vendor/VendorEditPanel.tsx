@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { upsertVendor, deleteVendor } from '@/app/(app)/vendor/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Vendor = {
   id: number
@@ -51,13 +52,13 @@ export default function VendorEditPanel({
   const up = (k: keyof typeof form, v: any) =>
     setForm((f) => ({ ...f, [k]: v }))
 
-  function del() {
+  async function del() {
     if (!vendor) return
-    if (!confirm(`HAPUS VENDOR ${vendor.vendor_code}?`)) return
+    if (!(await confirmAction({ title: 'Hapus vendor?', message: `Vendor ${vendor.vendor_code} akan dihapus.` }))) return
     startDeleting(async () => {
       try {
         await deleteVendor(vendor.id)
-        onSaved()
+        notify.success('Vendor dihapus'); onSaved()
         onClose()
       } catch (e: any) {
         setErr(e.message)
@@ -86,7 +87,7 @@ export default function VendorEditPanel({
 
       try {
         await upsertVendor({ id: vendor?.id ?? 0, ...payload })
-        onSaved()
+        notify.success('Vendor tersimpan'); onSaved()
         onClose()
       } catch (e: any) {
         setErr(e.message)

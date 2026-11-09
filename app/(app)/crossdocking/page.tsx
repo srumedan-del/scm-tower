@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { getCrossdockings, type CrossdockingHeader } from './actions'
+import { getCrossdockings, getCrossdockingAvailableMonths, type CrossdockingHeader } from './actions'
+import CrossdockingFilter from '@/components/crossdocking/CrossdockingFilter'
 import CrossdockingPanel from '@/components/crossdocking/CrossdockingPanel'
 import PtsPanel from '@/components/crossdocking/PtsPanel'
 import { Plus } from 'lucide-react'
@@ -30,11 +31,15 @@ export default function CrossdockingPage() {
   const [loading, startLoad]  = useTransition()
   const [tmsAvail, setAvail]  = useState<boolean | null>(null)
   const [activeView, setActiveView] = useState<'crossdocking' | 'pts'>('crossdocking')
+  const [months, setMonths]   = useState<string[]>([])
+  const [selectedMonth, setSelectedMonth] = useState<string>('')
+  const [defaultMonth, setDefaultMonth]   = useState<string>('')
 
-  function load() {
+  function load(monthToLoad?: string) {
     startLoad(async () => {
       try {
-        setRows(await getCrossdockings())
+        const targetMonth = monthToLoad !== undefined ? monthToLoad : selectedMonth
+        setRows(await getCrossdockings(targetMonth))
         setAvail(true)
       } catch (e: any) {
         if (e.message?.includes('schema cache')) setAvail(false)
@@ -42,7 +47,27 @@ export default function CrossdockingPage() {
     })
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    async function init() {
+      try {
+        const avail = await getCrossdockingAvailableMonths()
+        const cur = new Date().toISOString().slice(0, 7)
+        const def = avail.includes(cur) ? cur : (avail[0] ?? cur)
+        setMonths(avail)
+        setDefaultMonth(def)
+        setSelectedMonth(def)
+        load(def)
+      } catch {
+        load()
+      }
+    }
+    init()
+  }, [])
+
+  const handleSelectMonth = (m: string) => {
+    setSelectedMonth(m)
+    load(m)
+  }
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -52,131 +77,172 @@ export default function CrossdockingPage() {
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">CROSSDOCKING</h1>
-          <p className="text-sm text-muted mt-0.5">
+          <p className="text-[14px] text-muted mt-0.5">
             Shipment dari Kantor Pusat via Medan — input manual
           </p>
         </div>
-        {activeView === 'crossdocking' && (
+        <div className="flex items-center gap-2">
+          {months.length > 0 && (
+            <CrossdockingFilter
+              months={months}
+              selectedMonth={selectedMonth}
+              defaultMonth={defaultMonth}
+              onSelectMonth={handleSelectMonth}
+            />
+          )}
           <button
             onClick={() => setEditId(null)}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-[14px] font-semibold text-white hover:bg-indigo-500 shadow-xs transition-colors"
           >
             <Plus className="h-4 w-4" /> Tambah Crossdocking
           </button>
-        )}
+        </div>
       </header>
 
-      <nav className="flex w-fit rounded-lg border border-border bg-white p-1" aria-label="Crossdocking submenu">
-        <button type="button" onClick={() => setActiveView('crossdocking')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'crossdocking' ? 'bg-indigo-600 text-white' : 'text-text hover:bg-gray-100'}`}>Crossdocking</button>
-        <button type="button" onClick={() => setActiveView('pts')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'pts' ? 'bg-indigo-600 text-white' : 'text-text hover:bg-gray-100'}`}>PTS</button>
+      <nav className="flex w-fit rounded-xl border border-slate-200 bg-white p-1 text-[14px]" aria-label="Crossdocking submenu">
+        <button
+          type="button"
+          onClick={() => setActiveView('crossdocking')}
+          className={`rounded-lg px-3.5 py-1.5 text-[14px] font-semibold transition-colors ${
+            activeView === 'crossdocking'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          Crossdocking
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveView('pts')}
+          className={`rounded-lg px-3.5 py-1.5 text-[14px] font-semibold transition-colors ${
+            activeView === 'pts'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          List PTS MDN-PAR to JKT-JP12
+        </button>
       </nav>
 
-      {activeView === 'pts' ? <PtsPanel /> : <>
+      {activeView === 'pts' ? (
+        <PtsPanel selectedMonth={selectedMonth} />
+      ) : (
+        <>
+          {/* Schema belum ada */}
+          {tmsAvail === false && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[14px] text-amber-800">
+              <strong>Schema TMS belum dijalankan.</strong> Buka Supabase SQL Editor dan jalankan{' '}
+              <code className="font-mono bg-amber-100 px-1 rounded">supabase/schema_tms.sql</code>{' '}
+              untuk membuat tabel <code className="font-mono bg-amber-100 px-1 rounded">crossdocking_header</code>.
+            </div>
+          )}
 
-      {/* Schema belum ada */}
-      {tmsAvail === false && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <strong>Schema TMS belum dijalankan.</strong> Buka Supabase SQL Editor dan jalankan{' '}
-          <code className="font-mono bg-amber-100 px-1 rounded">supabase/schema_tms.sql</code>{' '}
-          untuk membuat tabel <code className="font-mono bg-amber-100 px-1 rounded">crossdocking_header</code>.
-        </div>
+          {/* Tabel Crossdocking */}
+          <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-12rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-[14px]">
+              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">PSS No.</th>
+                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800">Customer</th>
+                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Kota Tujuan</th>
+                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Terima dari HQ</th>
+                  <th className="px-4 py-3 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Sisa Hari</th>
+                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Ref. HQ</th>
+                  <th className="px-4 py-3 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {loading && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400 text-[14px]">
+                      Memuat data crossdocking...
+                    </td>
+                  </tr>
+                )}
+                {!loading && rows.length === 0 && tmsAvail !== false && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400 text-[14px]">
+                      Belum ada data crossdocking untuk periode bulan ini. Klik <strong>+ Tambah Crossdocking</strong> untuk mulai.
+                    </td>
+                  </tr>
+                )}
+                {rows.map((r) => {
+                  const sisa = r.promised_delivery_date
+                    ? daysDiff(today, r.promised_delivery_date)
+                    : null
+                  const isUrgent = sisa !== null && sisa <= 2 && r.status !== 'Delivered'
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={() => setEditId(r.id)}
+                      className="hover:bg-blue-50/60 cursor-pointer transition-colors"
+                    >
+                      {/* PSS No */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="font-mono text-[14px] font-semibold text-indigo-700">{r.pss_no ?? '—'}</span>
+                      </td>
+                      {/* Customer */}
+                      <td className="px-4 py-3 max-w-[240px]">
+                        <div className="text-[14px] font-medium text-slate-800 truncate" title={r.customer_name ?? undefined}>
+                          {r.customer_name ?? '—'}
+                        </div>
+                      </td>
+                      {/* Kota */}
+                      <td className="px-4 py-3 text-[14px] font-semibold text-slate-700 whitespace-nowrap">
+                        {r.destination_city ?? '—'}
+                      </td>
+                      {/* Terima dari HQ */}
+                      <td className="px-4 py-3 text-[14px] font-medium text-slate-600 whitespace-nowrap">
+                        {r.received_from_hq_date?.slice(0, 10) ?? '—'}
+                      </td>
+                      {/* Sisa Hari */}
+                      <td className="px-4 py-3 text-center">
+                        {sisa !== null && r.status !== 'Delivered' ? (
+                          <span
+                            className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold ${
+                              isUrgent
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200/60'
+                                : sisa <= 7
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {sisa > 0 ? `${sisa}h` : sisa === 0 ? 'Hari ini' : `${Math.abs(sisa)}h lalu`}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
+                      </td>
+                      {/* Ref HQ */}
+                      <td className="px-4 py-3 text-[14px] font-mono text-slate-600 whitespace-nowrap">
+                        {r.hq_reference_no ?? '—'}
+                      </td>
+                      {/* Status */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${statusBadge(r.status)}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      {/* Tabel */}
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">CD No.</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS No.</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Kota Tujuan</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Terima dari HQ</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Promised Date</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sisa Hari</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Ref. HQ</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Catatan</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
-            {loading && (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
-            )}
-            {!loading && rows.length === 0 && tmsAvail !== false && (
-              <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-gray-400 text-sm">
-                  Belum ada crossdocking. Klik <strong>+ Tambah Crossdocking</strong> untuk mulai.
-                </td>
-              </tr>
-            )}
-            {rows.map(r => {
-              const sisa = r.promised_delivery_date
-                ? daysDiff(today, r.promised_delivery_date)
-                : null
-              const isUrgent = sisa !== null && sisa <= 2 && r.status !== 'Delivered'
-              return (
-                <tr
-                  key={r.id}
-                  onClick={() => setEditId(r.id)}
-                  className="hover:bg-blue-50 cursor-pointer"
-                >
-                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
-                    {r.crossdocking_no}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
-                    {r.pss_no ?? '-'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                    <div className="font-medium truncate">{r.customer_name ?? '-'}</div>
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
-                    {r.destination_city ?? '-'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
-                    {r.received_from_hq_date?.slice(0, 10) ?? '-'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
-                    {r.promised_delivery_date?.slice(0, 10) ?? '-'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    {sisa !== null && r.status !== 'Delivered' ? (
-                      <span className={`text-xs font-bold rounded-full px-2 py-0.5 ${
-                        isUrgent ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {sisa > 0 ? `${sisa}h` : sisa === 0 ? 'Hari ini' : `${Math.abs(sisa)}h lalu`}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300 text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">
-                    {r.hq_reference_no ?? '-'}
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                    <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusBadge(r.status)}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                    {r.notes ?? '-'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Panel form */}
+      {/* Side panel */}
       {editId !== undefined && (
         <CrossdockingPanel
           crossdockingId={editId}
           onClose={() => setEditId(undefined)}
-          onSaved={() => { setEditId(undefined); load() }}
+          onSaved={() => {
+            setEditId(undefined)
+            load()
+          }}
         />
       )}
-      </>}
     </div>
   )
 }

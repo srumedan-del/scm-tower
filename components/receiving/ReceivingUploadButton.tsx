@@ -1,16 +1,23 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
 import { ReactNode } from 'react'
-import { getExistingReceivingHeaderPtrs, insertReceivingHeaderRows, getReceivingHeadersByPtrs, getExistingReceivingDetailKeys, insertReceivingDetailRows } from '@/app/(app)/receiving/actions'
-import { Modal } from '@/components/ui/Modal'
+import Swal from 'sweetalert2'
+import {
+  getExistingReceivingHeaderPtrs,
+  insertReceivingHeaderRows,
+  getReceivingHeadersByPtrs,
+  getExistingReceivingDetailKeys,
+  insertReceivingDetailRows,
+} from '@/app/(app)/receiving/actions'
 
 // SheetJS is large and only needed after a user picks an upload file. Keeping
 // it out of the route's initial bundle makes the receiving page compile faster.
 let XLSX: typeof XLSXModule
-const loadXlsx = async () => XLSX ??= await import('xlsx')
+const loadXlsx = async () => (XLSX ??= await import('xlsx'))
 
 const normalizeKey = (value: string) =>
   value
@@ -29,11 +36,17 @@ function parseNavExcel(firstSheet: XLSXModule.WorkSheet): Record<string, any>[] 
   for (let i = 0; i < Math.min(rawAll.length, 10); i++) {
     const cells = (rawAll[i] ?? []).map((c: any) => String(c ?? '').trim().toLowerCase())
     // Header row biasanya mengandung kolom kunci ini
-    const isHeaderRow = cells.some(c =>
-      c === 'no.' || c === 'no' || c === 'ptr_no' ||
-      c === 'posting date' || c === 'document no.' || c === 'document no' ||
-      c === 'entry no.' || c === 'entry no' ||
-      (c.length > 0 && c.startsWith('ptr'))
+    const isHeaderRow = cells.some(
+      (c) =>
+        c === 'no.' ||
+        c === 'no' ||
+        c === 'ptr_no' ||
+        c === 'posting date' ||
+        c === 'document no.' ||
+        c === 'document no' ||
+        c === 'entry no.' ||
+        c === 'entry no' ||
+        (c.length > 0 && c.startsWith('ptr'))
     )
     if (isHeaderRow) {
       headerRowIndex = i
@@ -125,31 +138,6 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(n) ? n : null
 }
 
-const mapRow = (raw: Record<string, any>) => {
-  const row = Object.fromEntries(
-    Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
-  )
-
-  const record: Record<string, any> = {
-    ptr_no: pickValue(row, ['ptr_no', 'ptr', 'no', 'document_no', 'ptr_no_1']) ?? null,
-    transfer_order_no: pickValue(row, ['transfer_order_no', 'transfer_order', 'transfer_order_no_1']) ?? null,
-    transfer_from_code: pickValue(row, ['transfer_from_code', 'from_code', 'transfer_from', 'from_warehouse']) ?? null,
-    transfer_to_code: pickValue(row, ['transfer_to_code', 'to_code', 'transfer_to', 'to_warehouse']) ?? null,
-    shipping_agent_code: pickValue(row, ['shipping_agent_code', 'shipping_agent', 'agent_code', 'ship_agent']) ?? null,
-    shipment_date: toISODate(pickValue(row, ['shipment_date', 'ship_date', 'delivery_date', 'shipment_dt'])),
-    receipt_date: toISODate(pickValue(row, ['receipt_date', 'received_date', 'date_of_receipt', 'posting_date'])),
-    ship_to_receipt_days: toNumber(pickValue(row, ['ship_to_receipt_days', 'lead_time_days', 'lead_time'])),
-    receipt_to_posting_days: toNumber(pickValue(row, ['receipt_to_posting_days', 'r_p_days', 'posting_days'])),
-    ship_to_posting_days: toNumber(pickValue(row, ['ship_to_posting_days', 'ship_to_posting_days_1'])),
-  }
-
-  const filtered = Object.fromEntries(
-    Object.entries(record).filter(([, value]) => value !== null && value !== undefined && value !== '')
-  )
-
-  return toAllowedHeaderRow(filtered)
-}
-
 const validateRows = (rows: Record<string, any>[]) => {
   const issues: string[] = []
 
@@ -173,21 +161,6 @@ const validateRows = (rows: Record<string, any>[]) => {
   return issues
 }
 
-function getDuplicateSafeRows(rows: Record<string, any>[]) {
-  const seen = new Set<string>()
-  const result: Record<string, any>[] = []
-
-  for (const row of rows) {
-    const ptr = String(row.ptr_no ?? row.document_no ?? '').trim()
-    if (!ptr) continue
-    if (seen.has(ptr)) continue
-    seen.add(ptr)
-    result.push(row)
-  }
-
-  return result
-}
-
 function detailKey(row: Record<string, any>): string {
   return [
     String(row.document_no ?? '').trim(),
@@ -198,7 +171,7 @@ function detailKey(row: Record<string, any>): string {
   ].join('|')
 }
 
-function formatError(error: any): string {
+const formatError = (error: any): string => {
   if (!error) return 'Terjadi kesalahan yang tidak diketahui.'
 
   if (typeof error === 'string') return error
@@ -222,33 +195,15 @@ function formatError(error: any): string {
   return JSON.stringify(error)
 }
 
-type AlertState = { type: 'success' | 'error' | 'info'; title: string; message: string } | null
-
-function useAlert() {
-  const [alert, setAlert] = useState<AlertState>(null)
-
-  const showAlert = (type: 'success' | 'error' | 'info', title: string, message: string) => {
-    setAlert({ type, title, message })
-  }
-
-  const closeAlert = () => setAlert(null)
-
-  return { alert, showAlert, closeAlert }
-}
-
 function UploadButtonShell({
   label,
   loading,
   onClick,
-  alert,
-  closeAlert,
   children,
 }: {
   label: string
   loading: boolean
   onClick: () => void
-  alert: AlertState
-  closeAlert: () => void
   children: ReactNode
 }) {
   return (
@@ -256,36 +211,29 @@ function UploadButtonShell({
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#D8DEE8] bg-white px-3.5 text-sm font-semibold text-[#334155] shadow-sm transition-colors hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={loading}
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
         {loading ? 'Uploading...' : label}
       </button>
-
-      <Modal
-        isOpen={!!alert}
-        onClose={closeAlert}
-        type={alert?.type ?? 'info'}
-        title={alert?.title ?? ''}
-        message={alert?.message ?? ''}
-      />
       {children}
     </div>
   )
 }
 
+/* ── PTR Header Upload Button ─────────────────────────── */
+
 export function PtrHeaderUploadButton() {
+  const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    closeAlert()
 
     try {
       await loadXlsx()
@@ -296,28 +244,30 @@ export function PtrHeaderUploadButton() {
 
       if (!rows.length) throw new Error('File kosong.')
 
-      const cleanRows = rows.map((raw) => {
-        const row = Object.fromEntries(
-          Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
-        ) as Record<string, any>
-        return toAllowedHeaderRow({
-          ptr_no: pickValue(row, ['ptr_no', 'ptr', 'no', 'document_no', 'ptr_no_1']) ?? null,
-          transfer_order_no: pickValue(row, ['transfer_order_no', 'transfer_order', 'transfer_order_no_1']) ?? null,
-          transfer_from_code: pickValue(row, ['transfer_from_code', 'from_code', 'transfer_from', 'from_warehouse']) ?? null,
-          transfer_to_code: pickValue(row, ['transfer_to_code', 'to_code', 'transfer_to', 'to_warehouse']) ?? null,
-          posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date', 'receipt_date', 'received_date'])),
-          shipment_date: toISODate(pickValue(row, ['shipment_date', 'ship_date', 'delivery_date', 'shipment_dt'])),
-          receipt_date: toISODate(pickValue(row, ['receipt_date', 'received_date', 'date_of_receipt', 'posting_date'])),
-          shipping_agent_code: pickValue(row, ['shipping_agent_code', 'shipping_agent', 'agent_code', 'ship_agent']) ?? null,
-          ship_to_receipt_days: toNumber(pickValue(row, ['ship_to_receipt_days', 'lead_time_days', 'lead_time'])),
-          receipt_to_posting_days: toNumber(pickValue(row, ['receipt_to_posting_days', 'r_p_days', 'posting_days'])),
-          ship_to_posting_days: toNumber(pickValue(row, ['ship_to_posting_days', 'ship_to_posting_days_1'])),
-          source_file: file.name.trim(),
-          import_period: new Date().toISOString().slice(0, 7),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+      const cleanRows = rows
+        .map((raw) => {
+          const row = Object.fromEntries(
+            Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
+          ) as Record<string, any>
+          return toAllowedHeaderRow({
+            ptr_no: pickValue(row, ['ptr_no', 'ptr', 'no', 'document_no', 'ptr_no_1']) ?? null,
+            transfer_order_no: pickValue(row, ['transfer_order_no', 'transfer_order', 'transfer_order_no_1']) ?? null,
+            transfer_from_code: pickValue(row, ['transfer_from_code', 'from_code', 'transfer_from', 'from_warehouse']) ?? null,
+            transfer_to_code: pickValue(row, ['transfer_to_code', 'to_code', 'transfer_to', 'to_warehouse']) ?? null,
+            posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date', 'receipt_date', 'received_date'])),
+            shipment_date: toISODate(pickValue(row, ['shipment_date', 'ship_date', 'delivery_date', 'shipment_dt'])),
+            receipt_date: toISODate(pickValue(row, ['receipt_date', 'received_date', 'date_of_receipt', 'posting_date'])),
+            shipping_agent_code: pickValue(row, ['shipping_agent_code', 'shipping_agent', 'agent_code', 'ship_agent']) ?? null,
+            ship_to_receipt_days: toNumber(pickValue(row, ['ship_to_receipt_days', 'lead_time_days', 'lead_time'])),
+            receipt_to_posting_days: toNumber(pickValue(row, ['receipt_to_posting_days', 'r_p_days', 'posting_days'])),
+            ship_to_posting_days: toNumber(pickValue(row, ['ship_to_posting_days', 'ship_to_posting_days_1'])),
+            source_file: file.name.trim(),
+            import_period: new Date().toISOString().slice(0, 7),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
         })
-      }).filter((r) => r.ptr_no)
+        .filter((r) => r.ptr_no)
 
       const issues = validateRows(cleanRows)
       if (issues.length > 0) {
@@ -341,14 +291,21 @@ export function PtrHeaderUploadButton() {
       if (!toInsert.length) throw new Error(`${ptrs.length} PTR sudah ada di database atau duplikat.`)
 
       await insertReceivingHeaderRows(toInsert)
+      router.refresh()
       const skipped = cleanRows.length - toInsert.length
-      showAlert(
-        'success',
-        'Upload Berhasil',
-        `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.`
-      )
+      await Swal.fire({
+        icon: 'success',
+        title: 'Upload Berhasil',
+        text: `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.`,
+        confirmButtonColor: '#1F3F6E',
+      })
     } catch (error: any) {
-      showAlert('error', 'Upload Gagal', formatError(error))
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload Gagal',
+        text: formatError(error),
+        confirmButtonColor: '#1F3F6E',
+      })
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -360,8 +317,6 @@ export function PtrHeaderUploadButton() {
       label="Upload PTR Header"
       loading={loading}
       onClick={() => inputRef.current?.click()}
-      alert={alert}
-      closeAlert={closeAlert}
     >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
     </UploadButtonShell>
@@ -371,13 +326,35 @@ export function PtrHeaderUploadButton() {
 /* ── PTR Detail Upload Button ─────────────────────────── */
 
 const DETAIL_ALLOWED_FIELDS = [
-  'receiving_header_id', 'posting_date', 'entry_type', 'document_type',
-  'document_no', 'document_line_no', 'item_no', 'variant_code', 'description',
-  'document_created_at', 'branch_representative', 'project', 'return_reason_code',
-  'location_code', 'lot_no', 'expiration_date', 'serial_no', 'quantity',
-  'invoiced_quantity', 'remaining_quantity', 'shipped_qty_not_returned',
-  'reserved_quantity', 'open', 'order_type', 'entry_no',
-  'source_file', 'import_period', 'created_at', 'updated_at',
+  'receiving_header_id',
+  'posting_date',
+  'entry_type',
+  'document_type',
+  'document_no',
+  'document_line_no',
+  'item_no',
+  'variant_code',
+  'description',
+  'document_created_at',
+  'branch_representative',
+  'project',
+  'return_reason_code',
+  'location_code',
+  'lot_no',
+  'expiration_date',
+  'serial_no',
+  'quantity',
+  'invoiced_quantity',
+  'remaining_quantity',
+  'shipped_qty_not_returned',
+  'reserved_quantity',
+  'open',
+  'order_type',
+  'entry_no',
+  'source_file',
+  'import_period',
+  'created_at',
+  'updated_at',
 ] as const
 
 const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
@@ -429,16 +406,15 @@ const mapDetailRow = (raw: Record<string, any>, fileName: string) => {
 }
 
 export function PtrDetailUploadButton() {
+  const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(false)
-  const { alert, showAlert, closeAlert } = useAlert()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    closeAlert()
 
     try {
       await loadXlsx()
@@ -449,31 +425,53 @@ export function PtrDetailUploadButton() {
 
       if (!rows.length) throw new Error('File kosong.')
 
-      const mappedRows = rows.map((r) => mapDetailRow(r, file.name)).filter((r) => r.document_no)
+      // --- Filter hanya Transfer Receipt ---
+      const filteredRows = rows.filter((raw) => {
+        const row = Object.fromEntries(
+          Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
+        )
+        const docType = pickValue(row, ['document_type', 'document type'])
+        if (!docType) return false
+        return normalizeKey(String(docType)) === normalizeKey('Transfer Receipt')
+      })
+
+      if (!filteredRows.length) {
+        throw new Error(
+          'Tidak ada baris dengan Document Type = "Transfer Receipt". ' +
+            'File ini hanya akan memproses Transfer Receipt.'
+        )
+      }
+
+      const mappedRows = filteredRows
+        .map((r) => mapDetailRow(r, file.name))
+        .filter((r) => r.document_no)
 
       if (!mappedRows.length) throw new Error('Tidak ada baris valid. Pastikan kolom Document No. terisi.')
 
-      const docNos = [...new Set(mappedRows.map((r) => String(r.document_no).trim()))]
+      const docNos = [...new Set(mappedRows.map((r) => String(r.document_no ?? '').trim()))]
       const { data: headers } = await getReceivingHeadersByPtrs(docNos)
 
       if (!headers?.length) {
-        throw new Error(`Tidak ada PTR Header ditemukan untuk document_no: ${docNos.slice(0, 5).join(', ')}${docNos.length > 5 ? '...' : ''}. Upload PTR Header terlebih dahulu.`)
+        throw new Error(
+          `Tidak ada PTR Header ditemukan untuk document_no: ${docNos.slice(0, 5).join(', ')}${docNos.length > 5 ? '...' : ''}. Upload PTR Header terlebih dahulu.`
+        )
       }
 
       const headerMap = new Map<string, string>()
       for (const h of headers as any[]) {
-        headerMap.set(String(h.ptr_no).trim(), h.id)
+        headerMap.set(String(h.ptr_no ?? '').trim(), h.id)
       }
 
-      const rowsWithHeaderId = mappedRows.map((row) => {
-        const ptrNo = String(row.document_no).trim()
-        return {
-          ...row,
-          receiving_header_id: headerMap.get(ptrNo) ?? null,
-        }
-      }).filter((r) => r.receiving_header_id)
+      const rowsWithHeaderId = mappedRows
+        .map((row) => {
+          const ptrNo = String(row.document_no ?? '').trim()
+          return {
+            ...row,
+            receiving_header_id: headerMap.get(ptrNo) ?? null,
+          }
+        })
+        .filter((r) => r.receiving_header_id)
 
-      const skippedCount = mappedRows.length - rowsWithHeaderId.length
       if (!rowsWithHeaderId.length) {
         throw new Error('Tidak ada baris yang bisa di-link ke PTR Header.')
       }
@@ -485,7 +483,7 @@ export function PtrDetailUploadButton() {
           existingDetailKeys.add(detailKey(row))
         }
       } catch {
-        // ignore — proceed to insert; if unique constraint hits, error will show in modal
+        // abaikan, lanjut insert; jika kena unique constraint, error tampil di modal
       }
 
       const seenDetailKeys = new Set<string>()
@@ -500,18 +498,30 @@ export function PtrDetailUploadButton() {
       const detailSkippedCount = rowsWithHeaderId.length - toInsertDetails.length
 
       if (!toInsertDetails.length) {
-        showAlert('info', 'Tidak Ada Data Baru', `${rowsWithHeaderId.length} baris detail sudah ada di database.`)
+        await Swal.fire({
+          icon: 'info',
+          title: 'Tidak Ada Data Baru',
+          text: `${rowsWithHeaderId.length} baris detail sudah ada di database.`,
+          confirmButtonColor: '#1F3F6E',
+        })
         return
       }
 
       await insertReceivingDetailRows(toInsertDetails)
-      showAlert(
-        'success',
-        'Upload Berhasil',
-        `${detailInsertedCount} baris detail berhasil ditambahkan${detailSkippedCount ? `, ${detailSkippedCount} dilewati (sudah ada)` : ''}.`
-      )
+      router.refresh()
+      await Swal.fire({
+        icon: 'success',
+        title: 'Upload Berhasil',
+        text: `${detailInsertedCount} baris detail berhasil ditambahkan${detailSkippedCount ? `, ${detailSkippedCount} dilewati (sudah ada)` : ''}.`,
+        confirmButtonColor: '#1F3F6E',
+      })
     } catch (error: any) {
-      showAlert('error', 'Upload Gagal', formatError(error))
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload Gagal',
+        text: formatError(error),
+        confirmButtonColor: '#1F3F6E',
+      })
     } finally {
       setLoading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -523,98 +533,12 @@ export function PtrDetailUploadButton() {
       label="Upload PTR Detail"
       loading={loading}
       onClick={() => inputRef.current?.click()}
-      alert={alert}
-      closeAlert={closeAlert}
     >
       <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
     </UploadButtonShell>
   )
 }
 
-export default function ReceivingUploadButton() {
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const [loading, setLoading] = useState(false)
-  const { alert, showAlert, closeAlert } = useAlert()
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setLoading(true)
-    closeAlert()
-
-    try {
-      await loadXlsx()
-      const buffer = await file.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: 'array' })
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = parseNavExcel(firstSheet)
-
-      if (!rows.length) throw new Error('File kosong.')
-
-      const cleanRows = rows.map((raw) => {
-        const row = Object.fromEntries(
-          Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
-        ) as Record<string, any>
-        return toAllowedHeaderRow({
-          ptr_no: pickValue(row, ['ptr_no', 'ptr', 'no', 'document_no', 'ptr_no_1']) ?? null,
-          transfer_order_no: pickValue(row, ['transfer_order_no', 'transfer_order', 'transfer_order_no_1']) ?? null,
-          transfer_from_code: pickValue(row, ['transfer_from_code', 'from_code', 'transfer_from', 'from_warehouse']) ?? null,
-          transfer_to_code: pickValue(row, ['transfer_to_code', 'to_code', 'transfer_to', 'to_warehouse']) ?? null,
-          posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date', 'receipt_date', 'received_date'])),
-          shipment_date: toISODate(pickValue(row, ['shipment_date', 'ship_date', 'delivery_date', 'shipment_dt'])),
-          receipt_date: toISODate(pickValue(row, ['receipt_date', 'received_date', 'date_of_receipt', 'posting_date'])),
-          shipping_agent_code: pickValue(row, ['shipping_agent_code', 'shipping_agent', 'agent_code', 'ship_agent']) ?? null,
-          ship_to_receipt_days: toNumber(pickValue(row, ['ship_to_receipt_days', 'lead_time_days', 'lead_time'])),
-          receipt_to_posting_days: toNumber(pickValue(row, ['receipt_to_posting_days', 'r_p_days', 'posting_days'])),
-          ship_to_posting_days: toNumber(pickValue(row, ['ship_to_posting_days', 'ship_to_posting_days_1'])),
-          source_file: file.name.trim(),
-          import_period: new Date().toISOString().slice(0, 7),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-      }).filter((r) => r.ptr_no)
-
-      if (!cleanRows.length) throw new Error('Tidak ada baris valid. Pastikan kolom No. (PTR) terisi.')
-
-      const ptrs = cleanRows.map((r) => String(r.ptr_no ?? '').trim()).filter(Boolean)
-      const { data: existing } = await getExistingReceivingHeaderPtrs(ptrs)
-      const existingSet = new Set((existing ?? []).map((r: any) => String(r.ptr_no ?? '').trim()))
-
-      const seen = new Set<string>()
-      const toInsert = cleanRows.filter((row) => {
-        const ptr = String(row.ptr_no ?? '').trim()
-        if (!ptr || existingSet.has(ptr) || seen.has(ptr)) return false
-        seen.add(ptr)
-        return true
-      })
-
-      if (!toInsert.length) throw new Error(`${ptrs.length} PTR sudah ada di database atau duplikat.`)
-
-      await insertReceivingHeaderRows(toInsert)
-      const skipped = cleanRows.length - toInsert.length
-      showAlert(
-        'success',
-        'Upload Berhasil',
-        `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.`
-      )
-    } catch (error: any) {
-      showAlert('error', 'Upload Gagal', formatError(error))
-    } finally {
-      setLoading(false)
-      if (inputRef.current) inputRef.current.value = ''
-    }
-  }
-
-  return (
-    <UploadButtonShell
-      label="Upload PTR Header"
-      loading={loading}
-      onClick={() => inputRef.current?.click()}
-      alert={alert}
-      closeAlert={closeAlert}
-    >
-      <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
-    </UploadButtonShell>
-  )
-}
+// Default export memakai komponen yang sama dengan PtrHeaderUploadButton
+// agar tidak ada dua salinan logika upload header yang harus dijaga.
+export default PtrHeaderUploadButton

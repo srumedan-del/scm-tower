@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { Plus, Trash2, Package } from 'lucide-react'
+import { Plus, Trash2, ArrowRightLeft, Loader2, AlertCircle, X } from 'lucide-react'
 import {
   insertCrossdocking, updateCrossdockingHeader, deleteCrossdocking,
   upsertCrossdockingDetail, deleteCrossdockingDetail,
@@ -9,25 +9,31 @@ import {
   type CrossdockingHeader, type CrossdockingDetail,
   type SkuOption, type CustomerOption,
 } from '@/app/(app)/crossdocking/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 const STATUS_OPTS = ['Draft', 'Ready', 'Dispatched', 'Delivered'] as const
 
 type DetailDraft = Omit<CrossdockingDetail, 'id' | 'crossdocking_id' | 'created_at' | 'item_name'> & {
-  _key: string     // client-only key untuk list rendering
-  id?: number      // undefined = belum ada di DB
+  _key: string
+  id?: number
   item_name?: string | null
 }
 
 type Props = {
-  crossdockingId: number | null   // null = form tambah baru
+  crossdockingId: number | null
   onClose: () => void
   onSaved: () => void
 }
 
 const emptyDetail = (): DetailDraft => ({
   _key: Math.random().toString(36).slice(2),
-  item_no: null, description: null, quantity: 1,
-  uom: null, lot_no: null, expiration_date: null, notes: null,
+  item_no: null,
+  description: null,
+  quantity: 1,
+  uom: null,
+  lot_no: null,
+  expiration_date: null,
+  notes: null,
 })
 
 function nowLocalDateTime() {
@@ -54,7 +60,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
   const isEdit = crossdockingId !== null
 
   // Options
-  const [skus,      setSkus]      = useState<SkuOption[]>([])
+  const [skus, setSkus] = useState<SkuOption[]>([])
   const [customers, setCustomers] = useState<CustomerOption[]>([])
   const [ptsOptions, setPtsOptions] = useState<Array<{ id: number; pts_no: string; document_date: string | null }>>([])
   const [selectedPtsIds, setSelectedPtsIds] = useState<number[]>([])
@@ -72,14 +78,14 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
   // Detail rows
   const [details, setDetails] = useState<DetailDraft[]>([emptyDetail()])
 
-  const [saving,   startSaving]   = useTransition()
+  const [saving, startSaving] = useTransition()
   const [deleting, startDeleting] = useTransition()
   const [err, setErr] = useState<string | null>(null)
 
   const hup = (k: keyof CrossdockingHeader, v: any) =>
     setHeader(f => ({ ...f, [k]: v }))
 
-  // Load options + data (edit mode)
+  // Load options (memuat PTS bulan saat proses dan bulan sebelumnya untuk respon super cepat)
   useEffect(() => {
     getCrossdockingOptions().then(opts => {
       setSkus(opts.skus)
@@ -98,9 +104,8 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
         )
       }).catch(e => setErr(e.message))
     }
-  }, [crossdockingId])
+  }, [crossdockingId, isEdit])
 
-  // Suggestion list comes from the dedicated Crossdocking customer master.
   function onCustomerNameChange(name: string) {
     hup('customer_name', name || null)
     const c = customers.find(c => c.customer_name.toLowerCase() === name.trim().toLowerCase())
@@ -147,7 +152,6 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
       .catch(error => setErr(error.message))
   }
 
-  // Detail helpers
   const dupd = (key: string, field: keyof DetailDraft, value: any) =>
     setDetails(ds => ds.map(d => d._key === key ? { ...d, [field]: value } : d))
 
@@ -177,7 +181,6 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
     setDetails(ds => ds.filter(d => d._key !== det._key))
   }
 
-  // Validate & save
   function save() {
     startSaving(async () => {
       setErr(null)
@@ -194,11 +197,10 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
 
       try {
         if (!isEdit) {
-          // INSERT baru
           const documentDateTime = normalizeDocumentDateTime(header.document_created_at ?? header.document_date)
           const { customer_code, customer_name, destination_address, destination_city, pts_id,
                   pss_no, psi_no, hq_reference_no, received_from_hq_date, promised_delivery_date,
-              notes, created_by } = header as any
+                  notes, created_by } = header as any
           await insertCrossdocking(
             { customer_code, customer_name, destination_address, destination_city, pts_id,
               pss_no, psi_no, ...documentDateTime, hq_reference_no, received_from_hq_date, promised_delivery_date,
@@ -206,25 +208,24 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             validDetails.map(({ _key, id, item_name, ...rest }) => rest)
           )
         } else {
-          // UPDATE header
           const { id, crossdocking_no, created_at, updated_at, ...payload } = header as any
           await updateCrossdockingHeader(crossdockingId!, { ...payload, ...normalizeDocumentDateTime(header.document_created_at ?? header.document_date) })
-          // Upsert setiap detail
           for (const d of validDetails) {
             const { _key, item_name, ...rest } = d
             await upsertCrossdockingDetail({ ...rest, id: rest.id ?? 0, crossdocking_id: crossdockingId! })
           }
         }
-        onSaved(); onClose()
+        notify.success('Crossdocking tersimpan'); onSaved()
+        onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
 
-  function del() {
+  async function del() {
     if (!crossdockingId) return
-    if (!confirm('Hapus crossdocking ini beserta seluruh detail itemnya?')) return
+    if (!(await confirmAction({ title: 'Hapus crossdocking?', message: 'Data crossdocking beserta seluruh detail itemnya akan dihapus.' }))) return
     startDeleting(async () => {
-      try { await deleteCrossdocking(crossdockingId); onSaved(); onClose() }
+      try { await deleteCrossdocking(crossdockingId); notify.success('Crossdocking dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -232,90 +233,161 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
   const totalQty = details.reduce((s, d) => s + (Number(d.quantity) || 0), 0)
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs font-sans">
+      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white text-[14px] shadow-2xl border border-slate-200">
 
-        {/* ── Title ── */}
-        <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
-          <div>
-            <h2 className="font-bold text-lg">
-              {isEdit ? `Edit Crossdocking — ${(header as any).crossdocking_no ?? ''}` : 'TAMBAH CROSSDOCKING'}
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Shipment dari Kantor Pusat via Medan — input manual
-            </p>
+        {/* ── Title Bar ── */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <ArrowRightLeft className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[18px] sm:text-[20px] font-bold text-slate-900 tracking-tight">
+                  {isEdit ? `Edit Crossdocking — ${(header as any).crossdocking_no ?? ''}` : 'Tambah Crossdocking'}
+                </h2>
+                <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[14px] font-bold text-indigo-700">
+                  {header.status || 'Draft'}
+                </span>
+              </div>
+              <p className="text-[14px] text-slate-500 mt-0.5">
+                Shipment dari Kantor Pusat via Medan — input manual
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+            aria-label="Tutup"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 p-5 space-y-5">
-          {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat data...</p>}
+        {/* ── Modal Body (Scrollable) ── */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-slate-50/40">
+          {optLoading && (
+            <div className="flex items-center justify-center py-2.5 px-4 rounded-xl bg-indigo-50/70 border border-indigo-100 text-[14px] font-medium text-indigo-700 gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+              <span>Memuat data master & PTS bulan ini...</span>
+            </div>
+          )}
 
-          {/* ── Header fields ── */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Info Pengiriman</h3>
+          {/* ── 1. Info Pengiriman Card ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+              <div className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+              <h3 className="text-[14px] font-bold uppercase tracking-wider text-slate-700">
+                Informasi Pengiriman
+              </h3>
+            </div>
 
             {!isEdit && (
-              <Field label="PTS sumber detail (opsional)">
-                <select value="" onChange={e => onPtsChange(e.target.value)} className="inp">
-                  <option value="">Pilih PTS yang telah di-upload</option>
-                  {ptsOptions.map(pts => <option key={pts.id} value={pts.id}>{pts.pts_no}{pts.document_date ? ` · ${pts.document_date}` : ''}</option>)}
+              <Field label="PTS Sumber Detail (Opsional)">
+                <select
+                  value=""
+                  onChange={e => onPtsChange(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all cursor-pointer"
+                >
+                  <option value="">Pilih PTS yang telah di-upload...</option>
+                  {ptsOptions.map(pts => (
+                    <option key={pts.id} value={pts.id}>
+                      {pts.pts_no}{pts.document_date ? ` · ${pts.document_date}` : ''}
+                    </option>
+                  ))}
                 </select>
                 {selectedPtsIds.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-2.5 flex flex-wrap gap-2">
                     {selectedPtsIds.map(id => {
                       const pts = ptsOptions.find(option => option.id === id)
-                      return <button key={id} type="button" onClick={() => removePts(id)} className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-red-50 hover:text-red-700">
-                        {pts?.pts_no ?? id} ×
-                      </button>
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-1 text-[14px] font-bold text-indigo-700"
+                        >
+                          <span>{pts?.pts_no ?? id}</span>
+                          <button
+                            type="button"
+                            onClick={() => removePts(id)}
+                            className="text-indigo-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
+                            title="Hapus PTS"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </span>
+                      )
                     })}
                   </div>
                 )}
-                <p className="mt-1 text-[11px] text-gray-500">Pilih lebih dari satu PTS untuk menggabungkannya menjadi satu PSS.</p>
+                <p className="mt-1 text-[12px] text-slate-400">
+                  Pilih lebih dari satu PTS untuk menggabungkannya menjadi satu PSS. (Menampilkan PTS bulan aktif & 1 bulan sebelumnya)
+                </p>
               </Field>
             )}
 
-            {/* Customer */}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Nama Customer / Tujuan *">
-                <input
-                  value={header.customer_name ?? ''}
-                  onChange={e => onCustomerNameChange(e.target.value)}
-                  className="inp"
-                  list="crossdocking-customer-options"
-                  placeholder="Ketik atau pilih customer sebelumnya"
-                />
-                <datalist id="crossdocking-customer-options">
-                  {customers.map(c => (
-                    <option key={`${c.customer_name}-${c.destination_city ?? ''}`} value={c.customer_name} label={c.destination_city ?? ''} />
-                  ))}
-                </datalist>
-              </Field>
-              <Field label="Kota Tujuan *">
-                <input
-                  value={header.destination_city ?? ''}
-                  onChange={e => hup('destination_city', e.target.value || null)}
-                  className="inp"
-                  placeholder="MEDAN"
-                />
-              </Field>
+            {/* Customer & Kota */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="sm:col-span-2">
+                <Field label="Nama Customer / Tujuan" required>
+                  <input
+                    value={header.customer_name ?? ''}
+                    onChange={e => onCustomerNameChange(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
+                    list="crossdocking-customer-options"
+                    placeholder="Ketik atau pilih customer tujuan"
+                  />
+                  <datalist id="crossdocking-customer-options">
+                    {customers.map(c => (
+                      <option
+                        key={`${c.customer_name}-${c.destination_city ?? ''}`}
+                        value={c.customer_name}
+                        label={c.destination_city ?? ''}
+                      />
+                    ))}
+                  </datalist>
+                </Field>
+              </div>
+              <div>
+                <Field label="Kota Tujuan" required>
+                  <input
+                    value={header.destination_city ?? ''}
+                    onChange={e => hup('destination_city', e.target.value || null)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
+                    placeholder="Contoh: MEDAN / PEKANBARU"
+                  />
+                </Field>
+              </div>
             </div>
 
+            {/* Alamat Tujuan */}
             <Field label="Alamat Tujuan">
               <input
                 value={header.destination_address ?? ''}
                 onChange={e => hup('destination_address', e.target.value || null)}
-                className="inp"
-                placeholder="Alamat lengkap tujuan akhir"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
+                placeholder="Alamat lengkap tujuan pengiriman"
               />
             </Field>
 
-            <div className="grid grid-cols-3 gap-3">
+            {/* Nomor Dokumen & Datetime */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <Field label="Nomor PSS">
-                <input value={header.pss_no ?? ''} onChange={e => hup('pss_no', e.target.value || null)} className="inp font-mono" placeholder="PSS-XXXX-XXXX" />
+                <input
+                  value={header.pss_no ?? ''}
+                  onChange={e => hup('pss_no', e.target.value || null)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium font-mono text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
+                  placeholder="PSS-XXXX-XXXX"
+                />
               </Field>
               <Field label="Nomor PSI">
-                <input value={header.psi_no ?? ''} onChange={e => hup('psi_no', e.target.value || null)} className="inp font-mono" placeholder="PSI-XXXX-XXXX" />
+                <input
+                  value={header.psi_no ?? ''}
+                  onChange={e => hup('psi_no', e.target.value || null)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium font-mono text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
+                  placeholder="PSI-XXXX-XXXX"
+                />
               </Field>
               <Field label="Document Date Time">
                 <input
@@ -327,45 +399,42 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                     hup('document_created_at', value)
                     hup('document_date', normalized.document_date)
                   }}
-                  className="inp"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
                 />
               </Field>
             </div>
 
-            {/* Tanggal & referensi */}
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Terima dari HQ *">
+            {/* Tanggal HQ, Promised, Ref & Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+              <Field label="Terima dari HQ" required>
                 <input
                   type="date"
                   value={header.received_from_hq_date?.slice(0, 10) ?? ''}
                   onChange={e => hup('received_from_hq_date', e.target.value)}
-                  className="inp"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
                 />
               </Field>
-              <Field label="Promised Delivery *">
+              <Field label="Promised Delivery" required>
                 <input
                   type="date"
                   value={header.promised_delivery_date?.slice(0, 10) ?? ''}
                   onChange={e => hup('promised_delivery_date', e.target.value)}
-                  className="inp"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
                 />
               </Field>
               <Field label="Ref. No. dari HQ">
                 <input
                   value={header.hq_reference_no ?? ''}
                   onChange={e => hup('hq_reference_no', e.target.value || null)}
-                  className="inp"
-                  placeholder="No. dokumen HQ (opsional)"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all"
+                  placeholder="No. dokumen HQ"
                 />
               </Field>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
               <Field label="Status">
                 <select
                   value={header.status ?? 'Draft'}
                   onChange={e => hup('status', e.target.value)}
-                  className="inp"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-bold text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs transition-all cursor-pointer"
                 >
                   {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -373,46 +442,57 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             </div>
           </section>
 
-          {/* ── Detail items ── */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
-                <Package className="h-4 w-4" />
-                Detail Item ({details.filter(d => d.quantity > 0).length} baris · total {totalQty.toLocaleString('id-ID')} pcs)
-              </h3>
+          {/* ── 2. Detail Item Section ── */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                <h3 className="text-[14px] font-bold uppercase tracking-wider text-slate-700">
+                  Detail Item
+                </h3>
+                <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[14px] font-bold text-indigo-700">
+                  {details.filter(d => d.quantity > 0).length} baris · {totalQty.toLocaleString('id-ID')} pcs
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={addDetail}
-                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-[14px] font-semibold text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors shadow-2xs cursor-pointer"
               >
-                <Plus className="h-3.5 w-3.5" /> Tambah Item
+                <Plus className="h-4 w-4" /> Tambah Item
               </button>
             </div>
 
-            <div className="rounded-lg border border-gray-200 overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+              <table className="w-full text-left text-[14px] border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item No</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Deskripsi</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Qty</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">UOM</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lot</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Expired</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap"></th>
+                    <th className="px-3.5 py-2.5 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 w-12">#</th>
+                    <th className="px-3.5 py-2.5 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 min-w-[160px] w-48">Item No</th>
+                    <th className="px-3.5 py-2.5 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 min-w-[240px]">Deskripsi</th>
+                    <th className="px-3.5 py-2.5 text-right text-[14px] font-bold uppercase tracking-wider text-slate-800 w-28">Qty</th>
+                    <th className="px-3.5 py-2.5 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 w-24">UOM</th>
+                    <th className="px-3.5 py-2.5 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 w-36">Lot No</th>
+                    <th className="px-3.5 py-2.5 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 w-40">Expired</th>
+                    <th className="px-2 py-2.5 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 w-12"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {details.map(d => (
-                    <tr key={d._key} className="group border-t border-[#EEF0F4] hover:bg-gray-50">
-                      {/* Ketik kode produk; daftar menampilkan kode dan nama SKU. */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                <tbody className="divide-y divide-slate-100 bg-white font-medium">
+                  {details.map((d, index) => (
+                    <tr key={d._key} className="hover:bg-slate-50/70 transition-colors">
+                      {/* Row Index # */}
+                      <td className="px-3.5 py-2 text-center text-[14px] font-semibold text-slate-400">
+                        {index + 1}
+                      </td>
+
+                      {/* Item No */}
+                      <td className="px-3.5 py-2">
                         <input
                           value={d.item_no ?? ''}
                           onChange={e => onItemChange(d._key, e.target.value)}
                           list="crossdocking-sku-options"
-                          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:border-indigo-500"
-                          placeholder="Cari kode produk"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] font-mono font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                          placeholder="Kode produk"
                         />
                         <datalist id="crossdocking-sku-options">
                           {skus.map(s => (
@@ -420,71 +500,79 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
                           ))}
                         </datalist>
                       </td>
+
                       {/* Deskripsi */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                      <td className="px-3.5 py-2">
                         <input
                           value={d.item_name || d.description || ''}
                           onChange={e => dupd(d._key, 'description', e.target.value || null)}
-                          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                           placeholder="Nama / deskripsi item"
                         />
                       </td>
+
                       {/* Qty */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                      <td className="px-3.5 py-2">
                         <input
-                          type="number" min={0}
+                          type="number"
+                          min={0}
                           value={d.quantity}
                           onChange={e => dupd(d._key, 'quantity', Number(e.target.value) || 0)}
-                          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 text-right focus:outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] font-bold font-mono text-right text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                         />
                       </td>
+
                       {/* UOM */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                      <td className="px-3.5 py-2">
                         <input
                           value={d.uom ?? ''}
                           onChange={e => dupd(d._key, 'uom', e.target.value || null)}
-                          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[14px] text-center uppercase font-bold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                           placeholder="PCS"
                         />
                       </td>
-                      {/* Lot */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+
+                      {/* Lot No */}
+                      <td className="px-3.5 py-2">
                         <input
                           value={d.lot_no ?? ''}
                           onChange={e => dupd(d._key, 'lot_no', e.target.value || null)}
-                          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 font-mono focus:outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] font-mono text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                          placeholder="Nomor lot"
                         />
                       </td>
+
                       {/* Expired */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                      <td className="px-3.5 py-2">
                         <input
                           type="date"
                           value={d.expiration_date ?? ''}
                           onChange={e => dupd(d._key, 'expiration_date', e.target.value || null)}
-                          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                         />
                       </td>
-                      {/* Hapus */}
-                      <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
+
+                      {/* Hapus Action */}
+                      <td className="px-2 py-2 text-center">
                         <button
                           type="button"
                           onClick={() => removeDetail(d)}
-                          className="text-red-400 hover:text-red-600"
+                          className="rounded-lg p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Hapus baris"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 {details.length > 0 && (
-                  <tfoot className="bg-gray-50 border-t">
+                  <tfoot className="bg-slate-50/90 border-t-2 border-slate-200 font-bold">
                     <tr>
-                      <td colSpan={2} className="px-3 py-2 text-xs font-semibold text-gray-500">
-                        TOTAL ({details.filter(d => d.quantity > 0).length} item)
+                      <td colSpan={3} className="px-4 py-3 text-[14px] uppercase tracking-wider text-slate-700">
+                        TOTAL ({details.filter(d => d.quantity > 0).length} baris item)
                       </td>
-                      <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">
+                      <td className="px-4 py-3 text-right text-[14px] font-mono text-indigo-700">
                         {totalQty.toLocaleString('id-ID')}
                       </td>
                       <td colSpan={4} />
@@ -495,45 +583,67 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             </div>
           </section>
 
-          {err && <p className="text-red-600 text-sm bg-red-50 rounded p-2">{err}</p>}
+          {/* ── Error Notification ── */}
+          {err && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-[14px] font-medium text-rose-700 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+              <span>{err}</span>
+            </div>
+          )}
         </div>
 
-        {/* ── Footer ── */}
-        <div className="flex justify-between border-t px-6 py-4 bg-gray-50 shrink-0">
+        {/* ── Modal Footer ── */}
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/80 px-6 py-4 shrink-0">
           <div>
             {isEdit && (
               <button
+                type="button"
                 onClick={del}
                 disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
+                className="rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-[14px] font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
               >
-                {deleting ? 'Menghapus…' : 'Hapus'}
+                {deleting ? 'Menghapus…' : 'Hapus Crossdocking'}
               </button>
             )}
           </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
+          <div className="flex items-center gap-3">
             <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-xs cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
               onClick={save}
               disabled={saving}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50"
+              className="rounded-xl bg-indigo-600 px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all shadow-xs hover:shadow active:scale-[0.99] flex items-center gap-2 cursor-pointer"
             >
-              {saving ? 'Menyimpan…' : isEdit ? 'Simpan Perubahan' : 'Buat Crossdocking'}
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Menyimpan…</span>
+                </>
+              ) : (
+                <span>{isEdit ? 'Simpan Perubahan' : 'Buat Crossdocking'}</span>
+              )}
             </button>
           </div>
         </div>
-
-        <style>{`.inp{width:100%;padding:.4rem .7rem;border:1px solid #e5e7eb;border-radius:.5rem;font-size:.875rem}.inp:focus{outline:none;border-color:#6366f1}`}</style>
       </div>
     </div>
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block">
-      <span className="text-xs font-bold text-gray-700 mb-1 block">{label}</span>
+    <div className="space-y-1.5 text-[14px]">
+      <label className="text-[14px] font-bold text-slate-700 flex items-center gap-1">
+        <span>{label}</span>
+        {required && <span className="text-rose-500 font-bold">*</span>}
+      </label>
       {children}
-    </label>
+    </div>
   )
 }

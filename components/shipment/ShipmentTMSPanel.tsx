@@ -10,6 +10,7 @@ import {
   type DriverOption, type RouteOption,
 } from '@/app/(app)/shipment/actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { confirmAction, notify } from '@/lib/feedback'
 
 const STATUS_OPTS = ['Draft', 'Dispatched', 'In Transit', 'Delivered'] as const
 
@@ -161,11 +162,11 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     up('transporter_id', noteTransporter.id)
   }, [form.transporter_id, noteTransporter?.id])
 
-  function del() {
+  async function del() {
     if (!shipment) return
-    if (!confirm('Hapus shipment ini?')) return
+    if (!(await confirmAction({ title: 'Hapus shipment?', message: 'Shipment ini beserta data POD-nya akan dihapus.' }))) return
     startDeleting(async () => {
-      try { await deleteShipmentTracking(shipment.id); onSaved(); onClose() }
+      try { await deleteShipmentTracking(shipment.id); notify.success('Shipment dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -189,6 +190,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
           fleet_type: form.fleet_type ?? (isInternal ? 'Internal' : 'Eksternal'),
           status: retailFields || form.trip_id ? 'In Transit' : form.status,
           dispatch_time: form.dispatch_time ?? null,
+          created_at: form.created_at ?? null,
           no_resi: form.no_resi?.trim() || null,
           total_biaya_eksternal: form.total_biaya_eksternal == null
             ? null
@@ -198,18 +200,22 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
         await Promise.all(rowsToUpdate.map(row => upsertShipmentTracking({
           ...(row ?? form),
           ...sharedFields,
+          // Satu trip bisa berisi PSS yang sudah Delivered; jangan ikut dimundurkan.
+          status: (row ?? form).status === 'Delivered' ? 'Delivered' : sharedFields.status,
           id: row?.id,
         })))
-        await Promise.all(rowsToUpdate
-          .filter((row): row is ShipmentTrackingRow => row != null && row.id != null)
-          .map(row => updateShipmentRetailCost({
-            id: row.id,
-            no_resi: form.no_resi?.trim() || null,
-            total_biaya_eksternal: form.total_biaya_eksternal == null
-              ? null
-              : Number(form.total_biaya_eksternal),
-          })))
-        onSaved(); onClose()
+        if (retailFields) {
+          await Promise.all(rowsToUpdate
+            .filter((row): row is ShipmentTrackingRow => row != null && row.id != null)
+            .map(row => updateShipmentRetailCost({
+              id: row.id,
+              no_resi: form.no_resi?.trim() || null,
+              total_biaya_eksternal: form.total_biaya_eksternal == null
+                ? null
+                : Number(form.total_biaya_eksternal),
+            })))
+        }
+        notify.success('Shipment tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -219,7 +225,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
       <div className="flex h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white font-sans text-sm shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4 shrink-0">
-          <h3 className="font-bold uppercase">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
             {shipment ? 'Edit Shipment TMS' : 'Tambah Shipment TMS'}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
@@ -346,8 +352,11 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 </select>
               </Field>
             </div>
-            <div className="mt-2">
-              <Field label="Waktu Dispatch">
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Tanggal Create Shipment">
+                <DateTimeInput value={form.created_at ?? null} onChange={value => up('created_at', value)} />
+              </Field>
+              <Field label="Waktu Keberangkatan (Dispatch)">
                 <DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
               </Field>
             </div>
@@ -413,7 +422,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="mb-1 border-b pb-0.5 text-xs font-bold uppercase tracking-wide text-gray-400">{title}</div>
+      <div className="mb-1 border-b pb-0.5 text-sm font-bold uppercase tracking-wider text-slate-800">{title}</div>
       {children}
     </section>
   )
@@ -422,7 +431,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-0.5 block text-xs font-bold text-gray-700">{label}</span>
+      <span className="mb-0.5 block text-sm font-semibold text-slate-700">{label}</span>
       {children}
     </label>
   )
@@ -431,8 +440,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function InfoField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="block">
-      <span className="mb-0.5 block text-xs font-bold text-gray-500">{label}</span>
-      <div className="py-0.5">{children}</div>
+      <span className="mb-0.5 block text-sm font-semibold text-slate-500">{label}</span>
+      <div className="py-0.5 text-sm font-medium text-slate-800">{children}</div>
     </div>
   )
 }
@@ -440,43 +449,46 @@ function InfoField({ label, children }: { label: string; children: React.ReactNo
 function DateTimeInput({ value, onChange }: { value: string | null; onChange: (value: string | null) => void }) {
   const [time, setTime] = useState(value ? new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(new Date(value)) : '')
+  }).format(new Date(value)) : '00:00')
   const date = value ? new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date(value)) : ''
 
-	useEffect(() => {
+  useEffect(() => {
     setTime(value ? new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false,
-    }).format(new Date(value)) : '')
-	}, [value])
+    }).format(new Date(value)) : '00:00')
+  }, [value])
 
-	function save(dateValue: string, timeValue: string) {
-		if (!dateValue && !timeValue) {
-			onChange(null)
-			return
-		}
-		if (!dateValue || !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) return
-    onChange(new Date(`${dateValue}T${timeValue}:00+07:00`).toISOString())
-	}
+  function save(dateValue: string, timeValue: string) {
+    if (!dateValue && !timeValue) {
+      onChange(null)
+      return
+    }
+    if (!dateValue) return
+    const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue) ? timeValue : '00:00'
+    onChange(new Date(`${dateValue}T${validTime}:00+07:00`).toISOString())
+  }
 
-	return (
-		<div className="grid grid-cols-[1fr_4.5rem] gap-1.5">
-			<input type="date" value={date} onChange={event => save(event.target.value, time)} className="inp" />
-			<input
-				type="text"
-				inputMode="numeric"
-				value={time}
-				onChange={event => {
-					const nextTime = event.target.value
-					setTime(nextTime)
-					save(date, nextTime)
-				}}
-				placeholder="23:54"
-				maxLength={5}
-				className="inp"
-				aria-label="Jam (HH:MM)"
-			/>
-		</div>
-	)
+  return (
+    <div className="grid grid-cols-[1fr_6.5rem] gap-1.5">
+      <input
+        type="date"
+        value={date}
+        onChange={event => save(event.target.value, time || '00:00')}
+        className="inp"
+      />
+      <input
+        type="time"
+        value={time}
+        onChange={event => {
+          const nextTime = event.target.value
+          setTime(nextTime)
+          save(date, nextTime)
+        }}
+        className="inp text-center"
+        aria-label="Jam (HH:MM)"
+      />
+    </div>
+  )
 }

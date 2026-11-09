@@ -21,6 +21,7 @@ const normalizeRoutePlace = (value: string) => value.trim().replace(/\s+/g, ' ')
  * Nomor urut per kategori DK/LK, numerik (tidak terpengaruh lexicographic sort).
  */
 export async function generateRouteCode(dkLk: 'D' | 'L'): Promise<string> {
+  await requireAuthenticatedUser()
   const prefix = `MDN-${dkLk}-`
 
   const { data } = await supabaseAdmin

@@ -1,8 +1,10 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function generateIssueNo(issueDate: string): Promise<string> {
+  await requireAuthenticatedUser()
   const d = new Date(issueDate)
   const yy = String(d.getFullYear()).slice(2)
   const mm = String(d.getMonth() + 1).padStart(2, '0')
@@ -24,6 +26,7 @@ export async function generateIssueNo(issueDate: string): Promise<string> {
 }
 
 export async function upsertIssue(payload: Record<string, any>, id?: number) {
+  await requireAuthenticatedUser()
   if (id) {
     const { error } = await supabaseAdmin.from('issue_log').update(payload).eq('id', id)
     if (error) throw new Error(error.message)
@@ -34,6 +37,7 @@ export async function upsertIssue(payload: Record<string, any>, id?: number) {
 }
 
 export async function deleteIssue(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('issue_log').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }

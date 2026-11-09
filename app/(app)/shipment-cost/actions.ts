@@ -1,6 +1,8 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { inferDkLk } from '@/lib/dklk'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type ShipmentCostRow = {
   id: number
@@ -52,13 +54,74 @@ export type ShipmentCostRow = {
   notes: string | null
 }
 
+function getNextMonthFirstDay(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+  return next
+}
+
+export async function getShipmentCostAvailableMonths() {
+  await requireAuthenticatedUser()
+  const { data } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('document_date')
+    .eq('status', 'Delivered')
+    .not('document_date', 'is', null)
+    .order('document_date', { ascending: true })
+    .limit(1)
+
+  const minDate = data?.[0]?.document_date ?? '2026-01'
+  const [minYear, minMonth] = minDate.slice(0, 7).split('-').map(Number)
+
+  const now = new Date()
+  const maxYear = now.getFullYear()
+  const maxMonth = now.getMonth() + 1
+
+  const months: string[] = []
+  for (let y = minYear; y <= maxYear; y++) {
+    const startM = y === minYear ? minMonth : 1
+    const endM = y === maxYear ? maxMonth : 12
+    for (let m = startM; m <= endM; m++) {
+      months.push(`${y}-${String(m).padStart(2, '0')}`)
+    }
+  }
+  return months.sort().reverse()
+}
+
+export type TripSiblingItem = {
+  id: number
+  trip_id: string | null
+  pss_no: string | null
+  customer_name: string | null
+  destination_city: string | null
+  bongkar_muat_cost: number | null
+  biaya_tkbm: number | null
+}
+
+export async function getShipmentCostTripItems(tripId: string): Promise<TripSiblingItem[]> {
+  await requireAuthenticatedUser()
+  if (!tripId) return []
+  const { data, error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('id, trip_id, pss_no, customer_name, destination_city, bongkar_muat_cost, biaya_tkbm')
+    .eq('trip_id', tripId)
+    .order('id')
+  if (error) {
+    console.error('getShipmentCostTripItems error:', error)
+    return []
+  }
+  return (data ?? []) as TripSiblingItem[]
+}
+
 export async function getShipmentCosts(filters?: {
   status?: string
   cost_model?: string
   dk_lk?: string
   from_date?: string
   to_date?: string
+  month?: string
 }): Promise<ShipmentCostRow[]> {
+  await requireAuthenticatedUser()
   let q = supabaseAdmin
     .from('vw_shipment_tms')
     .select(`
@@ -80,9 +143,18 @@ export async function getShipmentCosts(filters?: {
     .order('trip_id', { ascending: true })
     .limit(500)
 
-  if (filters?.status && filters.status !== 'all') q = q.eq('status', filters.status)
+  // Default menu Shipment Cost hanya menampilkan yang berstatus Delivered
+  const targetStatus = filters?.status ?? 'Delivered'
+  if (targetStatus !== 'all') {
+    q = q.eq('status', targetStatus)
+  }
+
   if (filters?.cost_model && filters.cost_model !== 'all') q = q.eq('cost_model', filters.cost_model)
   if (filters?.dk_lk && filters.dk_lk !== 'all') q = q.eq('dk_lk', filters.dk_lk)
+  if (filters?.month && filters.month !== 'all') {
+    const nextMonth = getNextMonthFirstDay(filters.month)
+    q = q.gte('document_date', `${filters.month}-01`).lt('document_date', nextMonth)
+  }
   if (filters?.from_date) q = q.gte('document_date', filters.from_date)
   if (filters?.to_date) q = q.lte('document_date', filters.to_date)
 
@@ -147,6 +219,8 @@ export async function getShipmentCosts(filters?: {
       ...row,
       dk_lk: customerDkLkByCode.get(String(row.customer_code))
         ?? customerDkLkByName.get(normalizeRateText(row.customer_name))
+        ?? (row.dk_lk as string | null)
+        ?? inferDkLk(row.destination_city)
         ?? null,
       transporter_name: transporterName,
       transporter_type: isSruVendor ? 'Internal' : (transporterType ?? null),
@@ -163,6 +237,7 @@ function normalizeRateText(value: unknown) {
 }
 
 export async function getTruckingRate(destination: string | null, vehicleType: string | null, transporterName: string | null) {
+  await requireAuthenticatedUser()
   const normalizedDestination = normalizeRateText(destination)
   const normalizedVehicleType = normalizeRateText(vehicleType)
   const normalizedTransporter = normalizeRateText(transporterName)
@@ -223,10 +298,13 @@ export type UpsertCostPayload = {
   biaya_tkbm?: number | null
   // Common
   invoice_value?: number | null
+  // Multi-PSS TKBM breakdown
+  sibling_tkbm?: Array<{ id: number; tkbm: number }>
 }
 
 export async function upsertShipmentCost(payload: UpsertCostPayload) {
-  const { id, ...data } = payload
+  await requireAuthenticatedUser()
+  const { id, sibling_tkbm, ...data } = payload
   const costModel = payload.cost_model === 'Retail' || Boolean(payload.no_resi)
     ? 'Retail'
     : payload.cost_model === 'Trucking'
@@ -267,4 +345,19 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
     .update(normalizedData)
     .eq('id', id)
   if (error) throw new Error(error.message)
+
+  // Update TKBM untuk masing-masing PSS jika ada breakdown per Surat Jalan / PSS
+  if (sibling_tkbm && sibling_tkbm.length > 0) {
+    for (const item of sibling_tkbm) {
+      if (item.id && item.id !== id) {
+        await supabaseAdmin
+          .from('shipment_tracking')
+          .update({
+            bongkar_muat_cost: item.tkbm,
+            biaya_tkbm: item.tkbm,
+          })
+          .eq('id', item.id)
+      }
+    }
+  }
 }

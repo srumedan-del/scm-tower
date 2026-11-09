@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import {
   upsertTransporter, deleteTransporter, type TransporterRow,
 } from '@/app/(app)/master-data/transporters/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 const empty: Omit<TransporterRow, 'id'> = {
   transporter_code: '', name: '', type: 'Eksternal',
@@ -36,11 +37,11 @@ export default function TransporterEditPanel({
   const [err, setErr] = useState<string | null>(null)
   const up = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  function del() {
+  async function del() {
     if (!transporter) return
-    if (!confirm(`HAPUS TRANSPORTER ${transporter.name}?`)) return
+    if (!(await confirmAction({ title: 'Hapus transporter?', message: `Transporter ${transporter.name} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteTransporter(transporter.id); onSaved(); onClose() }
+      try { await deleteTransporter(transporter.id); notify.success('Transporter dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -63,7 +64,7 @@ export default function TransporterEditPanel({
           is_active:        form.is_active,
           notes:            (form.notes    as string)?.trim() || null,
         })
-        onSaved(); onClose()
+        notify.success('Transporter tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

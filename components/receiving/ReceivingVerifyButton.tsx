@@ -112,19 +112,19 @@ export default function ReceivingVerifyButton() {
                     <p className="text-xs text-gray-500">document_no tidak ditemukan di receiving_header</p>
                     <div className="mt-2 max-h-48 overflow-y-auto">
                       <table className="w-full text-xs">
-                        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+                        <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
                           <tr>
-                            <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOCUMENT NO</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ITEM</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DESKRIPSI</th>
+                            <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">DOCUMENT NO</th>
+                            <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">ITEM</th>
+                            <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">DESKRIPSI</th>
                           </tr>
                         </thead>
                         <tbody>
                           {result.orphanedDetails.map((d) => (
                             <tr key={String(d.id)} className="border-t">
-                              <td className="px-4 py-0.25 text-xs font-medium font-medium text-[#475569]">{d.document_no}</td>
-                              <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.item_no}</td>
-                              <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{d.description}</td>
+                              <td className="px-4 py-2 text-xs font-mono font-medium text-slate-700">{d.document_no}</td>
+                              <td className="px-4 py-2 text-xs font-mono font-medium text-slate-700">{d.item_no}</td>
+                              <td className="px-4 py-2 text-xs font-mono font-medium text-slate-700">{d.description}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -145,17 +145,17 @@ export default function ReceivingVerifyButton() {
                     <p className="text-xs text-gray-500">ptr_no tidak memiliki detail transaksi</p>
                     <div className="mt-2 max-h-48 overflow-y-auto">
                       <table className="w-full text-xs">
-                        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+                        <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
                           <tr>
-                            <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ID</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTR NO</th>
+                            <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">ID</th>
+                            <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">PTR NO</th>
                           </tr>
                         </thead>
                         <tbody>
                           {result.emptyHeaders.map((h) => (
                             <tr key={String(h.id)} className="border-t">
-                              <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{h.id}</td>
-                              <td className="px-4 py-0.25 text-xs font-medium font-medium text-[#475569]">{h.ptr_no}</td>
+                              <td className="px-4 py-2 text-xs font-mono font-medium text-slate-700">{h.id}</td>
+                              <td className="px-4 py-2 text-xs font-mono font-medium text-slate-700">{h.ptr_no}</td>
                             </tr>
                           ))}
                         </tbody>

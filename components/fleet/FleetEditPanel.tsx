@@ -1,6 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { upsertFleet, deleteFleet } from '@/app/(app)/master-data/vehicles/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Fleet = {
   id: number
@@ -45,11 +46,11 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
   const [err, setErr] = useState<string | null>(null)
   const up = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
-  function del() {
+  async function del() {
     if (!fleet) return
-    if (!confirm(`HAPUS ARMADA ${getNo(fleet)}?`)) return
+    if (!(await confirmAction({ title: 'Hapus armada?', message: `Armada ${getNo(fleet)} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteFleet(fleet.id); onSaved(); onClose() }
+      try { await deleteFleet(fleet.id); notify.success('Armada dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -68,7 +69,7 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
         status:       form.is_active ? 'aktif' : 'nonaktif',
       }
       if (!payload.vehicle_no) { setErr('NOPOL wajib diisi'); return }
-      try { await upsertFleet(payload, fleet?.id); onSaved(); onClose() }
+      try { await upsertFleet(payload, fleet?.id); notify.success('Armada tersimpan'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }

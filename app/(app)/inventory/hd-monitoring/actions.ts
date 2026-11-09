@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type HdMonitoringRow = {
   id: number
@@ -51,6 +52,7 @@ export type HdCustomerOption = {
 
 // Ambil semua monitoring HD (snapshot terbaru per customer)
 export async function getHdMonitoring(): Promise<HdMonitoringRow[]> {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('hd_stock_monitoring')
     .select(`
@@ -75,6 +77,7 @@ export async function getHdMonitoring(): Promise<HdMonitoringRow[]> {
 
 // Ambil customer HD (is_hd_customer = true atau machine_count > 0)
 export async function getHdCustomers(): Promise<HdCustomerOption[]> {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('customers')
     .select('id, customer_code, customer_name, city, machine_count')
@@ -89,6 +92,7 @@ export async function getHdCustomers(): Promise<HdCustomerOption[]> {
 export async function upsertHdMonitoring(
   row: Partial<HdMonitoringRow> & { customer_id: number; snapshot_date: string }
 ) {
+  await requireAuthenticatedUser()
   const {
     id, customer_code, customer_name, city, hd_machine_count,
     // GENERATED — jangan di-insert
@@ -108,6 +112,7 @@ export async function upsertHdMonitoring(
 }
 
 export async function deleteHdMonitoring(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('hd_stock_monitoring').delete().eq('id', id)
   if (error) throw error
 }
@@ -123,6 +128,7 @@ export type LastShipmentInfo = {
  * Pakai customer_no dari tabel customers untuk match ke outbound_header.customer_no.
  */
 export async function getLastShipmentForCustomer(customerId: number): Promise<LastShipmentInfo | null> {
+  await requireAuthenticatedUser()
   // Ambil customer_code dulu
   const { data: cust } = await supabaseAdmin
     .from('customers')

@@ -81,7 +81,7 @@ export function DataTable<T extends Record<string, any>>({
   if (loading) {
     return (
       <div className="bg-white border border-border rounded-xl overflow-hidden">
-        <div className="divide-y divide-[#EEF0F4]">
+        <div className="divide-y divide-slate-100">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="p-4 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -111,11 +111,11 @@ export function DataTable<T extends Record<string, any>>({
   return (
       <div className="bg-white border border-border rounded-xl overflow-hidden">
         {/* Desktop View */}
-        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm hidden md:block">
+        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm hidden md:block">
           <table className={`w-full text-sm ${noWrap ? 'whitespace-nowrap' : ''}`}>
-            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
               <tr>
-                {expandable && <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap"></th>}
+                {expandable && <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap"></th>}
                 {visibleCols.map(col => (
                   <th
                           key={String(col.key)}
@@ -127,7 +127,7 @@ export function DataTable<T extends Record<string, any>>({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EEF0F4]">
+            <tbody className="divide-y divide-slate-100">
               {data.map(row => {
                 const rowId = row[rowKey]
                 const isExpanded = expandedRows.has(rowId)
@@ -138,7 +138,7 @@ export function DataTable<T extends Record<string, any>>({
                       className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                     >
                       {expandable && (
-                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
+                        <td className="px-4 py-3 text-xs font-medium text-slate-600">
                           <button
                             onClick={e => {
                               e.stopPropagation()
@@ -156,7 +156,7 @@ export function DataTable<T extends Record<string, any>>({
                       {visibleCols.map(col => (
                                             <td
                                               key={String(col.key)}
-                                              className={`px-4 py-3 text-sm ${isNumericTableValue(row[col.key]) ? 'text-right font-medium text-text numeric-cell' : 'text-text'}`}
+                                              className={`px-4 py-3 text-xs font-medium ${isNumericTableValue(row[col.key]) ? 'text-right font-medium text-text numeric-cell' : 'text-text'}`}
                                               style={{ width: col.width }}
                                               data-numeric={isNumericTableValue(row[col.key]) ? 'true' : 'false'}
                                             >
@@ -183,7 +183,7 @@ export function DataTable<T extends Record<string, any>>({
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-[#EEF0F4]">
+        <div className="md:hidden divide-y divide-slate-100">
           {data.map(row => {
             const rowId = row[rowKey]
             const isExpanded = expandedRows.has(rowId)

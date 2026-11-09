@@ -1,8 +1,10 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function getShipmentExportData(status?: string) {
+  await requireAuthenticatedUser()
   let q = supabaseAdmin
     .from('vw_shipment_tms')
     .select(

@@ -68,29 +68,29 @@ export default async function Inventory() {
           </span>
         </div>
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">SKU</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ITEM</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">WAREHOUSE</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">AVAILABLE</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">SAFETY</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">SKU</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">ITEM</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">WAREHOUSE</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">AVAILABLE</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">SAFETY</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">STATUS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {data?.map((r: any) => (
-              <tr key={r.id} className="group border-t border-[#EEF0F4] hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.sku_code}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.item_name}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.warehouse_code}</td>
-                <td className="px-4 py-0.25 text-right text-xs font-medium numeric-cell text-[#475569]">{r.available_qty}</td>
-                <td className="px-4 py-0.25 text-right text-xs font-medium numeric-cell text-[#475569]">{r.safety_stock}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.alert_status}</td>
+              <tr key={r.id} className="group hover:bg-slate-50/70 transition-colors transition-colors">
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{r.sku_code}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{r.item_name}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{r.warehouse_code}</td>
+                <td className="px-4 py-3 text-right text-xs font-medium numeric-cell text-slate-600">{r.available_qty}</td>
+                <td className="px-4 py-3 text-right text-xs font-medium numeric-cell text-slate-600">{r.safety_stock}</td>
+                <td className="px-4 py-3 text-xs font-medium text-slate-600">{r.alert_status}</td>
               </tr>
             ))}
             {!data?.length && (
-              <tr><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">Belum ada data inventory.</td></tr>
+              <tr><td className="px-4 py-3 text-xs font-medium text-slate-600">Belum ada data inventory.</td></tr>
             )}
           </tbody>
         </table>

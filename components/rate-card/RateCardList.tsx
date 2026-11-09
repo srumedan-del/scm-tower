@@ -78,18 +78,18 @@ export default function RateCardList({ rates }: { rates: Rate[] }) {
             <col className="w-[12%]" />
             <col className="w-[8%]" />
           </colgroup>
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-gray-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">RATE CODE</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">VENDOR</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ORIGIN → DESTINATION</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">TYPE SERVICE</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">TARIFF MODEL</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PRICE</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">RATE CODE</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">VENDOR</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">ORIGIN → DESTINATION</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">TYPE SERVICE</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">TARIFF MODEL</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">PRICE</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">STATUS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-gray-100">
             {filteredRates.map(rate => <RateCardRow key={rate.id ?? rate.rate_code} rate={rate as any} />)}
             {filteredRates.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">BELUM ADA RATE CARD UNTUK KOTA INI.</td></tr>

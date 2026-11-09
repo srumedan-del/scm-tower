@@ -29,6 +29,12 @@ interface Props {
   pssNo: string
 }
 
+function isAssemblySetItem(itemNo: string | null | undefined): boolean {
+  if (!itemNo) return false
+  const clean = itemNo.trim().toUpperCase()
+  return clean.startsWith('HD SET') || clean.startsWith('HD-SET') || /^HD\s*SET/i.test(clean)
+}
+
 export default function PssDetailModal({ pssNo }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -58,7 +64,7 @@ export default function PssDetailModal({ pssNo }: Props) {
           return
         }
         setHeader(h as Record<string, any>)
-        setDetails((d ?? []) as unknown as DetailRow[])
+        setDetails(((d ?? []) as unknown as DetailRow[]).filter((row) => !isAssemblySetItem(row.item_no)))
         setCustomer(c as CustomerInfo | null)
         setExcludedItems(ex ?? [])
       } catch (err: any) {
@@ -88,7 +94,7 @@ export default function PssDetailModal({ pssNo }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="font-mono text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline underline-offset-2 transition-colors"
+        className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         {pssNo.toUpperCase()}
       </button>
@@ -187,31 +193,31 @@ export default function PssDetailModal({ pssNo }: Props) {
                         </p>
                       )
                     ) : (
-                      <div className="receiving-table-scroll data-list-scroll max-h-[60vh] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-                        <table className="w-full text-xs">
-                          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+                      <div className="receiving-table-scroll data-list-scroll max-h-[60vh] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
                             <tr>
-                              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">#</th>
-                              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">ITEM NO</th>
-                              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DESKRIPSI</th>
-                              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">QTY</th>
-                              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">LOT</th>
-                              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">EXPIRED</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">#</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">ITEM NO</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">DESKRIPSI</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">QTY</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">LOT</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">EXPIRED</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[#EEF0F4]">
+                          <tbody className="divide-y divide-slate-100">
                             {details.map((d, idx) => (
-                              <tr key={String(d.id)} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
-                                <td className="px-4 py-1.5 text-xs font-medium text-center text-[#475569]">{idx + 1}</td>
-                                <td className="px-4 py-1.5 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{d.item_no ?? '-'}</td>
-                                <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">{d.description || '-'}</td>
-                                <td className="px-4 py-1.5 text-xs font-medium text-right font-mono text-[#475569]">
+                              <tr key={String(d.id)} className="group border-t border-gray-100 transition-colors hover:bg-slate-50">
+                                <td className="px-4 py-3 text-sm font-medium text-center text-slate-600">{idx + 1}</td>
+                                <td className="px-4 py-2.5 text-sm font-medium text-slate-700">{d.item_no ?? '-'}</td>
+                                <td className="px-4 py-2.5 text-sm font-medium text-slate-700">{d.description || '-'}</td>
+                                <td className="px-4 py-3 text-sm font-medium text-right text-slate-600">
                                   {d.quantity !== null
                                     ? Math.abs(Number(d.quantity)).toLocaleString('id-ID')
                                     : '-'}
                                 </td>
-                                <td className="px-4 py-1.5 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">{d.lot_no || '-'}</td>
-                                <td className="px-4 py-1.5 text-xs font-medium whitespace-nowrap text-[#475569]">
+                                <td className="px-4 py-2.5 text-sm font-medium text-slate-700">{d.lot_no || '-'}</td>
+                                <td className="px-4 py-2 text-sm font-medium whitespace-nowrap text-slate-600">
                                   {d.expiration_date && d.expiration_date !== '9999-12-31'
                                     ? String(d.expiration_date).slice(0, 10)
                                     : '-'}
@@ -221,10 +227,10 @@ export default function PssDetailModal({ pssNo }: Props) {
                           </tbody>
                           <tfoot className="bg-gray-50 border-t">
                             <tr>
-                              <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-gray-500">
+                              <td colSpan={3} className="px-3 py-1.5 text-sm font-semibold text-gray-500">
                                 TOTAL ({details.length} lines)
                               </td>
-                              <td className="px-4 py-1.5 text-xs font-medium text-right font-mono text-[#475569]">
+                              <td className="px-4 py-3 text-sm font-medium text-right text-slate-600">
                                 {details
                                   .reduce((s, d) => s + Math.abs(Number(d.quantity ?? 0)), 0)
                                   .toLocaleString('id-ID')}

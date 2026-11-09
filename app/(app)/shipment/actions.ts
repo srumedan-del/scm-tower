@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
+import { inferDkLk, ensureCustomerMaster } from '@/lib/dklk'
 
 export type ShipmentTrackingRow = {
   id: number
@@ -23,7 +24,7 @@ export type ShipmentTrackingRow = {
   dk_lk: string | null             // DK/LK dari customers.dk_lk (baru)
   document_date: string | null
   promised_delivery_date: string | null
-  status: 'Draft' | 'Dispatched' | 'In Transit' | 'Delivered'
+  status: 'Draft' | 'Dispatched' | 'In Transit' | 'Delivered' | 'Failed Delivery' | 'Closed'
   dispatch_time: string | null
   delivery_time: string | null
   is_on_time: boolean | null
@@ -78,6 +79,7 @@ export type RouteOption       = { id: number; route_code: string; origin: string
 
 /** Strict normalized-name match only; ambiguity or no match stays null. */
 export async function resolveTransporterFromVendor(vendorId: number | null): Promise<number | null> {
+  await requireAuthenticatedUser()
   if (!vendorId) return null
   const { data: vendor, error: vendorError } = await supabaseAdmin
     .from('vendors').select('vendor_name').eq('id', vendorId).maybeSingle()
@@ -110,13 +112,52 @@ async function resolveInternalTransporter(): Promise<number | null> {
   return Number(preferred.id)
 }
 
-export async function getShipmentTrackings(filters?: { status?: string }) {
+function getNextMonthFirstDay(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+  return next
+}
+
+export async function getShipmentAvailableMonths() {
+  await requireAuthenticatedUser()
+  const { data } = await supabaseAdmin
+    .from('outbound_header')
+    .select('document_date')
+    .not('document_date', 'is', null)
+    .order('document_date', { ascending: true })
+    .limit(1)
+
+  const minDate = data?.[0]?.document_date ?? '2026-01'
+  const [minYear, minMonth] = minDate.slice(0, 7).split('-').map(Number)
+
+  const now = new Date()
+  const maxYear = now.getFullYear()
+  const maxMonth = now.getMonth() + 1
+
+  const months: string[] = []
+  for (let y = minYear; y <= maxYear; y++) {
+    const startM = y === minYear ? minMonth : 1
+    const endM = y === maxYear ? maxMonth : 12
+    for (let m = startM; m <= endM; m++) {
+      months.push(`${y}-${String(m).padStart(2, '0')}`)
+    }
+  }
+  return months.sort().reverse()
+}
+
+export async function getShipmentTrackings(filters?: { status?: string; month?: string }) {
+  await requireAuthenticatedUser()
   let q = supabaseAdmin
     .from('shipment_tracking')
     .select('*')
     .order('pss_no', { ascending: false, nullsFirst: false })
     .order('document_date', { ascending: false, nullsFirst: false })
     .limit(200)
+
+  if (filters?.month && filters.month !== 'all') {
+    const nextMonth = getNextMonthFirstDay(filters.month)
+    q = q.gte('document_date', `${filters.month}-01`).lt('document_date', nextMonth)
+  }
 
   if (filters?.status && filters.status !== 'all') {
     q = q.eq('status', filters.status)
@@ -182,6 +223,7 @@ export type ServiceLevelShipmentRow = ShipmentTrackingRow & {
 
 /** Data ringkas untuk laporan service level pada periode document date tertentu. */
 export async function getServiceLevelShipments(startDate: string, endDate: string): Promise<ServiceLevelShipmentRow[]> {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('shipment_tracking')
     .select('*')
@@ -400,13 +442,16 @@ export async function getServiceLevelShipments(startDate: string, endDate: strin
 }
 
 /** Retail shipments handed to a vendor with a resi, but not yet received by customer. */
-export async function getRetailInTransitShipments() {
-  const rows = await getShipmentTrackings({ status: 'all' })
+export async function getRetailInTransitShipments(month?: string) {
+  await requireAuthenticatedUser()
+  const filterMonth = month && month !== 'all' ? month : '2026-11'
+  const rows = await getShipmentTrackings({ status: 'all', month: filterMonth })
   return rows
     .filter(row =>
       row.status === 'In Transit'
       && Boolean(row.no_resi?.trim())
       && (row.cost_model === 'Retail' || isRetailCourier(row.transporter_name) || isRetailCourier(row.notes))
+      && (filterMonth ? (row.document_date ? row.document_date >= `${filterMonth}-01` : true) : true)
     )
     .sort((first, second) => String(second.document_date ?? '').localeCompare(String(first.document_date ?? '')))
     .slice(0, 200)
@@ -433,6 +478,10 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     ...payload
   } = row as any
 
+  if (created_at !== undefined && created_at !== null) {
+    payload.created_at = created_at
+  }
+
   payload.no_resi = no_resi == null ? null : String(no_resi).trim() || null
   payload.total_biaya_eksternal = total_biaya_eksternal == null || total_biaya_eksternal === ''
     ? null
@@ -456,14 +505,42 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     payload.status = 'In Transit'
   }
 
-  if (String(payload.trip_id ?? '').trim()) payload.status = 'In Transit'
+  if (String(payload.trip_id ?? '').trim() && payload.status !== 'Delivered') payload.status = 'In Transit'
 
   if (id) {
+    // Status Delivered dan Closed bersifat final: edit data tidak boleh memundurkannya.
+    const { data: current, error: currentError } = await supabaseAdmin
+      .from('shipment_tracking')
+      .select('status')
+      .eq('id', id)
+      .maybeSingle()
+    if (currentError) throw new Error(currentError.message)
+    if (current?.status === 'Delivered' || current?.status === 'Closed') payload.status = current.status
+
     const { error } = await supabaseAdmin.from('shipment_tracking').update(payload).eq('id', id)
     if (error) throw new Error(error.message)
   } else {
     const { error } = await supabaseAdmin.from('shipment_tracking').insert(payload)
     if (error) throw new Error(error.message)
+  }
+
+  // ── Sync status crossdocking_header ──────────────────────────────────────
+  // Jika shipment ini berasal dari Crossdocking, update status crossdocking_header
+  // agar konsisten: Dispatched/In Transit → 'Dispatched', Delivered → 'Delivered'
+  if (payload.source_type === 'Crossdocking' && payload.crossdocking_id) {
+    const cdStatus =
+      payload.status === 'Delivered'  ? 'Delivered'  :
+      payload.status === 'Dispatched' ? 'Dispatched' :
+      payload.status === 'In Transit' ? 'Dispatched' :
+      null // Draft → tidak ubah status crossdocking
+
+    if (cdStatus) {
+      await supabaseAdmin
+        .from('crossdocking_header')
+        .update({ status: cdStatus })
+        .eq('id', payload.crossdocking_id)
+      // error diabaikan agar tidak block operasi utama shipment
+    }
   }
 }
 
@@ -478,14 +555,23 @@ export async function updateShipmentRetailCost(input: {
     throw new Error('Biaya kirim harus berupa angka yang valid')
   }
 
+  const { data: current, error: currentError } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('status')
+    .eq('id', input.id)
+    .maybeSingle()
+  if (currentError) throw new Error(currentError.message)
+  if (!current) throw new Error(`Shipment dengan ID ${input.id} tidak ditemukan`)
+
   const normalizedNoResi = input.no_resi?.trim() || null
   const { data, error } = await supabaseAdmin
     .from('shipment_tracking')
     .update({
       no_resi: normalizedNoResi,
       total_biaya_eksternal: amount,
-      cost_model: normalizedNoResi || amount != null ? 'Retail' : 'Retail',
-      status: 'In Transit',
+      cost_model: 'Retail',
+      // Status Delivered bersifat final: update resi/biaya tidak boleh memundurkannya.
+      status: current.status === 'Delivered' || current.status === 'Closed' ? current.status : 'In Transit',
     })
     .eq('id', input.id)
     .select('id, no_resi, total_biaya_eksternal, cost_model, status')
@@ -628,6 +714,7 @@ export async function getExternalRateSuggestions(input: {
   totalTonnage: number
   totalVolumeCbM: number
 }) {
+  await requireAuthenticatedUser()
   const destination = normalizeText(input.destination)
   if (!destination || input.totalTonnage < 0 || input.totalVolumeCbM < 0) return []
 
@@ -728,14 +815,25 @@ export async function getInternalCostEstimate(input: {
   vehicleType: string | null
   routeId: number | null
 }) {
+  await requireAuthenticatedUser()
   return estimateInternalCost(input.vehicleType, input.routeId)
 }
 
 /** PSS dan Crossdocking yang belum dibuatkan Shipment Tracking. */
-export async function getUntrackedPss(): Promise<UntrackedPssRow[]> {
+export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]> {
+  await requireAuthenticatedUser()
+  let pssQuery = supabaseAdmin.from('vw_pss_untracked').select('*').eq('source_type', 'PSS').order('document_date', { ascending: false })
+  let cdQuery = supabaseAdmin.from('crossdocking_header').select('id, pss_no, customer_code, customer_name, destination_city, document_created_at, document_date, promised_delivery_date, psi_no').not('pss_no', 'is', null).order('document_date', { ascending: false })
+
+  if (month && month !== 'all') {
+    const nextMonth = getNextMonthFirstDay(month)
+    pssQuery = pssQuery.gte('document_date', `${month}-01`).lt('document_date', nextMonth)
+    cdQuery = cdQuery.gte('document_date', `${month}-01`).lt('document_date', nextMonth)
+  }
+
   const [{ data: pssRows, error: pssError }, { data: crossdockings, error: crossdockingError }, { data: tracked, error: trackedError }, { data: loadSummaries, error: loadError }] = await Promise.all([
-    supabaseAdmin.from('vw_pss_untracked').select('*').eq('source_type', 'PSS').order('document_date', { ascending: false }).limit(300),
-    supabaseAdmin.from('crossdocking_header').select('id, pss_no, customer_code, customer_name, destination_city, document_created_at, document_date, promised_delivery_date, psi_no').not('pss_no', 'is', null).order('document_date', { ascending: false }).limit(300),
+    pssQuery.limit(300),
+    cdQuery.limit(300),
     supabaseAdmin.from('shipment_tracking').select('crossdocking_id').eq('source_type', 'Crossdocking').not('crossdocking_id', 'is', null),
     supabaseAdmin.from('vw_pss_load_summary').select('pss_no, total_koli, total_weight_kg, total_tonnage, total_volume_cbm, total_volumetric_ground_kg, total_volumetric_air_kg, missing_sku_count, incomplete_load_count'),
   ])
@@ -994,7 +1092,7 @@ export async function getUntrackedPss(): Promise<UntrackedPssRow[]> {
       ?? documentCreatedAtByPss.get(String(row.pss_no).trim())
       ?? documentDateByPss.get(String(row.pss_no).trim())
       ?? null,
-    dk_lk: row.customer_no ? regionByCustomer.get(row.customer_no) ?? null : null,
+    dk_lk: (row.customer_no ? regionByCustomer.get(row.customer_no) : null) ?? inferDkLk(row.destination_city),
     ...(summaryByPss.get(String(row.pss_no).trim()) ?? {}),
     products: summaryByPss.get(String(row.pss_no).trim())?.products ?? [],
   }))
@@ -1009,6 +1107,7 @@ export async function getUntrackedPss(): Promise<UntrackedPssRow[]> {
 }
 
 export async function getShipmentTMSOptions() {
+  await requireAuthenticatedUser()
   const [vend, veh, drv, rt, pss, tracked] = await Promise.all([
     supabaseAdmin.from('master_transporter').select('id, name, type, service_model, is_active').eq('is_active', true).order('name'),
     supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').order('vehicle_no'),
@@ -1051,7 +1150,7 @@ export async function getShipmentTMSOptions() {
   const trackedSet = new Set((tracked.data ?? []).map((r: any) => r.pss_no as string))
   const pssOptions = (pss.data ?? [])
     .filter((r: any) => !trackedSet.has(r.pss_no))
-    .map((r: any) => ({ ...r, dk_lk: customerDkLkMap[r.customer_no] ?? null }))
+    .map((r: any) => ({ ...r, dk_lk: customerDkLkMap[r.customer_no] ?? inferDkLk(r.destination_city) }))
 
   return {
     transporters,
@@ -1074,9 +1173,22 @@ export type PodRow = {
   notes: string | null
   input_by: string | null
   created_at: string | null
+  receiver_type?: string | null
+  distance_meters?: number | null
+}
+
+/** Foto POD dari aplikasi driver tersimpan privat; admin melihatnya lewat tautan sementara. */
+export async function getPodImageUrls(pod: Pick<PodRow, 'photo_url' | 'signature_url'>) {
+  await requireAuthenticatedUser()
+  const paths = [pod.photo_url, pod.signature_url].filter((path): path is string => Boolean(path?.startsWith('driver/')))
+  if (!paths.length) return {} as Record<string, string>
+  const { data, error } = await supabaseAdmin.storage.from('pod-documents').createSignedUrls(paths, 60 * 60)
+  if (error) throw error
+  return Object.fromEntries((data ?? []).filter(row => row.signedUrl).map(row => [row.path, row.signedUrl])) as Record<string, string>
 }
 
 export async function getPodByTrackingId(trackingId: number): Promise<PodRow | null> {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('delivery_pod')
     .select('*')
@@ -1115,6 +1227,19 @@ export async function confirmDelivery(trackingId: number, deliveryTime: string) 
     })
     .eq('id', trackingId)
   if (error) throw error
+
+  // ── Sync crossdocking_header → Delivered jika shipment ini dari Crossdocking ──
+  const { data: shipment } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('source_type, crossdocking_id')
+    .eq('id', trackingId)
+    .single()
+  if (shipment?.source_type === 'Crossdocking' && shipment.crossdocking_id) {
+    await supabaseAdmin
+      .from('crossdocking_header')
+      .update({ status: 'Delivered' })
+      .eq('id', shipment.crossdocking_id)
+  }
 }
 
 // ─── Assign Trip (multi-drop) ─────────────────────────────────────────────────
@@ -1178,6 +1303,7 @@ export type BulkShipmentPayload = {
 }
 
 export async function lookupCustomerDkLk(customerName: string): Promise<string | null> {
+  await requireAuthenticatedUser()
   if (!customerName) return null
   const { data } = await supabaseAdmin
     .from('customers')
@@ -1190,6 +1316,7 @@ export async function lookupCustomerDkLk(customerName: string): Promise<string |
 }
 
 export async function generateTripId(): Promise<string> {
+  await requireAuthenticatedUser()
   const now = new Date()
   const yy  = String(now.getFullYear()).slice(2)
   const mm  = String(now.getMonth() + 1).padStart(2, '0')
@@ -1269,7 +1396,7 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
     outbound_header_id:     pss.source_type === 'PSS' ? pss.id : null,
     customer_name:          pss.customer_name,
     destination_city:       pss.destination_city,
-    dk_lk:                  pss.source_type === 'Crossdocking' ? 'LK' : null,
+    dk_lk:                  pss.dk_lk ?? (pss.source_type === 'Crossdocking' ? 'LK' : inferDkLk(pss.destination_city)),
     document_date:          pss.document_date,
     promised_delivery_date: pss.promised_delivery_date,
     status:                 'In Transit',
@@ -1283,10 +1410,9 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
     route_id:               payload.route_id,
     trip_id:                payload.trip_id,
     cost_model:             /indah\s+logistik/i.test(payload.vendor_name ?? '') ? 'Retail' : payload.cost_model,
-    bbm_rupiah:             estimatedBbmPerShipment,
-    misc_cost:              estimatedOverheadPerShipment,
-    misc_cost_notes:        estimatedOverheadPerShipment ? `ESTIMASI OVERHEAD INTERNAL ${internalEstimate?.vehicle_type} ${internalEstimate?.distance_km} KM` : null,
-    dispatch_time:          processTime,
+    // Estimasi disimpan terpisah agar tidak terhitung sebagai realisasi biaya.
+    estimated_bbm_rupiah:      estimatedBbmPerShipment,
+    estimated_overhead_rupiah: estimatedOverheadPerShipment,    dispatch_time:          processTime,
     // Simpan info vendor & kendaraan eksternal di notes
     notes: [
       payload.vendor_name   ? `Vendor: ${payload.vendor_name}`      : null,
@@ -1296,7 +1422,166 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
     ].filter(Boolean).join(' | ') || null,
   }))
 
+  // Auto-sync customer master asynchronously
+  for (const pss of payload.pssRows) {
+    if (pss.customer_name) {
+      ensureCustomerMaster(pss.customer_name, pss.destination_city).catch(() => {})
+    }
+  }
+
   const { error } = await supabaseAdmin.from('shipment_tracking').insert(rows)
   if (error) throw new Error(error.message)
+
+  // ── Sync status crossdocking_header untuk baris Crossdocking ──────────────
+  const crossdockingIds = rows
+    .filter(r => r.source_type === 'Crossdocking' && r.crossdocking_id)
+    .map(r => r.crossdocking_id as number)
+  if (crossdockingIds.length) {
+    await supabaseAdmin
+      .from('crossdocking_header')
+      .update({ status: 'Dispatched' })
+      .in('id', crossdockingIds)
+      .not('status', 'eq', 'Delivered')
+    // error diabaikan agar tidak block operasi utama
+  }
+
   return rows.length
+}
+
+
+// ─── Real-Time Driver Live Tracking & Fuel Audit ────────────────────────────
+
+export type LiveDriverTrip = {
+  trip_id: string
+  driver_name: string | null
+  driver_code: string | null
+  driver_phone: string | null
+  vehicle_nopol: string | null
+  vehicle_type: string | null
+  status: string
+  total_deliveries: number
+  delivered_count: number
+  customers: string[]
+  cities: string[]
+  last_location: {
+    latitude: number
+    longitude: number
+    speed_kmh: number
+    distance_from_last_meters: number
+    recorded_at: string
+  } | null
+  fuel_logs_count: number
+  total_fuel_liters: number
+  total_fuel_rupiah: number
+}
+
+export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> {
+  await requireAuthenticatedUser()
+  const { data: shipments, error } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select(`
+      id, trip_id, pss_no, customer_name, destination_city, status,
+      driver_id, vehicle_id, notes, bbm_liter, bbm_rupiah
+    `)
+    .not('trip_id', 'is', null)
+    .order('id', { ascending: false })
+    .limit(100)
+
+  if (error || !shipments) return []
+
+  const tripMap = new Map<string, any[]>()
+  for (const s of shipments) {
+    if (!s.trip_id) continue
+    if (!tripMap.has(s.trip_id)) tripMap.set(s.trip_id, [])
+    tripMap.get(s.trip_id)!.push(s)
+  }
+
+  const driverIds = [...new Set(shipments.map(s => s.driver_id).filter(Boolean))]
+  const driverMap = new Map<number, { name: string; code: string; phone: string | null }>()
+  if (driverIds.length > 0) {
+    const { data: drivers } = await supabaseAdmin
+      .from('master_driver')
+      .select('id, driver_name, driver_code, phone')
+      .in('id', driverIds)
+    for (const d of drivers ?? []) {
+      driverMap.set(d.id, { name: d.driver_name, code: d.driver_code, phone: d.phone })
+    }
+  }
+
+  const result: LiveDriverTrip[] = []
+
+  for (const [tripId, items] of tripMap.entries()) {
+    const first = items[0]
+    const driverInfo = first.driver_id ? driverMap.get(first.driver_id) : null
+
+    const nopolMatch = first.notes?.match(/Nopol:\s*([^|]+)/i)?.[1]?.trim() ?? null
+    const typeMatch = first.notes?.match(/Tipe:\s*([^|]+)/i)?.[1]?.trim() ?? null
+
+    const { data: locLogs } = await supabaseAdmin
+      .from('driver_location_logs')
+      .select('latitude, longitude, speed_kmh, distance_from_last_meters, recorded_at')
+      .eq('trip_id', tripId)
+      .order('recorded_at', { ascending: false })
+      .limit(1)
+
+    const { data: fuelLogs } = await supabaseAdmin
+      .from('trip_fuel_logs')
+      .select('liters, amount_rupiah')
+      .eq('trip_id', tripId)
+
+    const totalLiters = (fuelLogs ?? []).reduce((acc: number, f: any) => acc + Number(f.liters || 0), 0)
+    const totalRp = (fuelLogs ?? []).reduce((acc: number, f: any) => acc + Number(f.amount_rupiah || 0), 0)
+
+    const deliveredCount = items.filter((i: any) => i.status === 'Delivered').length
+    const overallStatus = deliveredCount === items.length
+      ? 'Delivered'
+      : items.some((i: any) => i.status === 'In Transit')
+      ? 'In Transit'
+      : items[0].status
+
+    result.push({
+      trip_id: tripId,
+      driver_name: driverInfo?.name ?? null,
+      driver_code: driverInfo?.code ?? null,
+      driver_phone: driverInfo?.phone ?? null,
+      vehicle_nopol: nopolMatch,
+      vehicle_type: typeMatch,
+      status: overallStatus,
+      total_deliveries: items.length,
+      delivered_count: deliveredCount,
+      customers: [...new Set(items.map((i: any) => i.customer_name).filter(Boolean))] as string[],
+      cities: [...new Set(items.map((i: any) => i.destination_city).filter(Boolean))] as string[],
+      last_location: locLogs?.[0] ?? null,
+      fuel_logs_count: fuelLogs?.length ?? 0,
+      total_fuel_liters: totalLiters,
+      total_fuel_rupiah: totalRp,
+    })
+  }
+
+  return result
+}
+
+export async function getTripFuelAuditLogs(tripId: string) {
+  await requireAuthenticatedUser()
+  const { data, error } = await supabaseAdmin
+    .from('trip_fuel_logs')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('logged_at', { ascending: false })
+
+  if (error) return []
+  return data ?? []
+}
+
+export async function getTripLocationHistory(tripId: string) {
+  await requireAuthenticatedUser()
+  const { data, error } = await supabaseAdmin
+    .from('driver_location_logs')
+    .select('latitude, longitude, speed_kmh, recorded_at')
+    .eq('trip_id', tripId)
+    .order('recorded_at', { ascending: true })
+    .limit(200)
+
+  if (error) return []
+  return data ?? []
 }

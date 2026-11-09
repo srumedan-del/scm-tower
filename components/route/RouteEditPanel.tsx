@@ -1,6 +1,7 @@
 'use client'
 import { useState, useTransition, useEffect } from 'react'
 import { upsertRoute, deleteRoute, generateRouteCode } from '@/app/(app)/master-data/routes/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Route = {
   id: number
@@ -54,11 +55,11 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
     finally { setGenerating(false) }
   }
 
-  function del() {
+  async function del() {
     if (!route) return
-    if (!confirm(`HAPUS RUTE ${route.route_code}?`)) return
+    if (!(await confirmAction({ title: 'Hapus rute?', message: `Rute ${route.route_code} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteRoute(route.id); onSaved(); onClose() }
+      try { await deleteRoute(route.id); notify.success('Rute dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -82,7 +83,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
         dk_lk:                    form.dk_lk as 'D' | 'L',
         notes:                    form.notes.trim().toUpperCase() || null,
       }
-      try { await upsertRoute(payload, route?.id); onSaved(); onClose() }
+      try { await upsertRoute(payload, route?.id); notify.success('Rute tersimpan'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }

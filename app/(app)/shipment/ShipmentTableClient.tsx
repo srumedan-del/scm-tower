@@ -21,6 +21,7 @@ const STATUS_TABS = [
   { key: 'Dispatched', label: 'Dispatched' },
   { key: 'In Transit', label: 'In Transit' },
   { key: 'Delivered', label: 'Delivered' },
+  { key: 'Closed', label: 'Ditutup' },
 ] as const
 
 function StatusBadge({ status }: { status: string }) {
@@ -29,6 +30,8 @@ function StatusBadge({ status }: { status: string }) {
     'Dispatched': 'bg-blue/10 text-blue',
     'In Transit': 'bg-orange/10 text-orange',
     'Delivered': 'bg-green/10 text-green',
+    'Failed Delivery': 'bg-red/10 text-red',
+    'Closed': 'bg-gray-100 text-gray-500',
   }
   return <span className={`text-xs font-medium rounded-full px-2.5 py-1 ${map[status] ?? 'bg-gray-100'}`}>{status}</span>
 }
@@ -71,7 +74,7 @@ export function ShipmentTableClient({ untrackedData, trackedData, onRefresh }: P
       key: 'pss_no',
       label: 'PSS No.',
       width: '140px',
-      render: (val) => <span className="font-mono text-xs font-semibold text-blue">{val}</span>,
+      render: (val) => <span className="font-medium text-xs font-semibold text-blue">{val}</span>,
     },
     {
       key: 'customer_name',
@@ -97,14 +100,14 @@ export function ShipmentTableClient({ untrackedData, trackedData, onRefresh }: P
       key: 'trip_id',
       label: 'Trip ID',
       width: '120px',
-      render: (val) => <span className="font-mono text-xs font-bold text-blue">{val ?? '-'}</span>,
+      render: (val) => <span className="font-medium text-xs font-bold text-blue">{val ?? '-'}</span>,
     },
     {
       key: 'pss_no',
       label: 'PSS No.',
       width: '120px',
       render: (val, row) => (
-        <span className="font-mono text-xs text-gray-600">
+        <span className="font-medium text-xs text-gray-600">
           {val ?? (row.crossdocking_id ? `CD-${row.crossdocking_id}` : '-')}
         </span>
       ),

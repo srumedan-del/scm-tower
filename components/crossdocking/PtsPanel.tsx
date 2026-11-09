@@ -1,127 +1,35 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import * as XLSX from 'xlsx'
-import { FileSpreadsheet, Package, Upload, X } from 'lucide-react'
+import { Loader2, Package, X } from 'lucide-react'
 import {
   getPtsDetailsForCrossdocking,
   getPtsRecords,
-  uploadPtsRecords,
   type PtsRecord,
 } from '@/app/(app)/crossdocking/actions'
+import { notify } from '@/lib/feedback'
 
-type UploadRow = {
-  pts_no: string
-  document_date: string | null
-  document_created_at: string | null
-  transfer_order_no: string | null
-  details: Array<{
-    nav_entry_no: number | null
-    document_line_no: number | null
-    item_no: string | null
-    variant_code: string | null
-    description: string | null
-    quantity: number | null
-    lot_no: string | null
-    expiration_date: string | null
-    source_location_code: string | null
-  }>
+interface Props {
+  selectedMonth?: string
 }
 
-function normalizeHeader(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
-}
-
-function findValue(row: Record<string, unknown>, names: string[]) {
-  const byHeader = new Map(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]))
-  for (const name of names) {
-    const value = byHeader.get(name)
-    if (value !== undefined && String(value).trim()) return value
-  }
-  return null
-}
-
-function toDate(value: unknown): string | null {
-  if (!value) return null
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10)
-  if (typeof value === 'number') {
-    const date = XLSX.SSF.parse_date_code(value)
-    return date ? `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}` : null
-  }
-  const text = String(value).trim()
-  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10)
-  const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
-  return match ? `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}` : null
-}
-
-function toDateTime(value: unknown): string | null {
-  if (!value) return null
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString()
-  const text = String(value).trim()
-  const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
-  if (!match) return null
-  const year = match[3].length === 2 ? `20${match[3]}` : match[3]
-  return `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}T${match[4].padStart(2, '0')}:${match[5]}:${match[6] ?? '00'}+07:00`
-}
-
-function toNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const normalized = String(value).trim().replace(/,/g, '').replace(/\.$/, '')
-  const number = Number(normalized)
-  return Number.isFinite(number) ? number : null
-}
-
-function parsePtsWorkbook(buffer: ArrayBuffer): UploadRow[] {
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  if (!sheet) return []
-  const source = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
-  const grouped = new Map<string, UploadRow>()
-  for (const row of source) {
-    const ptsNo = String(findValue(row, ['ptsno', 'postedtransfershipmentno', 'transfershipmentno', 'documentno', 'shipmentno']) ?? '').trim().toUpperCase()
-    if (!ptsNo) continue
-    const detail = {
-      nav_entry_no: toNumber(findValue(row, ['entryno'])),
-      document_line_no: toNumber(findValue(row, ['documentlineno'])),
-      item_no: String(findValue(row, ['itemno']) ?? '').trim() || null,
-      variant_code: String(findValue(row, ['variantcode']) ?? '').trim() || null,
-      description: String(findValue(row, ['description']) ?? '').trim() || null,
-      quantity: toNumber(findValue(row, ['quantity'])),
-      lot_no: String(findValue(row, ['lotno']) ?? '').trim() || null,
-      expiration_date: toDate(findValue(row, ['expirationdate'])),
-      source_location_code: String(findValue(row, ['locationcode']) ?? '').trim() || null,
-    }
-    const existing = grouped.get(ptsNo)
-    if (existing) {
-      existing.details.push(detail)
-      continue
-    }
-    grouped.set(ptsNo, {
-      pts_no: ptsNo,
-      document_date: toDate(findValue(row, ['documentdate', 'postingdate', 'shipmentdate', 'date'])),
-      document_created_at: toDateTime(findValue(row, ['documentcreateddatetime', 'createddatetime'])),
-      transfer_order_no: String(findValue(row, ['transferorderno', 'transferorder', 'orderno']) ?? '').trim().toUpperCase() || null,
-      details: [detail],
-    })
-  }
-  return [...grouped.values()]
-}
-
-export default function PtsPanel() {
+export default function PtsPanel({ selectedMonth }: Props) {
   const [rows, setRows] = useState<PtsRecord[]>([])
   const [loading, startLoading] = useTransition()
-  const [uploadOpen, setUploadOpen] = useState(false)
   const [selected, setSelected] = useState<PtsRecord | null>(null)
 
-  const load = () => startLoading(async () => {
+  const load = (month?: string) => startLoading(async () => {
     try {
-      setRows(await getPtsRecords())
+      const target = month !== undefined ? month : selectedMonth
+      setRows(await getPtsRecords(target))
     } catch (error: any) {
-      alert(`Tidak dapat memuat PTS: ${error.message}`)
+      notify.error('Tidak dapat memuat PTS', error.message)
     }
   })
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load(selectedMonth)
+  }, [selectedMonth])
 
   const pendingCount = useMemo(
     () => rows.filter(row => row.status === 'Menunggu Crossdocking').length,
@@ -129,52 +37,94 @@ export default function PtsPanel() {
   )
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3">
-        <div>
-          <h2 className="font-semibold text-gray-800">Daftar PTS</h2>
-          <p className="text-xs text-gray-500">{pendingCount} PTS siap dipilih saat membuat Crossdocking Header.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setUploadOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
-        >
-          <Upload className="h-4 w-4" /> Upload PTS
-        </button>
-      </div>
+    <section className="space-y-3 font-sans text-[14px]">
+      {/* ── Info bar ── */}
+      <p className="text-[14px] text-slate-500 font-medium">
+        <span className="font-bold text-indigo-700">{rows.length}</span> PTS ditampilkan{' '}
+        (<span className="font-semibold text-amber-700">{pendingCount}</span> siap dipilih saat membuat Crossdocking).
+      </p>
 
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-        <table className="w-full min-w-[980px] text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+      {/* ── Tabel ── */}
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-12rem)] overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+        <table className="w-full min-w-[860px] text-left text-[14px]">
+          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTS No.</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Document Date</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Alamat</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-44">PTS No.</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-36">Tgl. Dokumen</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800">Customer</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800">Alamat Tujuan</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 text-center w-44">Status</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 text-center w-28">Detail</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
-            {loading && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Memuat PTS...</td></tr>}
+          <tbody className="divide-y divide-slate-100 font-medium">
+            {loading && (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center">
+                  <div className="flex items-center justify-center gap-2 text-slate-400 text-[14px]">
+                    <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                    <span>Memuat data PTS...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Belum ada PTS. Klik <strong>Upload PTS</strong> untuk mulai.</td></tr>
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center text-[14px] text-slate-400">
+                  Belum ada data PTS untuk periode bulan ini.
+                </td>
+              </tr>
             )}
             {rows.map(row => (
-              <tr key={row.id} className="group border-t border-[#EEF0F4] hover:bg-blue-50">
-                <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pts_no}</td>
-                <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{row.document_date ?? '-'}</td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><div className="truncate" title={row.customer_name ?? undefined}>{row.customer_name ?? '-'}</div></td>
-                <td className="px-4 py-0.25 text-xs font-medium text-[#475569]"><div className="truncate" title={[row.destination_address, row.destination_city].filter(Boolean).join(', ') || undefined}>{[row.destination_address, row.destination_city].filter(Boolean).join(', ') || '-'}</div></td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    row.status === 'Terhubung Crossdocking' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                  }`}>{row.status}</span>
+              <tr key={row.id} className="hover:bg-blue-50/60 transition-colors">
+                {/* PTS No */}
+                <td className="px-4 py-3">
+                  <span className="font-mono text-[14px] font-bold text-slate-800">{row.pts_no}</span>
                 </td>
-                <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                  <button type="button" onClick={() => setSelected(row)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50">
-                    <Package className="h-3.5 w-3.5" /> Lihat item
+                {/* Document Date */}
+                <td className="px-4 py-3 text-[14px] text-slate-600 whitespace-nowrap">
+                  {row.document_date ?? <span className="text-slate-300">—</span>}
+                </td>
+                {/* Customer */}
+                <td className="px-4 py-3 max-w-[220px]">
+                  {row.customer_name
+                    ? <span className="text-[14px] font-medium text-slate-800 line-clamp-2 leading-relaxed" title={row.customer_name}>{row.customer_name}</span>
+                    : <span className="text-[14px] text-slate-300">—</span>
+                  }
+                </td>
+                {/* Alamat */}
+                <td className="px-4 py-3 max-w-[280px]">
+                  {[row.destination_address, row.destination_city].filter(Boolean).join(', ')
+                    ? (
+                      <span
+                        className="text-[14px] text-slate-600 line-clamp-2 leading-relaxed"
+                        title={[row.destination_address, row.destination_city].filter(Boolean).join(', ')}
+                      >
+                        {[row.destination_address, row.destination_city].filter(Boolean).join(', ')}
+                      </span>
+                    )
+                    : <span className="text-[14px] text-slate-300">—</span>
+                  }
+                </td>
+                {/* Status */}
+                <td className="px-4 py-3 text-center whitespace-nowrap">
+                  <span className={`inline-flex rounded-lg px-2.5 py-1 text-[13px] font-bold ${
+                    row.status === 'Terhubung Crossdocking'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                  }`}>
+                    {row.status}
+                  </span>
+                </td>
+                {/* Detail */}
+                <td className="px-4 py-3 text-center whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(row)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] font-semibold text-slate-700 shadow-2xs hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700 transition-all cursor-pointer"
+                  >
+                    <Package className="h-4 w-4" />
+                    <span>Lihat Item</span>
                   </button>
                 </td>
               </tr>
@@ -183,104 +133,162 @@ export default function PtsPanel() {
         </table>
       </div>
 
-      {uploadOpen && <UploadPtsModal onClose={() => setUploadOpen(false)} onSaved={() => { setUploadOpen(false); load() }} />}
-      {selected && <PtsDetailModal record={selected} onClose={() => setSelected(null)} />}
+      {/* ── Detail Modal ── */}
+      {selected && (
+        <PtsDetailModal
+          record={selected}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </section>
   )
 }
 
 function PtsDetailModal({ record, onClose }: { record: PtsRecord; onClose: () => void }) {
-  const [items, setItems] = useState<Array<{ item_no: string | null; description: string | null; quantity: number; lot_no: string | null; expiration_date: string | null; notes: string | null }>>([])
+  const [items, setItems] = useState<Array<{
+    item_no: string | null
+    description: string | null
+    quantity: number
+    uom: string | null
+    lot_no: string | null
+    expiration_date: string | null
+    notes: string | null
+  }>>([])
   const [loading, startLoading] = useTransition()
 
   useEffect(() => {
-    startLoading(async () => setItems(await getPtsDetailsForCrossdocking(record.id)))
+    startLoading(async () => {
+      try {
+        setItems(await getPtsDetailsForCrossdocking(record.id))
+      } catch (err: any) {
+        notify.error('Gagal memuat item', err.message)
+      }
+    })
   }, [record.id])
 
   const total = items.reduce((sum, item) => sum + item.quantity, 0)
-  return <Modal title={`Detail item ${record.pts_no}`} onClose={onClose} wide>
-    <p className="mb-3 text-sm text-gray-600">{record.document_date ?? '-'} · Total {total.toLocaleString('id-ID')} unit</p>
-    <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm max-h-[55vh]">
-      <table className="w-full min-w-[620px] text-xs">
-        <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Item No.</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Deskripsi</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Qty</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Lot</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Expired</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Sumber</th></tr></thead>
-        <tbody className="divide-y divide-gray-100">
-          {loading && <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Memuat item...</td></tr>}
-          {!loading && items.map((item, index) => <tr key={`${item.item_no}-${item.lot_no}-${index}`}><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{item.item_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{item.description ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">{item.quantity.toLocaleString('id-ID')}</td><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{item.lot_no ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{item.expiration_date ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{item.notes ?? '-'}</td></tr>)}
-          {!loading && items.length === 0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Tidak ada detail item.</td></tr>}
-        </tbody>
-      </table>
-    </div>
-  </Modal>
-}
 
-function UploadPtsModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [file, setFile] = useState<File | null>(null)
-  const [rows, setRows] = useState<UploadRow[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [saving, startSaving] = useTransition()
-
-  async function chooseFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] ?? null
-    setFile(nextFile)
-    setRows([])
-    setError(null)
-    if (!nextFile) return
-    try {
-      const parsed = parsePtsWorkbook(await nextFile.arrayBuffer())
-      if (!parsed.length) throw new Error('Kolom PTS tidak ditemukan. Gunakan header seperti PTS No., Document No., atau Transfer Shipment No.')
-      setRows(parsed)
-    } catch (err: any) {
-      setError(`File tidak dapat dibaca: ${err.message}`)
-    }
+  // Bersihkan format display lokasi sumber
+  const formatLocation = (notes: string | null) => {
+    if (!notes) return 'MDN-PAR'
+    return notes.replace(/^Source:\s*/i, '').replace(/\|\s*Source:\s*/i, ' ').trim() || 'MDN-PAR'
   }
 
-  function save() {
-    if (!file || !rows.length) return
-    startSaving(async () => {
-      try {
-        const result = await uploadPtsRecords(rows, file.name)
-        alert(`${result.inserted} dari ${result.total} PTS baru berhasil diunggah.`)
-        onSaved()
-      } catch (err: any) {
-        setError(err.message)
-      }
-    })
-  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs font-sans">
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] text-[14px]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-white shrink-0">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Package className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-[18px] sm:text-[20px] font-bold font-mono text-slate-900 tracking-tight">
+                  {record.pts_no}
+                </h3>
+                {record.transfer_order_no && (
+                  <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[14px] font-bold text-indigo-700 font-mono">
+                    TO: {record.transfer_order_no}
+                  </span>
+                )}
+              </div>
+              <p className="text-[14px] text-slate-500 mt-0.5">
+                Tgl Dokumen: <strong className="text-slate-800 font-semibold">{record.document_date ?? '—'}</strong> · Total:{' '}
+                <strong className="text-indigo-700 font-bold">{total.toLocaleString('id-ID')} unit</strong> ({items.length} baris lot)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+            aria-label="Tutup"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-  return <Modal title="Upload PTS" onClose={onClose}>
-    <div className="space-y-4">
-      <p className="text-sm text-gray-600">Semua item, lot, expired date, dan quantity dari PTS NAV akan ikut tersimpan. Setelah tujuan diatur, Crossdocking dibuat otomatis tanpa input item manual.</p>
-      <label className="block rounded-lg border-2 border-dashed border-gray-200 p-6 text-center hover:border-indigo-300">
-        <FileSpreadsheet className="mx-auto h-8 w-8 text-emerald-600" />
-        <span className="mt-2 block text-sm font-medium text-gray-700">Pilih file Excel PTS</span>
-        <span className="mt-1 block text-xs text-gray-500">.xlsx atau .xls; gunakan kolom PTS No. / Document No.</span>
-        <input type="file" accept=".xlsx,.xls" className="sr-only" onChange={chooseFile} />
-      </label>
-      {file && <p className="text-xs text-gray-500">{file.name} {rows.length ? `• ${rows.length} nomor PTS dan ${rows.reduce((sum, row) => sum + row.details.length, 0)} item ditemukan` : ''}</p>}
-      {rows.length > 0 && <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-                        <table className="w-full text-xs"><thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]"><tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PTS No.</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tanggal</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Detail Item</th></tr></thead>
-          <tbody>{rows.slice(0, 10).map(row => <tr key={row.pts_no} className="border-t"><td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{row.pts_no}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.document_date ?? '-'}</td><td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{row.details.length} item</td></tr>)}</tbody>
-        </table>
-      </div>}
-      {error && <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+        {/* Table */}
+        <div className="overflow-auto flex-1">
+          <table className="w-full min-w-[780px] text-left text-[14px] border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 w-12 text-center whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-44">ITEM NO.</th>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 min-w-[240px]">DESKRIPSI</th>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 text-right w-28 whitespace-nowrap">QTY</th>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-36">LOT NO.</th>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-32">EXPIRED</th>
+                <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-32">LOKASI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white font-medium">
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center">
+                    <div className="flex items-center justify-center gap-2 text-slate-400 text-[14px]">
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                      <span>Memuat rincian item PTS...</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {!loading && items.map((item, index) => (
+                <tr key={`${item.item_no}-${item.lot_no}-${index}`} className="hover:bg-indigo-50/30 transition-colors">
+                  <td className="px-4 py-3 text-center text-[14px] font-semibold text-slate-400">{index + 1}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="text-[14px] font-mono font-bold text-indigo-900 bg-indigo-50 border border-indigo-200/70 rounded-md px-2.5 py-1">
+                      {item.item_no ?? '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-[14px] font-medium text-slate-800">{item.description ?? '—'}</td>
+                  <td className="px-4 py-3 text-[14px] font-bold font-mono text-right text-slate-900 whitespace-nowrap">
+                    {item.quantity.toLocaleString('id-ID')}
+                  </td>
+                  <td className="px-4 py-3 text-[14px] font-mono text-slate-700 whitespace-nowrap">{item.lot_no ?? '—'}</td>
+                  <td className="px-4 py-3 text-[14px] font-mono text-slate-600 whitespace-nowrap">{item.expiration_date ?? '—'}</td>
+                  <td className="px-4 py-3 text-[14px] font-semibold text-slate-600 whitespace-nowrap">
+                    {formatLocation(item.notes)}
+                  </td>
+                </tr>
+              ))}
+              {!loading && items.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-[14px] text-slate-400">
+                    Tidak ada detail item untuk PTS ini.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            {items.length > 0 && (
+              <tfoot className="bg-slate-50/90 border-t-2 border-slate-200">
+                <tr>
+                  <td colSpan={3} className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-700">
+                    TOTAL ({items.length} ITEM)
+                  </td>
+                  <td className="px-4 py-3 text-right text-[14px] font-bold font-mono text-indigo-700 whitespace-nowrap">
+                    {total.toLocaleString('id-ID')}
+                  </td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-200 bg-slate-50/80 px-6 py-3.5 flex justify-end shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-xs cursor-pointer"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
     </div>
-    <ModalFooter onClose={onClose} onSave={save} disabled={!rows.length || saving} label={saving ? 'Mengunggah...' : 'Simpan PTS'} />
-  </Modal>
-}
-
-function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-    <div className={`w-full ${wide ? 'max-w-6xl' : 'max-w-lg'} overflow-hidden rounded-xl bg-white shadow-2xl`}>
-      <div className="flex items-center justify-between border-b px-5 py-4"><h3 className="font-bold text-gray-900">{title}</h3><button type="button" onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X className="h-5 w-5" /></button></div>
-      <div className="p-5">{children}</div>
-    </div>
-  </div>
-}
-
-function ModalFooter({ onClose, onSave, disabled, label }: { onClose: () => void; onSave: () => void; disabled: boolean; label: string }) {
-  return <div className="mt-5 flex justify-end gap-2 border-t pt-4"><button type="button" onClick={onClose} className="rounded-lg border px-3 py-2 text-sm">Batal</button><button type="button" onClick={onSave} disabled={disabled} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">{label}</button></div>
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1 block text-xs font-bold text-gray-700">{label}</span>{children}</label>
+  )
 }

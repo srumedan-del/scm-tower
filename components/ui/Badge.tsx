@@ -58,6 +58,8 @@ export const SHIPMENT_STATUS_TONE: Record<string, BadgeTone> = {
   Dispatched: 'blue',
   'In Transit': 'orange',
   Delivered:  'green',
+  'Failed Delivery': 'red',
+  Closed:     'muted',
 }
 
 export interface StatusBadgeProps extends Omit<BadgeProps, 'tone' | 'children'> {

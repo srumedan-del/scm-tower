@@ -1,7 +1,7 @@
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import {
   OutboundHeaderUploadButton,
-  OutboundDetailUploadButton,
+
 } from "@/components/outbound/OutboundUploadButton";
 import PssDetailModal from "@/components/outbound/PssDetailModal";
 import OutboundFilter from "@/components/outbound/OutboundFilter";
@@ -91,20 +91,58 @@ async function getOutboundHeaders(months: string[], customer: string) {
     }
   }
 
+  const pssNos = [
+    ...new Set(
+      rows
+        .map((r) => String(r.pss_no ?? r.shipment_no ?? "").trim())
+        .filter(Boolean),
+    ),
+  ];
+  const trackingByPss = new Map<string, { status: string; trip_id: string | null }>();
+
+  if (pssNos.length) {
+    const { data: trackings } = await supabase
+      .from("shipment_tracking")
+      .select("pss_no, status, trip_id")
+      .in("pss_no", pssNos);
+
+    for (const t of trackings ?? []) {
+      if (t.pss_no) {
+        trackingByPss.set(String(t.pss_no).trim(), {
+          status: t.status,
+          trip_id: t.trip_id ?? null,
+        });
+      }
+    }
+  }
+
   return rows.map((row) => {
     const region = row.customer_no
       ? regionByCustomer.get(row.customer_no)
       : null;
-    const hours = region === "DK" ? 48 : region === "LK" ? 72 : null;
-    const createdAt = row.document_created_at
-      ? new Date(row.document_created_at).getTime()
+    const targetLeadTimeDays = region === "DK" ? 1 : region === "LK" ? 5 : null;
+    const hours = targetLeadTimeDays !== null ? targetLeadTimeDays * 24 : null;
+    const dateSource = row.document_created_at || (row.document_date ? `${row.document_date}T00:00:00+07:00` : null);
+    const createdAt = dateSource
+      ? new Date(dateSource).getTime()
       : NaN;
     const mta =
       hours !== null && Number.isFinite(createdAt)
         ? new Date(createdAt + hours * 60 * 60 * 1000).toISOString()
         : null;
 
-    return { ...row, dk_lk: region, mta };
+    const pssKey = String(row.pss_no ?? row.shipment_no ?? "").trim();
+    const tracking = trackingByPss.get(pssKey);
+    const status = tracking?.status ?? "Belum Dikirim";
+
+    return {
+      ...row,
+      dk_lk: region,
+      target_lead_time_days: targetLeadTimeDays,
+      mta,
+      status,
+      trip_id: tracking?.trip_id ?? null,
+    };
   });
 }
 
@@ -137,18 +175,28 @@ export default async function OutboundPage({
   searchParams: Promise<{ month?: string | string[]; customer?: string }>;
 }) {
   const sp = await searchParams;
-  const monthParam = sp.month;
-  const months =
-    typeof monthParam === "string"
-      ? monthParam.split(",").filter(Boolean)
-      : (monthParam ?? []);
+  const availableMonths = await getAvailableMonths();
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const defaultMonth = availableMonths.includes(currentMonthStr)
+    ? currentMonthStr
+    : (availableMonths[0] ?? currentMonthStr);
+
+  const rawMonth = sp.month;
+  let months: string[] = [];
+  if (rawMonth === undefined) {
+    months = [defaultMonth];
+  } else if (rawMonth === "all") {
+    months = [];
+  } else if (typeof rawMonth === "string") {
+    months = rawMonth.split(",").filter(Boolean);
+  } else if (Array.isArray(rawMonth)) {
+    months = rawMonth.filter(Boolean);
+  }
+
   const customer =
     typeof sp.customer === "string" ? sp.customer.trim().slice(0, 100) : "";
 
-  const [rows, availableMonths] = await Promise.all([
-    getOutboundHeaders(months, customer),
-    getAvailableMonths(),
-  ]);
+  const rows = await getOutboundHeaders(months, customer);
 
   return (
     <div className="space-y-4">
@@ -156,63 +204,71 @@ export default async function OutboundPage({
         <h1 className="text-3xl font-bold">OUTBOUND</h1>
         <div className="flex items-center gap-3">
           <Suspense>
-            <OutboundFilter months={availableMonths} />
+            <OutboundFilter months={availableMonths} defaultMonth={defaultMonth} />
           </Suspense>
           <OutboundHeaderUploadButton />
-          <OutboundDetailUploadButton />
+
         </div>
       </header>
 
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-        <table className="w-full min-w-[980px] whitespace-nowrap text-xs">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[980px] whitespace-nowrap text-sm">
           <colgroup>
-            <col className="w-[18%]" />
+            <col className="w-[16%]" />
             <col className="w-[12%]" />
-            <col className="w-[15%]" />
-            <col className="w-[32%]" />
-            <col className="w-[14%]" />
+            <col className="w-[13%]" />
+            <col className="w-[28%]" />
+            <col className="w-[13%]" />
+            <col className="w-[9%]" />
             <col className="w-[9%]" />
           </colgroup>
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                 DOCUMENT DATE TIME
               </th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                 PSS NO
               </th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                 ORDER NO
               </th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                 CUSTOMER NAME
               </th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                 MTA
               </th>
-              <th className="px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">
-                DELAY
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
+                LEAD TIME TARGET
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
+                STATUS
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {rows.map((r: any) => {
               const pssNo = String(r.pss_no ?? r.shipment_no ?? "-");
-              const isLate = r.is_late === true;
-              const delayDays = r.delivery_delay_days ?? null;
+
+
 
               return (
-                <tr key={r.id} className="group border-t border-[#EEF0F4] transition-colors hover:bg-[#F8FAFC]">
-                  <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
-                    {formatDateTime(r.document_created_at)}
+                <tr key={r.id} className="group border-t border-gray-100 transition-colors hover:bg-slate-50">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
+                    {r.document_created_at
+                      ? formatDateTime(r.document_created_at, true)
+                      : r.document_date
+                        ? formatDateTime(r.document_date, false)
+                        : "-"}
                   </td>
-                  <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
                     <PssDetailModal pssNo={pssNo} />
                   </td>
-                  <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
                     {String(r.order_no ?? "-").toUpperCase()}
                   </td>
-                  <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
                     <div className="truncate font-medium text-text">
                       <span className="mr-1.5 text-[10px] font-normal text-text-muted">
                         {r.customer_no ?? ""}
@@ -220,30 +276,47 @@ export default async function OutboundPage({
                       {String(r.customer_name ?? "-")}
                     </div>
                   </td>
-                  <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
                     {formatDateTime(r.mta)}
                   </td>
-                  <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
-                    {delayDays !== null ? (
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
+                    {r.target_lead_time_days !== null && r.target_lead_time_days !== undefined ? (
                       <span
-                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-bold ${
-                          isLate
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
+                        className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${
+                          r.dk_lk === "DK"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-purple-100 text-purple-700"
                         }`}
                       >
-                        {delayDays} HARI
+                        {r.target_lead_time_days} HARI
                       </span>
                     ) : (
-                      <span className="text-text-muted text-xs">-</span>
+                      <span className="text-text-muted text-sm">-</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-slate-600">
+                    <span
+                      className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${
+                        r.status === "Delivered"
+                          ? "bg-green-100 text-green-700"
+                          : r.status === "In Transit"
+                            ? "bg-orange-100 text-orange-700"
+                            : r.status === "Dispatched"
+                              ? "bg-blue-100 text-blue-700"
+                              : r.status === "Draft"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {r.status || "Belum Dikirim"}
+                    </span>
                   </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td className="px-4 py-1.5 text-xs font-medium text-[#475569]">
+                <td colSpan={7} className="px-4 py-3 text-sm font-medium text-slate-600">
                   {customer
                     ? "TIDAK ADA DATA UNTUK CUSTOMER YANG DICARI"
                     : months.length > 0

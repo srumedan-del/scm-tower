@@ -17,18 +17,18 @@ export default async function VehiclesPage() {
       </header>
 
       <section className="bg-white border border-border rounded-xl overflow-hidden">
-        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+        <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">NOPOL / VEHICLE NO</th>
-                <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">JENIS</th>
-                <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">TONASE / VOLUME</th>
-                <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DRIVER</th>
-                <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">STATUS</th>
+                <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">NOPOL / VEHICLE NO</th>
+                <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">JENIS</th>
+                <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">TONASE / VOLUME</th>
+                <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">DRIVER</th>
+                <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EEF0F4]">
+            <tbody className="divide-y divide-slate-100">
               {fleet.map((r:any) => <FleetRow key={r.id} fleet={r} />)}
               {fleet.length===0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">BELUM ADA ARMADA.</td></tr>}
             </tbody>

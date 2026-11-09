@@ -1,8 +1,10 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function getReceivingExportData(months?: string[]) {
+  await requireAuthenticatedUser()
   let q = supabaseAdmin
     .from('receiving_header')
     .select(
@@ -29,6 +31,7 @@ export async function getReceivingExportData(months?: string[]) {
 }
 
 export async function getReceivingDetailExportData() {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('receiving_detail')
     .select(

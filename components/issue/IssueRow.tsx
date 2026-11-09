@@ -73,22 +73,22 @@ export function IssueRow({ issue }: { issue: Issue }) {
   return (
     <>
       <tr className="border-t border-border hover:bg-blue-50 cursor-pointer transition-colors" onClick={() => setOpen(true)}>
-        <td className="px-4 py-2.5 font-mono text-xs font-bold whitespace-nowrap">{issue.issue_no ?? '-'}</td>
-        <td className="px-4 py-2.5 text-xs">{issue.category ?? '-'}</td>
-        <td className="px-4 py-2.5 text-xs max-w-xs truncate">{issue.title ?? '-'}</td>
-        <td className="px-4 py-2.5 text-xs text-gray-600 whitespace-nowrap">{issue.pic_name ?? '-'}</td>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-3 text-xs font-medium text-xs font-bold whitespace-nowrap">{issue.issue_no ?? '-'}</td>
+        <td className="px-4 py-3 text-xs text-xs">{issue.category ?? '-'}</td>
+        <td className="px-4 py-3 text-xs text-xs max-w-xs truncate">{issue.title ?? '-'}</td>
+        <td className="px-4 py-3 text-xs text-xs text-gray-600 whitespace-nowrap">{issue.pic_name ?? '-'}</td>
+        <td className="px-4 py-3 text-xs">
           <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${impactStyle}`}>
             {issue.impact ?? '-'}
           </span>
         </td>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-3 text-xs">
           <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${statusStyle}`}>
             {issue.status ?? '-'}
           </span>
         </td>
-        <td className="px-4 py-2.5"><AgeBadge days={age} status={issue.status} /></td>
-        <td className="px-4 py-2.5 text-xs whitespace-nowrap">{issue.due_date ?? '-'}</td>
+        <td className="px-4 py-3 text-xs"><AgeBadge days={age} status={issue.status} /></td>
+        <td className="px-4 py-3 text-xs text-xs whitespace-nowrap">{issue.due_date ?? '-'}</td>
       </tr>
       {mounted && open && createPortal(
         <IssueEditPanel

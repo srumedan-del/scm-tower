@@ -1,591 +1,625 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
 import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
 import {
-  AlertTriangle, CheckCircle2, Clock3, MapPin,
-  Truck, XCircle, TrendingUp, TrendingDown,
-  Minus, Package, Bell,
+  AlertTriangle, Activity, ArrowLeftRight, Bell,
+  CheckCircle2, Clock3, Minus, Package, PackageCheck,
+  TrendingDown, TrendingUp, Truck, Warehouse,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 function currentMonth() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
-function nextMonth(month: string) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const date = new Date(year, monthNumber, 1)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
+function nextMonthStart(month: string) {
+  const [y, m] = month.split('-').map(Number)
+  const d = new Date(y, m, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 
 function monthLabel(month: string) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  return new Date(year, monthNumber - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+  const [y, m] = month.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
 }
 
-function availableDashboardMonths() {
+// Data aktual dimulai dari November 2026
+const DATA_START = '2026-11-01'
+
+function availableMonths() {
   const months: string[] = []
   const now = new Date()
-  for (let offset = 0; offset < 12; offset++) {
-    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1)
-    months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
+  const startY = 2026, startM = 11
+  const curY = now.getFullYear(), curM = now.getMonth() + 1
+  for (let y = curY; y >= startY; y--) {
+    const fromM = y === curY ? curM : 12
+    const toM   = y === startY ? startM : 1
+    for (let m = fromM; m >= toM; m--)
+      months.push(`${y}-${String(m).padStart(2, '0')}`)
   }
   return months
 }
 
-async function getDashboardData(period: string) {
-  const fromDate = `${period}-01`
-  const toDate = nextMonth(period)
+// ─── data fetching (3 batch, dioptimasi) ─────────────────────────────────────
 
+async function getDashboardData(period: string) {
+  const from  = `${period}-01`
+  const to    = nextMonthStart(period)
   const today = new Date().toISOString().slice(0, 10)
 
+  const sevenDaysStr = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
+  const threeDaysStr = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
+
+  // ── Batch 1: query ringan (count-only + list kecil) ──────────────────────
   const [
-    { count: vendorCount },
-    { count: issueCount },
-    { data: customers },
+    { count: receivingMonth },
+    { count: crossdockingActive },
+    { count: deliveredToday },
     { data: openIssues },
-    { data: activeShipments },
-    { data: otdData },
-    { count: outboundTotal },
-    { data: lateShipments },
-    { count: activeShipmentCount },
-    { count: draftCount },
-    { count: dispatchedCount },
-    { count: inTransitCount },
-    { count: deliveredTodayCount },
+    { data: hdAlertRaw },
+    { data: crossdockingDeadlineRaw },
+    { data: recentPtr },
   ] = await Promise.all([
-    supabase.from('vendors').select('*', { count: 'exact', head: true }),
-    supabase.from('issue_log').select('*', { count: 'exact', head: true }).in('status', ['Open', 'In Progress']),
-    supabase.from('customers').select('id, customer_name, city, is_active, is_hd_customer, machine_count, latitude, longitude').eq('is_active', true).limit(200),
-    supabase.from('issue_log').select('issue_no, title, status, category, due_date').in('status', ['Open', 'In Progress']).order('due_date', { ascending: true }).limit(5),
-    // Shipment aktif dari shipment_tracking (bukan tabel shipments lama)
-    supabase.from('shipment_tracking')
-      .select('id, pss_no, status, customer_name, destination_city, promised_delivery_date, transporter_id, dispatch_time')
-      .in('status', ['Draft', 'Dispatched', 'In Transit'])
-      .order('promised_delivery_date', { ascending: true })
-      .limit(8),
-    // OTD resmi: hanya delivery final dengan POD dan timestamp aktual.
-    // Field keterlambatan dari NAV tidak dipakai karena bukan bukti lapangan.
-    supabase.from('shipment_tracking')
-      .select('delivery_time, promised_delivery_date, delivery_pod!inner(id)')
-      .eq('status', 'Delivered')
-      .gte('delivery_time', fromDate)
-      .lt('delivery_time', toDate)
-      .not('delivery_time', 'is', null)
-      .not('promised_delivery_date', 'is', null),
-    supabase.from('outbound_header').select('*', { count: 'exact', head: true }),
-    // Alert: shipment lewat promised_delivery_date tapi belum Delivered
-    supabase.from('shipment_tracking')
-      .select('id, pss_no, customer_name, promised_delivery_date, status, dispatch_time, destination_city, dk_lk')
-      .lt('promised_delivery_date', today)
+    supabase.from('receiving_header').select('*', { count: 'exact', head: true })
+      .gte('posting_date', from).lt('posting_date', to),
+
+    supabase.from('crossdocking_header').select('*', { count: 'exact', head: true })
+      .not('status', 'eq', 'Delivered').gte('received_from_hq_date', DATA_START),
+
+    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true })
+      .eq('status', 'Delivered').gte('delivery_time', today),
+
+    supabase.from('issue_log')
+      .select('issue_no, title, status, category, due_date')
+      .in('status', ['Open', 'In Progress'])
+      .order('due_date', { ascending: true }).limit(5),
+
+    supabase.from('hd_stock_monitoring')
+      .select('customer_id, fu_po_date, estimated_stock, customers!inner(customer_name, city)')
+      .lte('fu_po_date', sevenDaysStr).not('fu_po_date', 'is', null)
+      .order('fu_po_date', { ascending: true }).limit(30),
+
+    supabase.from('crossdocking_header')
+      .select('id, crossdocking_no, customer_name, destination_city, promised_delivery_date, status')
+      .lte('promised_delivery_date', threeDaysStr)
       .not('status', 'eq', 'Delivered')
       .not('promised_delivery_date', 'is', null)
-      .order('promised_delivery_date', { ascending: true })
-      .limit(20),
-    // Count shipment aktif (non-Delivered)
-    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).not('status', 'eq', 'Delivered'),
-    // Breakdown per status
-    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'Draft'),
-    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'Dispatched'),
-    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'In Transit'),
-    // Delivered hari ini
-    supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).eq('status', 'Delivered').gte('delivery_time', today),
+      .gte('promised_delivery_date', DATA_START)
+      .order('promised_delivery_date', { ascending: true }).limit(20),
+
+    supabase.from('receiving_header')
+      .select('id, ptr_no, transfer_from_code, transfer_to_code, posting_date, ship_to_posting_days')
+      .gte('posting_date', from).lt('posting_date', to)
+      .order('posting_date', { ascending: false }).limit(5),
   ])
 
+  // ── Batch 2: dua query besar (shipment + outbound) secara paralel ─────────
+  const [
+    { data: shipmentRows },
+    { data: outboundRows },
+  ] = await Promise.all([
+    // SATU query semua shipment Nov 2026+ — tanpa FK join, semua agregasi di JS
+    supabase.from('shipment_tracking')
+      .select('id, pss_no, crossdocking_id, source_type, status, customer_name, destination_city, document_date, dk_lk, dispatch_time, delivery_time')
+      .gte('document_date', DATA_START)
+      .order('document_date', { ascending: false })
+      .limit(1000),
+
+    // Outbound bulan ini — hanya customer_no untuk lookup DK/LK
+    supabase.from('outbound_header')
+      .select('pss_no, shipment_no, customer_no')
+      .gte('document_date', from).lt('document_date', to),
+  ])
+
+  // ── Batch 3: lookup DK/LK — hanya jika ada customer unik ─────────────────
+  const customerNos = [...new Set(
+    (outboundRows ?? []).map((r: any) => r.customer_no).filter(Boolean)
+  )] as string[]
+
+  const dkLkMap = new Map<string, string>()
+  if (customerNos.length) {
+    const { data: custData } = await supabase
+      .from('customers').select('customer_code, dk_lk')
+      .in('customer_code', customerNos)
+    for (const c of custData ?? [])
+      if (c.customer_code && c.dk_lk) dkLkMap.set(c.customer_code, c.dk_lk)
+  }
+
+  // ── Proses shipmentRows — semua derivasi dari satu array ─────────────────
+  const allShipments = (shipmentRows ?? []) as {
+    id: number; pss_no: string | null; crossdocking_id: number | null; source_type: string
+    status: string; customer_name: string | null; destination_city: string | null
+    document_date: string; dk_lk: string | null; dispatch_time: string | null
+    delivery_time: string | null
+  }[]
+
+  // Count status
+  const cntDraft      = allShipments.filter(s => s.status === 'Draft').length
+  const cntDispatched = allShipments.filter(s => s.status === 'Dispatched').length
+  const cntInTransit  = allShipments.filter(s => s.status === 'In Transit').length
+
+  // PSS untracked bulan ini
+  const trackedPssSet = new Set(
+    allShipments
+      .filter(s => s.pss_no && s.document_date >= from && s.document_date < to)
+      .map(s => String(s.pss_no).trim())
+  )
+  const untrackedCount = (outboundRows ?? []).filter((r: any) => {
+    const key = String(r.pss_no ?? r.shipment_no ?? '').trim()
+    return key && !trackedPssSet.has(key)
+  }).length
+
+  // OTD bulan ini
+  const slaDeadline = (docDate: string, dkLk: string | null) => {
+    const d = new Date(docDate)
+    d.setDate(d.getDate() + (dkLk === 'DK' ? 1 : 5))
+    d.setHours(23, 59, 59, 0)
+    return d
+  }
+  const otdRows = allShipments.filter(s =>
+    s.status === 'Delivered' && s.delivery_time &&
+    s.delivery_time >= from && s.delivery_time < to && s.document_date
+  )
+  const otdOnTime = otdRows.filter(s => new Date(s.delivery_time!) <= slaDeadline(s.document_date, s.dk_lk)).length
+  const otdTotal  = otdRows.length
+  const otdRate   = otdTotal > 0 ? Math.round((otdOnTime / otdTotal) * 100) : null
+
+  // Overdue
+  const overdueFiltered = allShipments
+    .filter(s => s.status !== 'Delivered' && s.status !== 'Closed' && s.document_date && new Date(today) > slaDeadline(s.document_date, s.dk_lk))
+    .sort((a, b) => a.document_date.localeCompare(b.document_date))
+
+  // Aktif (Dispatched / In Transit)
+  const activeToday = allShipments
+    .filter(s => s.status === 'Dispatched' || s.status === 'In Transit')
+    .sort((a, b) => (b.dispatch_time ?? '').localeCompare(a.dispatch_time ?? ''))
+    .slice(0, 10)
+
+  // Crossdocking deadline — exclude yang sudah punya shipment aktif
+  const shippedCdIds = new Set(
+    allShipments
+      .filter(s => s.crossdocking_id && ['Dispatched', 'In Transit', 'Delivered', 'Closed'].includes(s.status))
+      .map(s => s.crossdocking_id!)
+  )
+  const crossdockingDeadline = (crossdockingDeadlineRaw ?? [])
+    .filter((c: any) => !shippedCdIds.has(c.id)) as {
+      id: number; crossdocking_no: string; customer_name: string | null
+      destination_city: string | null; promised_delivery_date: string; status: string
+    }[]
+
+  // Outbound counts
+  const outboundMonth = outboundRows?.length ?? 0
+  const outboundDK    = (outboundRows ?? []).filter((r: any) => dkLkMap.get(r.customer_no) === 'DK').length
+  const outboundLK    = (outboundRows ?? []).filter((r: any) => dkLkMap.get(r.customer_no) === 'LK').length
+
+  // HD alert deduplikasi
+  const hdByCustomer = Object.values(
+    (hdAlertRaw ?? []).reduce<Record<number, any>>((acc, r: any) => {
+      if (!acc[r.customer_id] || r.fu_po_date < acc[r.customer_id].fu_po_date) acc[r.customer_id] = r
+      return acc
+    }, {})
+  )
+
   return {
+    period, today,
     counts: {
-      vendors: vendorCount ?? 0,
-      issues: issueCount ?? 0,
-      outbound: outboundTotal ?? 0,
-      activeShipments: activeShipmentCount ?? 0,
-      draft: draftCount ?? 0,
-      dispatched: dispatchedCount ?? 0,
-      inTransit: inTransitCount ?? 0,
-      deliveredToday: deliveredTodayCount ?? 0,
+      outboundMonth, outboundDK, outboundLK,
+      receivingMonth: receivingMonth ?? 0,
+      crossdockingActive: crossdockingActive ?? 0,
+      deliveredToday: deliveredToday ?? 0,
+      draft: cntDraft, dispatched: cntDispatched, inTransit: cntInTransit,
+      untrackedPss: untrackedCount,
     },
-    customers: customers ?? [],
-    openIssues: openIssues ?? [],
-    activeShipments: (activeShipments ?? []) as {
-      id: number
-      pss_no: string | null
-      status: string
-      customer_name: string | null
-      destination_city: string | null
-      promised_delivery_date: string | null
-      dispatch_time: string | null
+    otd: { rate: otdRate, onTime: otdOnTime, late: otdTotal - otdOnTime, total: otdTotal },
+    overdueShipments: overdueFiltered,
+    crossdockingDeadline,
+    activeToday,
+    recentPtr: (recentPtr ?? []) as {
+      id: number; ptr_no: string | null; transfer_from_code: string | null
+      transfer_to_code: string | null; posting_date: string | null; ship_to_posting_days: number | null
     }[],
-    otdRaw: (otdData ?? []) as {
-      delivery_time: string
-      promised_delivery_date: string
+    openIssues: (openIssues ?? []) as {
+      issue_no: string; title: string; status: string; category: string | null; due_date: string | null
     }[],
-    lateShipments: (lateShipments ?? []) as {
-      id: number
-      pss_no: string | null
-      customer_name: string | null
-      promised_delivery_date: string
-      status: string
-      dispatch_time: string | null
-      destination_city: string | null
-      dk_lk: string | null
+    hdAlerts: hdByCustomer as {
+      customer_id: number; fu_po_date: string; estimated_stock: number | null
+      customers: { customer_name: string | null; city: string | null } | null
     }[],
   }
 }
 
-function computeOtd(rows: { delivery_time: string; promised_delivery_date: string }[]) {
-  if (!rows.length) return { rate: null, onTime: 0, late: 0, total: 0, avgDelay: null }
+// ─── sub-components ───────────────────────────────────────────────────────────
 
-  const isOnTime = (r: { delivery_time: string; promised_delivery_date: string }) =>
-    r.delivery_time.slice(0, 10) <= r.promised_delivery_date
-  const onTime = rows.filter(isOnTime).length
-  const late   = rows.filter((r) => !isOnTime(r)).length
-  const total  = rows.length
-  const rate   = Math.round((onTime / total) * 100)
-
-  const lateRows = rows.filter((r) => !isOnTime(r))
-  const avgDelay = lateRows.length
-    ? Math.round(lateRows.reduce((sum, r) => {
-        const delivered = new Date(r.delivery_time).setHours(0, 0, 0, 0)
-        const promised = new Date(`${r.promised_delivery_date}T00:00:00`).getTime()
-        return sum + Math.max(0, Math.round((delivered - promised) / 86_400_000))
-      }, 0) / lateRows.length)
-    : 0
-
-  return { rate, onTime, late, total, avgDelay }
-}
-
-function computeMonthlyOtd(rows: { delivery_time: string; promised_delivery_date: string }[]) {
-  const byMonth: Record<string, { onTime: number; total: number }> = {}
-
-  for (const r of rows) {
-    const m = r.delivery_time.slice(0, 7)
-    if (!byMonth[m]) byMonth[m] = { onTime: 0, total: 0 }
-    byMonth[m].total++
-    if (r.delivery_time.slice(0, 10) <= r.promised_delivery_date) byMonth[m].onTime++
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    Draft: 'bg-gray-100 text-gray-600', Dispatched: 'bg-blue-100 text-blue-700',
+    'In Transit': 'bg-orange-100 text-orange-700', Delivered: 'bg-green-100 text-green-700',
   }
-
-  return Object.entries(byMonth)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, s]) => ({
-      month,
-      rate: Math.round((s.onTime / s.total) * 100),
-      total: s.total,
-      onTime: s.onTime,
-    }))
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${map[status] ?? 'bg-gray-100 text-gray-500'}`}>{status}</span>
 }
+
+function SlaStatus({ documentDate, dkLk, today }: { documentDate: string | null; dkLk: string | null; today: string }) {
+  if (!documentDate) return <span className="text-xs text-gray-400">—</span>
+  const deadline = new Date(documentDate)
+  deadline.setDate(deadline.getDate() + (dkLk === 'DK' ? 1 : 5))
+  deadline.setHours(23, 59, 59, 0)
+  const diffDays = Math.ceil((deadline.getTime() - new Date(today).getTime()) / 86_400_000)
+  if (diffDays < 0) {
+    const late = Math.abs(diffDays)
+    return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${late >= 3 ? 'bg-red-200 text-red-800' : 'bg-orange-100 text-orange-700'}`}><AlertTriangle size={9} /> {late}h terlambat</span>
+  }
+  if (diffDays === 0) return <span className="text-xs font-bold text-orange-600">Deadline hari ini</span>
+  return <span className={`text-xs font-bold ${diffDays <= 1 ? 'text-orange-500' : 'text-gray-400'}`}>{dkLk ?? 'LK'} · sisa {diffDays}h</span>
+}
+
+// ─── page ─────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const params = await searchParams
-  const defaultPeriod = currentMonth()
-  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.period ?? '') ? params.period as string : defaultPeriod
-  const { counts, customers, openIssues, activeShipments, otdRaw, lateShipments } = await getDashboardData(period)
+  const months = availableMonths()
+  const defaultPeriod = months[0] ?? currentMonth()
+  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.period ?? '') && months.includes(params.period as string)
+    ? (params.period as string) : defaultPeriod
 
-  const hdCustomers     = (customers as any[]).filter((customer: any) => customer.is_hd_customer === true)
-  const customerActive  = hdCustomers.length
-  const totalMesinHD    = hdCustomers.reduce((sum: number, customer: any) => sum + (Number(customer.machine_count) || 0), 0)
-  const withLokasi      = hdCustomers.filter((customer: any) => customer.latitude != null && customer.longitude != null).length
-  const lokasiCoverage  = customerActive ? Math.round(withLokasi * 100 / customerActive) : 0
+  const d = await getDashboardData(period)
 
-  const otd        = computeOtd(otdRaw)
-  const otdMonthly = computeMonthlyOtd(otdRaw)
-
-  // Bandingkan bulan ini vs bulan lalu
-  const lastTwo = otdMonthly.slice(-2)
-  const trend   = lastTwo.length === 2 ? lastTwo[1].rate - lastTwo[0].rate : null
-
-  // Hitung hari keterlambatan per shipment
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  function daysLate(promisedDate: string) {
-    const d = new Date(promisedDate)
-    d.setHours(0, 0, 0, 0)
-    return Math.floor((today.getTime() - d.getTime()) / 86_400_000)
-  }
+  const hdKritis    = d.hdAlerts.filter(r => r.fu_po_date < d.today || (r.estimated_stock ?? 0) < 0)
+  const hdMendekati = d.hdAlerts.filter(r => r.fu_po_date >= d.today && (r.estimated_stock ?? 0) >= 0)
+  const totalAlerts = d.overdueShipments.length + d.crossdockingDeadline.length + d.counts.untrackedPss + hdKritis.length
 
   return (
-    <div className="space-y-8">
-      {/* ── Header ───────────────────────────────────────── */}
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between animate-rise">
+    <div className="space-y-6">
+
+      {/* HEADER */}
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-sm font-medium text-blue">
+          <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
             </span>
-            Live control tower
+            Live · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight">SCM Dashboard</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">SCM Dashboard</h1>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted bg-white border border-border rounded-lg px-3 py-2 shadow-sm">
-          <Clock3 size={15} className="text-blue" /> Update terakhir: hari ini,{' '}
-          {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">Periode KPI</span>
+          <DashboardPeriodSelect period={period} months={months} />
         </div>
       </header>
 
-      {/* ── KPI Strip ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[
-          { href: '/outbound', icon: <Package size={14} />, label: 'Outbound PSS', value: counts.outbound.toLocaleString('id-ID'), sub: 'Total PSS header', delay: '0s' },
-          { href: '/shipment', icon: <Truck size={14} />, label: 'Shipment Aktif', value: counts.activeShipments, sub: null, delay: '0.08s' },
-          { href: '/issues', icon: <AlertTriangle size={14} />, label: 'Open Issues', value: counts.issues, sub: 'Open & In Progress', delay: '0.16s', warn: counts.issues > 0 },
-        ].map(({ href, icon, label, value, sub, delay, warn }) => (
-          <Link
-            key={href}
-            href={href}
-            style={{ animationDelay: delay }}
-            className="animate-rise rounded-xl border border-border bg-white p-4 group
-              hover:border-blue/40 hover:shadow-md hover:shadow-blue/8 hover:-translate-y-0.5
-              transition-all duration-200"
-          >
-            <div className="flex items-center gap-2 text-xs text-muted group-hover:text-blue transition-colors duration-200">
-              {icon} {label}
-            </div>
-            <div className={`mt-2 text-3xl font-bold transition-colors duration-200 ${warn ? 'text-orange' : 'text-text group-hover:text-blue'}`}>
-              {value}
-            </div>
-            {href === '/shipment' ? (
-              <div className="mt-1 flex gap-2 flex-wrap">
-                {counts.draft > 0 && <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{counts.draft} Draft</span>}
-                {counts.dispatched > 0 && <span className="text-xs bg-blue/10 text-blue rounded px-1.5 py-0.5">{counts.dispatched} Dispatched</span>}
-                {counts.inTransit > 0 && <span className="text-xs bg-orange/10 text-orange rounded px-1.5 py-0.5">{counts.inTransit} In Transit</span>}
-              </div>
-            ) : (
-              <div className="text-xs text-muted mt-1">{sub}</div>
-            )}
-          </Link>
-        ))}
-      </div>
-
-      {/* ── OTD KPI Section ───────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <TrendingUp size={18} /> On-Time Delivery (OTD)
+      {/* ZONA 1 — ALERT AKTIF */}
+      {totalAlerts > 0 && (
+        <section aria-label="Alert aktif">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-red-700">
+            <Bell size={16} className="animate-pulse" />
+            Alert Aktif
+            <span className="rounded-full bg-red-600 text-white text-xs font-bold px-2 py-0.5">{totalAlerts}</span>
           </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">Periode data</span>
-            <DashboardPeriodSelect period={period} months={availableDashboardMonths()} />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+
+            <Link href="/shipment" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.overdueShipments.length > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white opacity-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-red-600 flex items-center gap-1"><Truck size={13} /> Shipment Overdue</span>
+                <span className={`text-2xl font-bold ${d.overdueShipments.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>{d.overdueShipments.length}</span>
+              </div>
+              <p className="text-xs text-gray-500">Lewat SLA (DK: +1h, LK: +5h dari doc date), belum Delivered</p>
+              {d.overdueShipments.slice(0, 2).map(s => {
+                const dl = new Date(s.document_date); dl.setDate(dl.getDate() + (s.dk_lk === 'DK' ? 1 : 5))
+                const late = Math.floor((new Date(d.today).getTime() - dl.getTime()) / 86_400_000)
+                return (
+                  <div key={s.id} className="mt-1.5 flex items-center gap-1.5 text-xs text-red-700">
+                    <AlertTriangle size={10} />
+                    <span className="truncate font-medium">{s.customer_name ?? s.pss_no ?? `#${s.id}`}</span>
+                    <span className="shrink-0 text-red-400">{s.dk_lk ?? 'LK'} · {late}h</span>
+                  </div>
+                )
+              })}
+              {d.overdueShipments.length > 2 && <p className="mt-1 text-xs text-red-400">+{d.overdueShipments.length - 2} lainnya →</p>}
+            </Link>
+
+            <Link href="/shipment" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.counts.untrackedPss > 0 ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white opacity-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-orange-600 flex items-center gap-1"><Package size={13} /> PSS Belum Dikirim</span>
+                <span className={`text-2xl font-bold ${d.counts.untrackedPss > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{d.counts.untrackedPss}</span>
+              </div>
+              <p className="text-xs text-gray-500">PSS {monthLabel(period)} belum dibuat shipment</p>
+              <p className="mt-2 text-xs text-orange-500 font-medium">Buka tab "For Transport Planning" →</p>
+            </Link>
+
+            <Link href="/crossdocking" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.crossdockingDeadline.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white opacity-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-amber-700 flex items-center gap-1"><ArrowLeftRight size={13} /> Crossdocking Deadline</span>
+                <span className={`text-2xl font-bold ${d.crossdockingDeadline.length > 0 ? 'text-amber-700' : 'text-gray-400'}`}>{d.crossdockingDeadline.length}</span>
+              </div>
+              <p className="text-xs text-gray-500">Promised date ≤ 3 hari, belum Delivered</p>
+              {d.crossdockingDeadline.slice(0, 2).map(c => (
+                <div key={c.id} className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700">
+                  <Clock3 size={10} />
+                  <span className="truncate font-medium">{c.customer_name ?? c.crossdocking_no}</span>
+                  <span className="shrink-0 text-amber-500">{c.promised_delivery_date}</span>
+                </div>
+              ))}
+              {d.crossdockingDeadline.length > 2 && <p className="mt-1 text-xs text-amber-500">+{d.crossdockingDeadline.length - 2} lainnya →</p>}
+            </Link>
+
+            <Link href="/inventory/hd-monitoring" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${hdKritis.length > 0 ? 'border-purple-200 bg-purple-50' : hdMendekati.length > 0 ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 bg-white opacity-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-semibold flex items-center gap-1 ${hdKritis.length > 0 ? 'text-purple-700' : 'text-yellow-700'}`}><Activity size={13} /> HD FU-PO Alert</span>
+                <span className={`text-2xl font-bold ${hdKritis.length > 0 ? 'text-purple-700' : hdMendekati.length > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>{hdKritis.length + hdMendekati.length}</span>
+              </div>
+              <p className="text-xs text-gray-500">{hdKritis.length > 0 ? `${hdKritis.length} kritis` : ''}{hdKritis.length > 0 && hdMendekati.length > 0 ? ', ' : ''}{hdMendekati.length > 0 ? `${hdMendekati.length} mendekati` : ''}{hdKritis.length + hdMendekati.length === 0 ? 'Semua aman' : ''}</p>
+              {[...hdKritis, ...hdMendekati].slice(0, 2).map(r => (
+                <div key={r.customer_id} className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700">
+                  <span className="truncate font-medium">{r.customers?.customer_name ?? `#${r.customer_id}`}</span>
+                  <span className="shrink-0 text-purple-400">{r.fu_po_date}</span>
+                </div>
+              ))}
+            </Link>
+
+          </div>
+        </section>
+      )}
+
+      {/* ZONA 2 — KPI BULAN INI */}
+      <section aria-label={`KPI ${monthLabel(period)}`}>
+        <h2 className="mb-3 text-base font-semibold text-gray-700 flex items-center gap-2">
+          <TrendingUp size={16} /> KPI — {monthLabel(period)}
+        </h2>
+
+        {/* Row 1 Outbound — 3 card: Total, DK, LK */}
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-0.5">Outbound</p>
+          <div className="grid grid-cols-3 gap-3">
+            <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-indigo-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 mb-2">
+                <span className="rounded-md p-1 bg-indigo-50"><Package size={15} /></span>
+                Total PSS
+              </div>
+              <div className="text-3xl font-bold text-indigo-600">{d.counts.outboundMonth}</div>
+              <div className="text-xs text-gray-400 mt-0.5">dokumen keluar</div>
+            </Link>
+            <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-blue-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 mb-2">
+                <span className="rounded-md p-1 bg-blue-50"><Package size={15} /></span>
+                Dalam Kota (DK)
+              </div>
+              <div className="text-3xl font-bold text-blue-600">{d.counts.outboundDK}</div>
+              <div className="text-xs text-gray-400 mt-0.5">SLA 1 hari</div>
+            </Link>
+            <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 mb-2">
+                <span className="rounded-md p-1 bg-violet-50"><Package size={15} /></span>
+                Luar Kota (LK)
+              </div>
+              <div className="text-3xl font-bold text-violet-600">{d.counts.outboundLK}</div>
+              <div className="text-xs text-gray-400 mt-0.5">SLA 5 hari</div>
+            </Link>
           </div>
         </div>
 
-        {otdRaw.length === 0 ? (
-          <div className="rounded-xl border border-border bg-white p-6 text-sm text-gray-400 text-center">
-            Belum ada data outbound. Upload PSS Header & Detail di{' '}
-            <Link href="/outbound" className="text-indigo-600 hover:underline">/outbound</Link>.
+        {/* Row 2 Receiving + Crossdocking + Delivered */}
+        <div className="mb-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-0.5">Operasional</p>
+          <div className="grid grid-cols-3 gap-3">
+            <Link href="/receiving" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 mb-2">
+                <span className="rounded-md p-1 bg-emerald-50"><Warehouse size={15} /></span>
+                Receiving PTR
+              </div>
+              <div className="text-3xl font-bold text-emerald-600">{d.counts.receivingMonth}</div>
+              <div className="text-xs text-gray-400 mt-0.5">dokumen masuk</div>
+            </Link>
+            <Link href="/crossdocking" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-amber-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 mb-2">
+                <span className="rounded-md p-1 bg-amber-50"><ArrowLeftRight size={15} /></span>
+                Crossdocking Aktif
+              </div>
+              <div className="text-3xl font-bold text-amber-600">{d.counts.crossdockingActive}</div>
+              <div className="text-xs text-gray-400 mt-0.5">belum Delivered</div>
+            </Link>
+            <Link href="/shipment" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-green-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 mb-2">
+                <span className="rounded-md p-1 bg-green-50"><PackageCheck size={15} /></span>
+                Delivered Hari Ini
+              </div>
+              <div className="text-3xl font-bold text-green-600">{d.counts.deliveredToday}</div>
+              <div className="text-xs text-gray-400 mt-0.5">selesai hari ini</div>
+            </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {/* OTD Rate card */}
-            <div className="rounded-xl border border-border bg-white p-5">
-              <div className="text-xs text-gray-500 mb-1">OTD Rate ({monthLabel(period)})</div>
-              <div className="flex items-end gap-2">
-                <span
-                  className={`text-4xl font-bold ${
-                    (otd.rate ?? 0) >= 95
-                      ? 'text-green-600'
-                      : (otd.rate ?? 0) >= 80
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {otd.rate ?? '-'}%
-                </span>
-                {trend !== null && (
-                  <span
-                    className={`mb-1 flex items-center gap-0.5 text-xs font-medium ${
-                      trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-500'
-                    }`}
-                  >
-                    {trend > 0 ? <TrendingUp size={12} /> : trend < 0 ? <TrendingDown size={12} /> : <Minus size={12} />}
-                    {trend > 0 ? '+' : ''}{trend}% vs bln lalu
+        </div>
+
+        {/* Row 3: OTD + Status Shipment */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-700">On-Time Delivery (OTD)</span>
+              <span className="text-xs text-gray-400">{monthLabel(period)}</span>
+            </div>
+            {d.otd.total === 0 ? (
+              <div className="text-sm text-gray-400 py-2">Belum ada shipment Delivered dengan data lengkap bulan ini.</div>
+            ) : (
+              <>
+                <div className="flex items-end gap-3 mb-3">
+                  <span className={`text-4xl font-bold ${(d.otd.rate ?? 0) >= 95 ? 'text-green-600' : (d.otd.rate ?? 0) >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {d.otd.rate ?? '—'}%
                   </span>
-                )}
-              </div>
-              <div className="mt-2 flex gap-3 text-xs text-gray-500">
-                <span className="text-green-600 font-medium">{otd.onTime} tepat waktu</span>
-                <span className="text-red-500 font-medium">{otd.late} terlambat</span>
-              </div>
-              {/* Progress bar */}
-              <div className="mt-3 h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                <div
-                  className={`h-2 rounded-full transition-all ${
-                    (otd.rate ?? 0) >= 95 ? 'bg-green-500' : (otd.rate ?? 0) >= 80 ? 'bg-yellow-400' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${otd.rate ?? 0}%` }}
-                />
-              </div>
-              <div className="mt-1 text-xs text-gray-400">Target ≥ 95%</div>
-            </div>
+                  <div className="mb-1 text-xs text-gray-500 space-y-0.5">
+                    <div className="text-green-600 font-medium">{d.otd.onTime} tepat waktu</div>
+                    <div className="text-red-500 font-medium">{d.otd.late} terlambat</div>
+                    <div className="text-gray-400">{d.otd.total} total</div>
+                  </div>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div className={`h-2 rounded-full ${(d.otd.rate ?? 0) >= 95 ? 'bg-green-500' : (d.otd.rate ?? 0) >= 80 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{ width: `${d.otd.rate ?? 0}%` }} />
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-gray-400">
+                  <span>Target ≥ 95%</span>
+                  {(d.otd.rate ?? 0) >= 95
+                    ? <span className="flex items-center gap-1 text-green-600"><TrendingUp size={11} /> Tercapai</span>
+                    : <span className="flex items-center gap-1 text-red-500"><TrendingDown size={11} /> Di bawah target</span>}
+                </div>
+              </>
+            )}
+          </div>
 
-            {/* Avg delay card */}
-            <div className="rounded-xl border border-border bg-white p-5">
-              <div className="text-xs text-gray-500 mb-1">Rata-rata Keterlambatan</div>
-              <div className="text-4xl font-bold text-orange-500">
-                {otd.avgDelay ?? 0}
-                <span className="text-base font-normal text-gray-500 ml-1">hari</span>
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                Dari {otd.late} pengiriman terlambat
-              </div>
-              <div className="mt-3 text-xs text-gray-400">
-                Dihitung dari: delivery_time aktual (POD) − promised_delivery_date
-              </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-700">Status Shipment Berjalan</span>
+              <Link href="/shipment" className="text-xs text-indigo-600 hover:underline">Kelola →</Link>
             </div>
+            <div className="space-y-2">
+              {[
+                { label: 'Draft', count: d.counts.draft, bar: 'bg-gray-400', text: 'text-gray-600' },
+                { label: 'Dispatched', count: d.counts.dispatched, bar: 'bg-blue-400', text: 'text-blue-700' },
+                { label: 'In Transit', count: d.counts.inTransit, bar: 'bg-orange-400', text: 'text-orange-700' },
+              ].map(({ label, count, bar, text }) => {
+                const total = d.counts.draft + d.counts.dispatched + d.counts.inTransit
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0
+                return (
+                  <div key={label} className="flex items-center gap-3">
+                    <span className={`w-20 text-xs font-medium ${text}`}>{label}</span>
+                    <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className={`h-2 rounded-full ${bar}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className={`w-8 text-right text-sm font-bold ${text}`}>{count}</span>
+                  </div>
+                )
+              })}
+              <div className="pt-1 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                <span>Total aktif</span>
+                <span className="font-bold text-gray-600">{d.counts.draft + d.counts.dispatched + d.counts.inTransit}</span>
+              </div>
+              {d.counts.deliveredToday > 0 && (
+                <div className="flex items-center gap-2 text-xs text-green-600 font-medium">
+                  <CheckCircle2 size={12} /><span>{d.counts.deliveredToday} selesai hari ini</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Monthly trend table */}
-            <div className="rounded-xl border border-border bg-white p-5">
-              <div className="text-xs text-gray-500 mb-3">Tren Bulanan</div>
-              <div className="space-y-1.5">
-                {otdMonthly.slice(-6).map(({ month, rate, total }) => {
-                  const [yr, mo] = month.split('-')
-                  const label = new Date(Number(yr), Number(mo) - 1).toLocaleDateString('id-ID', {
-                    month: 'short', year: '2-digit',
-                  })
+      {/* ZONA 3 — AKTIVITAS HARI INI */}
+      <section aria-label="Aktivitas hari ini">
+        <h2 className="mb-3 text-base font-semibold text-gray-700 flex items-center gap-2">
+          <Truck size={16} /> Aktivitas Hari Ini
+        </h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+
+          <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Truck size={14} /> Sedang Berjalan</span>
+              <Link href="/shipment" className="text-xs text-indigo-600 hover:underline">Lihat semua →</Link>
+            </div>
+            {d.activeToday.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-gray-400">Tidak ada shipment aktif saat ini.</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {d.activeToday.map((s: any) => {
+                  const dl = s.document_date ? (() => { const x = new Date(s.document_date); x.setDate(x.getDate() + (s.dk_lk === 'DK' ? 1 : 5)); x.setHours(23,59,59,0); return x })() : null
+                  const isLate = dl ? new Date(d.today) > dl : false
                   return (
-                    <div key={month} className="flex items-center gap-2">
-                      <span className="w-16 text-xs text-gray-500">{label}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className={`h-1.5 rounded-full ${
-                            rate >= 95 ? 'bg-green-500' : rate >= 80 ? 'bg-yellow-400' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${rate}%` }}
-                        />
+                    <div key={s.id} className={`flex items-center gap-3 px-4 py-3 ${isLate ? 'bg-red-50' : ''}`}>
+                      <StatusBadge status={s.status} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-800 truncate">{s.customer_name ?? s.pss_no ?? `#${s.id}`}</div>
+                        <div className="text-xs text-gray-400 truncate">{s.pss_no ?? (s.crossdocking_id ? `CD-${s.crossdocking_id}` : '')}{s.destination_city ? ` · ${s.destination_city}` : ''}</div>
                       </div>
-                      <span
-                        className={`w-10 text-right text-xs font-medium ${
-                          rate >= 95 ? 'text-green-600' : rate >= 80 ? 'text-yellow-600' : 'text-red-600'
-                        }`}
-                      >
-                        {rate}%
-                      </span>
-                      <span className="w-12 text-right text-xs text-gray-400">{total} PSS</span>
+                      <SlaStatus documentDate={s.document_date} dkLk={s.dk_lk ?? null} today={d.today} />
                     </div>
                   )
                 })}
               </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* ── Alert Keterlambatan TMS ───────────────────────── */}
-      {lateShipments.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2 text-red-700">
-              <Bell size={18} className="animate-pulse" />
-              Alert Keterlambatan
-              <span className="ml-1 rounded-full bg-red-600 text-white text-xs font-bold px-2 py-0.5">
-                {lateShipments.length}
-              </span>
-            </h2>
-            <Link href="/shipment" className="text-xs text-red-600 hover:underline font-medium">
-              Kelola shipment →
-            </Link>
-          </div>
-
-          <div className="rounded-xl border border-red-200 bg-red-50 overflow-hidden">
-            <div className="px-4 py-2 bg-red-100 border-b border-red-200 text-xs text-red-700 font-medium">
-              Shipment berikut sudah melewati Promised Delivery Date tapi belum berstatus Delivered
-            </div>
-            <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Terlambat</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">PSS / Ref</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Customer</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tujuan</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Promised Date</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DK/LK</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-red-100">
-                  {lateShipments.map((s) => {
-                    const days = daysLate(s.promised_delivery_date)
-                    const urgency = days >= 7 ? 'text-red-800 bg-red-200' : days >= 3 ? 'text-red-700 bg-red-100' : 'text-orange-700 bg-orange-100'
-                    const statusColor: Record<string, string> = {
-                      'Draft':      'bg-gray-100 text-gray-600',
-                      'Dispatched': 'bg-blue-100 text-blue-700',
-                      'In Transit': 'bg-orange-100 text-orange-700',
-                    }
-                    return (
-                      <tr key={s.id} className="group border-t border-[#EEF0F4] bg-white hover:bg-red-50 transition-colors">
-                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${urgency}`}>
-                            <AlertTriangle size={10} />
-                            {days} hari
-                          </span>
-                        </td>
-                        <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap font-mono text-[#475569]">
-                          {s.pss_no ?? `#${s.id}`}
-                        </td>
-                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                          {s.customer_name ?? '—'}
-                        </td>
-                        <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">
-                          {s.destination_city ?? '—'}
-                        </td>
-                        <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">
-                          {s.promised_delivery_date}
-                        </td>
-                        <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                          <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusColor[s.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]">
-                          {s.dk_lk ? (
-                            <span className={`text-xs font-bold rounded px-1.5 py-0.5 ${s.dk_lk === 'DK' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                              {s.dk_lk}
-                            </span>
-                          ) : <span className="text-gray-300 text-xs">—</span>}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {lateShipments.length >= 20 && (
-              <div className="px-4 py-2 text-xs text-red-500 border-t border-red-100 text-center">
-                Menampilkan 20 teratas — <Link href="/shipment" className="underline">lihat semua di Shipment Tracking</Link>
-              </div>
             )}
           </div>
-        </section>
-      )}
 
-      {/* Jika tidak ada shipment_tracking sama sekali, tampilkan hint */}
-      {lateShipments.length === 0 && counts.activeShipments === 0 && (
-        <section className="rounded-xl border border-gray-100 bg-gray-50 p-4 flex items-center gap-3 text-sm text-gray-500">
-          <Bell size={16} className="text-gray-400 shrink-0" />
-          <span>
-            Tidak ada alert keterlambatan TMS.{' '}
-            {counts.activeShipments === 0
-              ? <>Belum ada shipment aktif di <Link href="/shipment" className="text-indigo-600 hover:underline">Shipment Tracking</Link>.</>
-              : 'Semua shipment aktif masih dalam batas waktu.'}
-          </span>
-        </section>
-      )}
+          <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Warehouse size={14} /> Receiving Terbaru</span>
+                <Link href="/receiving" className="text-xs text-indigo-600 hover:underline">Lihat →</Link>
+              </div>
+              {d.recentPtr.length === 0 ? (
+                <div className="px-4 py-4 text-xs text-gray-400">Belum ada PTR bulan ini.</div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {d.recentPtr.map(ptr => (
+                    <div key={ptr.id} className="flex items-center justify-between px-4 py-2.5">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-700">{ptr.ptr_no ?? '—'}</div>
+                        <div className="text-xs text-gray-400">{ptr.transfer_from_code} → {ptr.transfer_to_code}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500">{ptr.posting_date?.slice(0, 10) ?? '—'}</div>
+                        {ptr.ship_to_posting_days != null && (
+                          <div className={`text-xs font-medium ${ptr.ship_to_posting_days > 7 ? 'text-red-500' : 'text-green-600'}`}>{ptr.ship_to_posting_days}h lead</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-      {/* ── Customer Map ──────────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <MapPin size={18} /> MAPPING DASHBOARD MONITOR STOK HD
-          </h2>
-          <div className="text-xs text-gray-500">
-            {customerActive} customer aktif · {totalMesinHD.toLocaleString('id-ID')} MESIN HD ·{' '}
-            {withLokasi}/{customerActive} LOKASI ({lokasiCoverage}%)
+            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><AlertTriangle size={14} /> Open Issues</span>
+                <Link href="/issues" className="text-xs text-indigo-600 hover:underline">Lihat →</Link>
+              </div>
+              {d.openIssues.length === 0 ? (
+                <div className="px-4 py-4 text-xs text-gray-400 flex items-center gap-2"><CheckCircle2 size={14} className="text-green-500" /> Tidak ada open issue.</div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {d.openIssues.map(iss => (
+                    <div key={iss.issue_no} className="flex items-start gap-2 px-4 py-2.5">
+                      <span className={`mt-0.5 shrink-0 text-xs rounded px-1.5 py-0.5 font-medium ${iss.status === 'In Progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{iss.status}</span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-gray-700 truncate">{iss.title}</div>
+                        {iss.due_date && <div className="text-xs text-gray-400">Due {iss.due_date}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
         </div>
-        <CustomerStockMapClient showMaintainBelow />
       </section>
 
-      {/* ── Shipments Aktif (TMS) + Open Issues ──────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="bg-white border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border p-4">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Truck size={16} /> Shipment Aktif
-            </h2>
-            <Link href="/shipment" className="text-xs text-blue-600 hover:underline">Lihat semua →</Link>
-          </div>
-          {activeShipments.length === 0 ? (
-            <div className="p-6 text-sm text-gray-500 text-center">
-              Belum ada shipment aktif.{' '}
-              <Link href="/shipment" className="text-indigo-600 hover:underline">Tambah di Shipment Tracking</Link>.
-            </div>
-          ) : (
-            <ul className="divide-y divide-[#EEF0F4]">
-              {activeShipments.map((s) => {
-                const isUrgent = s.promised_delivery_date
-                  ? new Date(s.promised_delivery_date) <= new Date()
-                  : false
-                const statusColor: Record<string, string> = {
-                  'Draft':      'bg-gray-100 text-gray-600',
-                  'Dispatched': 'bg-blue-100 text-blue-700',
-                  'In Transit': 'bg-orange-100 text-orange-700',
-                }
-                return (
-                  <li key={s.id} className={`flex items-center gap-3 p-3 text-sm ${isUrgent ? 'bg-red-50' : ''}`}>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${statusColor[s.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {s.status}
-                    </span>
-                    <span className="font-mono text-xs text-indigo-600 shrink-0">
-                      {s.pss_no ?? `#${s.id}`}
-                    </span>
-                    <span className="flex-1 truncate text-xs">{s.customer_name ?? '—'}</span>
-                    <span className="text-xs text-gray-400 shrink-0">
-                      {s.promised_delivery_date?.slice(0, 10) ?? '—'}
-                    </span>
-                    {isUrgent && <AlertTriangle size={12} className="text-red-500 shrink-0" />}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="bg-white border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border p-4">
-            <h2 className="font-semibold flex items-center gap-2"><AlertTriangle size={16} /> Open Issues</h2>
-            <Link href="/issues" className="text-xs text-blue-600 hover:underline">Lihat semua →</Link>
-          </div>
-          {openIssues.length === 0 ? (
-            <div className="p-6 text-sm text-gray-500 text-center">Tidak ada open issue. 🎉</div>
-          ) : (
-            <ul className="divide-y divide-[#EEF0F4]">
-              {openIssues.map((iss: any) => (
-                <li key={iss.issue_no} className="flex items-start gap-3 p-3 text-sm">
-                  <span className={`text-xs px-2 py-0.5 rounded whitespace-nowrap font-medium ${
-                    iss.status === 'In Progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
-                  }`}>{iss.status}</span>
-                  <div className="flex-1">
-                    <div className="font-medium">{iss.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {iss.category}{iss.due_date && ` · Due ${iss.due_date}`}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      {/* ── Quick links ───────────────────────────────────── */}
-      <section className="animate-rise-delay">
-        <h2 className="text-sm font-semibold text-muted uppercase tracking-wide mb-3">Menu Cepat</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* ZONA 4 — MENU CEPAT */}
+      <section aria-label="Menu cepat">
+        <h2 className="mb-3 text-base font-semibold text-gray-700 flex items-center gap-2">
+          <Minus size={16} /> Menu Cepat
+        </h2>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
           {[
-            { href: '/master-data',        icon: <Package size={20} />,      bg: 'bg-orange/10 text-orange', label: 'Master Data',       sub: 'Vendor, Route, SKU' },
-            { href: '/warehouse-checklist',icon: <CheckCircle2 size={20} />, bg: 'bg-green/10 text-green',   label: 'Warehouse Checklist', sub: 'Cek kesiapan gudang' },
-            { href: '/settings',           icon: <XCircle size={20} />,      bg: 'bg-border text-muted',     label: 'Settings',          sub: 'Status Supabase' },
-          ].map(({ href, icon, bg, label, sub }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 group
-                hover:border-blue/30 hover:shadow-md hover:shadow-blue/6 hover:-translate-y-0.5
-                transition-all duration-200"
-            >
-              <span className={`rounded-lg p-2 ${bg} transition-transform duration-200 group-hover:scale-110`}>
-                {icon}
-              </span>
-              <div>
-                <div className="text-sm font-semibold text-text group-hover:text-blue transition-colors duration-200">{label}</div>
-                <div className="text-xs text-muted">{sub}</div>
-              </div>
+            { href: '/receiving',               label: 'Receiving',        icon: <Warehouse size={16} />,     color: 'text-emerald-600 bg-emerald-50' },
+            { href: '/outbound',                label: 'Outbound',         icon: <Package size={16} />,        color: 'text-indigo-600 bg-indigo-50' },
+            { href: '/crossdocking',            label: 'Crossdocking',     icon: <ArrowLeftRight size={16} />, color: 'text-amber-600 bg-amber-50' },
+            { href: '/shipment',                label: 'Shipment',         icon: <Truck size={16} />,          color: 'text-blue-600 bg-blue-50' },
+            { href: '/shipment-cost',           label: 'Shipment Cost',    icon: <TrendingUp size={16} />,     color: 'text-violet-600 bg-violet-50' },
+            { href: '/service-level',           label: 'Service Level',    icon: <CheckCircle2 size={16} />,   color: 'text-teal-600 bg-teal-50' },
+            { href: '/inventory',               label: 'Inventory',        icon: <Warehouse size={16} />,      color: 'text-orange-600 bg-orange-50' },
+            { href: '/inventory/hd-monitoring', label: 'HD Monitoring',    icon: <Activity size={16} />,       color: 'text-purple-600 bg-purple-50' },
+            { href: '/issues',                  label: 'Issue Log',        icon: <AlertTriangle size={16} />,  color: 'text-red-600 bg-red-50' },
+            { href: '/master-data',             label: 'Master Data',      icon: <Minus size={16} />,          color: 'text-gray-600 bg-gray-100' },
+            { href: '/shipment/budget-request', label: 'Pengajuan Dana',   icon: <TrendingDown size={16} />,   color: 'text-pink-600 bg-pink-50' },
+            { href: '/warehouse-checklist',     label: 'Warehouse Check',  icon: <CheckCircle2 size={16} />,   color: 'text-green-600 bg-green-50' },
+          ].map(({ href, label, icon, color }) => (
+            <Link key={href} href={href} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-all hover:border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-sm">
+              <span className={`rounded-lg p-1.5 ${color}`}>{icon}</span>
+              {label}
             </Link>
           ))}
         </div>
       </section>
+
     </div>
   )
 }

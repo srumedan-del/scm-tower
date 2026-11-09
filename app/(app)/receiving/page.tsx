@@ -1,5 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { PtrHeaderUploadButton, PtrDetailUploadButton } from '@/components/receiving/ReceivingUploadButton'
+import { PtrHeaderUploadButton } from '@/components/receiving/ReceivingUploadButton'
 import MultiDestinationDetailUpload from '@/components/shared/MultiDestinationDetailUpload'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
@@ -18,7 +18,7 @@ function getNextMonthFirstDay(month: string): string {
 async function getReceiving(months: string[]) {
   let query = supabase
     .from('receiving_header')
-    .select('id, ptr_no, transfer_order_no, transfer_from_code, transfer_to_code, posting_date, shipment_date, receipt_date, shipping_agent_code, ship_to_receipt_days, receipt_to_posting_days, ship_to_posting_days')
+    .select('id, ptr_no, transfer_order_no, transfer_from_code, transfer_to_code, posting_date, shipment_date, receipt_date, shipping_agent_code, transport_mode, land_vendor_code, sea_vendor_code, air_vendor_code, container_no, ship_to_receipt_days, receipt_to_posting_days, ship_to_posting_days')
     .order('posting_date', { ascending: false })
     .order('ptr_no', { ascending: false })
     .order('transfer_order_no', { ascending: false })
@@ -61,12 +61,19 @@ async function getAvailableMonths() {
   return months.sort().reverse()
 }
 
-async function getReceivingDetails() {
-  const { data } = await supabase
+async function getReceivingDetails(ptrNos?: string[]) {
+  let query = supabase
     .from('receiving_detail')
-    .select('id, receiving_header_id, document_no, item_no, description, quantity, uom, location_code')
+    .select('id, receiving_header_id, document_no, item_no, description, quantity, location_code')
     .order('document_no', { ascending: true })
-    .limit(500)
+
+  if (ptrNos && ptrNos.length > 0) {
+    query = query.in('document_no', ptrNos)
+  } else {
+    query = query.limit(1000)
+  }
+
+  const { data } = await query
   return data ?? []
 }
 
@@ -81,12 +88,29 @@ async function getReceivingPackaging(itemNos: string[]) {
 
 export default async function ReceivingPage({ searchParams }: { searchParams: Promise<{ month?: string | string[] }> }) {
   const sp = await searchParams
-  const monthParam = sp.month
-  const months = typeof monthParam === 'string'
-    ? monthParam.split(',').filter(Boolean)
-    : (monthParam ?? [])
+  const availableMonths = await getAvailableMonths()
+  const currentMonthStr = new Date().toISOString().slice(0, 7)
+  const defaultMonth = availableMonths.includes(currentMonthStr)
+    ? currentMonthStr
+    : (availableMonths[0] ?? currentMonthStr)
 
-  const [rows, details, availableMonths] = await Promise.all([getReceiving(months), getReceivingDetails(), getAvailableMonths()])
+  const rawMonth = sp.month
+  let months: string[] = []
+  if (rawMonth === undefined) {
+    months = [defaultMonth]
+  } else if (rawMonth === 'all') {
+    months = []
+  } else if (typeof rawMonth === 'string') {
+    months = rawMonth.split(',').filter(Boolean)
+  } else if (Array.isArray(rawMonth)) {
+    months = rawMonth.filter(Boolean)
+  }
+
+  const rows = await getReceiving(months)
+  const ptrNos = rows.map((r: any) => String(r.ptr_no ?? '').trim()).filter(Boolean)
+
+  const details = await getReceivingDetails(ptrNos.length > 0 ? ptrNos : undefined)
+
   const itemNos = [...new Set(details.map(detail => String(detail.item_no ?? '').trim()).filter(Boolean))]
   const packaging = await getReceivingPackaging(itemNos)
 
@@ -97,14 +121,13 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
           <h1 className="text-2xl font-semibold tracking-tight text-text">Receiving</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-                  <Suspense>
-                    <ReceivingFilter months={availableMonths} />
-                  </Suspense>
-                  <PtrHeaderUploadButton />
-                  <PtrDetailUploadButton />
-                  <MultiDestinationDetailUpload />
-                  <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />
-                </div>
+          <Suspense>
+            <ReceivingFilter months={availableMonths} defaultMonth={defaultMonth} />
+          </Suspense>
+          <PtrHeaderUploadButton />
+          <MultiDestinationDetailUpload />
+          <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />
+        </div>
       </header>
 
       <ReceivingTable rows={rows} details={details} />

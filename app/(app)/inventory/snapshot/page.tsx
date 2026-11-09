@@ -100,7 +100,7 @@ export default function InventorySnapshotPage() {
       {avail === false && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <strong>Tabel inventory_snapshot belum dibuat.</strong> Jalankan{' '}
-          <code className="bg-amber-100 px-1 rounded font-mono">supabase/schema_new_tables.sql</code>{' '}
+          <code className="bg-amber-100 px-1 rounded font-medium">supabase/schema_new_tables.sql</code>{' '}
           di Supabase SQL Editor terlebih dahulu.
         </div>
       )}
@@ -160,24 +160,24 @@ export default function InventorySnapshotPage() {
       )}
 
       {/* Tabel */}
-      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">SKU</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Nama Item</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Gudang</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">On Hand</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Reserved</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Available</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Safety Stock</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Avg/Hari</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">DOS</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-[#64748B] whitespace-nowrap">Tgl Snapshot</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">SKU</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Nama Item</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Gudang</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">On Hand</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Reserved</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Available</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Safety Stock</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Avg/Hari</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">DOS</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tgl Snapshot</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF0F4]">
+          <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
             )}
@@ -199,17 +199,17 @@ export default function InventorySnapshotPage() {
                   onClick={() => setSelected(r)}
                   className={`hover:bg-blue-50 cursor-pointer transition-colors ${rowBg}`}
                 >
-                  <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.sku_code}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-[#475569]">{r.item_name ?? '—'}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium font-mono text-[#475569]">{r.warehouse_code}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.qty_on_hand)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.qty_reserved)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.qty_available)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{fmtQty(r.safety_stock)}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right font-mono text-[#475569]">{r.avg_daily_usage != null ? r.avg_daily_usage.toFixed(1) : '—'}</td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-right text-[#475569]">
+                  <td className="px-4 py-3 text-xs font-medium font-medium text-slate-600">{r.sku_code}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-slate-600">{r.item_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs font-medium font-medium text-slate-600">{r.warehouse_code}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right font-medium text-slate-600">{fmtQty(r.qty_on_hand)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right font-medium text-slate-600">{fmtQty(r.qty_reserved)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right font-medium text-slate-600">{fmtQty(r.qty_available)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right font-medium text-slate-600">{fmtQty(r.safety_stock)}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right font-medium text-slate-600">{r.avg_daily_usage != null ? r.avg_daily_usage.toFixed(1) : '—'}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-right text-slate-600">
                     {r.days_of_supply != null ? (
-                      <span className={`font-mono text-xs font-bold ${
+                      <span className={`font-medium text-xs font-bold ${
                         r.days_of_supply < 3 ? 'text-red-600'
                         : r.days_of_supply < 7 ? 'text-orange-600'
                         : 'text-gray-700'
@@ -218,8 +218,8 @@ export default function InventorySnapshotPage() {
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-0.25 text-xs font-medium text-center text-[#475569]"><AlertBadge status={r.alert_status} /></td>
-                  <td className="px-4 py-0.25 text-xs font-medium whitespace-nowrap text-[#475569]">{r.snapshot_date}</td>
+                  <td className="px-4 py-3 text-xs font-medium text-center text-slate-600"><AlertBadge status={r.alert_status} /></td>
+                  <td className="px-4 py-3 text-xs font-medium whitespace-nowrap text-slate-600">{r.snapshot_date}</td>
                 </tr>
               )
             })}

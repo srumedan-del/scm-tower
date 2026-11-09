@@ -1,6 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { upsertWarehouse, deleteWarehouse } from '@/app/(app)/master-data/warehouses/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Wh = {
   id: number
@@ -30,13 +31,13 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
   const [err, setErr] = useState<string | null>(null)
   const up = (k: string, v: any) => setForm((f:any) => ({ ...f, [k]: v }))
 
-  function del() {
+  async function del() {
     if (!wh) return
-    if (!confirm(`HAPUS GUDANG ${wh.warehouse_code}?`)) return
+    if (!(await confirmAction({ title: 'Hapus gudang?', message: `Gudang ${wh.warehouse_code} akan dihapus.` }))) return
     startDeleting(async () => {
       try {
         await deleteWarehouse(wh.id)
-        onSaved(); onClose()
+        notify.success('Gudang dihapus'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -54,7 +55,7 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
       if (!payload.warehouse_code) { setErr('CODE wajib diisi'); return }
       try {
         await upsertWarehouse(payload, wh?.id)
-        onSaved(); onClose()
+        notify.success('Gudang tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

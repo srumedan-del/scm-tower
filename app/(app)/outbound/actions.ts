@@ -1,10 +1,12 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 /* ── Outbound Header (PSS Header) ───────────────────────── */
 
 export async function getExistingOutboundHeaderPssNos(shipmentNos: string[]) {
+  await requireAuthenticatedUser()
   if (!shipmentNos.length) return { data: [], error: null }
 
   const CHUNK = 500
@@ -24,6 +26,7 @@ export async function getExistingOutboundHeaderPssNos(shipmentNos: string[]) {
 }
 
 export async function insertOutboundHeaderRows(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   if (!rows.length) return { inserted: 0, skipped: 0 }
 
   const shipmentNos = rows
@@ -69,10 +72,89 @@ export async function insertOutboundHeaderRows(rows: Record<string, any>[]) {
     inserted += data?.length ?? 0
   }
 
+  // Auto-sync with existing outbound_detail (link foreign key & propagate timestamps)
+  try {
+    const insertedShipmentNos = toInsert
+      .map((r) => String(r.shipment_no ?? r.pss_no ?? '').trim())
+      .filter(Boolean)
+    await syncOutboundHeadersWithExistingDetails(insertedShipmentNos)
+  } catch (err) {
+    console.warn('Auto-sync outbound details failed:', err)
+  }
+
   return { inserted, skipped }
 }
 
+export async function syncOutboundHeadersWithExistingDetails(pssNos: string[]) {
+  await requireAuthenticatedUser()
+  if (!pssNos.length) return { linked: 0, timestampsSynced: 0 }
+
+  const CHUNK = 500
+  let linked = 0
+  let timestampsSynced = 0
+
+  for (let i = 0; i < pssNos.length; i += CHUNK) {
+    const chunk = pssNos.slice(i, i + CHUNK)
+
+    const { data: headers } = await supabaseAdmin
+      .from('outbound_header')
+      .select('id, pss_no, shipment_no, document_created_at')
+      .or(`pss_no.in.(${chunk.join(',')}),shipment_no.in.(${chunk.join(',')})`)
+
+    if (!headers || !headers.length) continue
+
+    const headerMap = new Map<string, { id: number; document_created_at: string | null }>()
+    for (const h of headers) {
+      if (h.pss_no) headerMap.set(String(h.pss_no).trim(), { id: h.id, document_created_at: h.document_created_at })
+      if (h.shipment_no) headerMap.set(String(h.shipment_no).trim(), { id: h.id, document_created_at: h.document_created_at })
+    }
+
+    const { data: details } = await supabaseAdmin
+      .from('outbound_detail')
+      .select('id, document_no, document_created_at, outbound_header_id')
+      .in('document_no', chunk)
+
+    if (!details || !details.length) continue
+
+    const detailsToLink = details.filter((d) => !d.outbound_header_id)
+    for (const d of detailsToLink) {
+      const match = headerMap.get(String(d.document_no).trim())
+      if (match) {
+        await supabaseAdmin
+          .from('outbound_detail')
+          .update({ outbound_header_id: match.id })
+          .eq('id', d.id)
+        linked++
+      }
+    }
+
+    const earliestByDoc = new Map<string, string>()
+    for (const d of details) {
+      if (!d.document_created_at) continue
+      const docNo = String(d.document_no).trim()
+      const prev = earliestByDoc.get(docNo)
+      if (!prev || new Date(d.document_created_at).getTime() < new Date(prev).getTime()) {
+        earliestByDoc.set(docNo, d.document_created_at)
+      }
+    }
+
+    for (const [docNo, isoTime] of earliestByDoc.entries()) {
+      const h = headerMap.get(docNo)
+      if (h && (!h.document_created_at || h.document_created_at.includes('T00:00:00'))) {
+        await supabaseAdmin
+          .from('outbound_header')
+          .update({ document_created_at: isoTime })
+          .eq('id', h.id)
+        timestampsSynced++
+      }
+    }
+  }
+
+  return { linked, timestampsSynced }
+}
+
 export async function getOutboundHeadersByPssNos(pssNos: string[]) {
+  await requireAuthenticatedUser()
   if (!pssNos.length) return { data: [], error: null }
 
   // Ambil dari kedua kolom karena data lama bisa hanya mengisi shipment_no.
@@ -101,6 +183,7 @@ export async function getOutboundHeadersByPssNos(pssNos: string[]) {
 }
 
 export async function getOutboundHeadersForPaoMatching() {
+  await requireAuthenticatedUser()
   const PAGE_SIZE = 1000
   const allData: any[] = []
 
@@ -119,6 +202,7 @@ export async function getOutboundHeadersForPaoMatching() {
 }
 
 export async function getOutboundDetailHeaderIds(headerIds: number[]) {
+  await requireAuthenticatedUser()
   if (!headerIds.length) return { data: [], error: null }
 
   const CHUNK = 500
@@ -139,6 +223,7 @@ export async function getOutboundDetailHeaderIds(headerIds: number[]) {
 /* ── Outbound Detail (ILE) ──────────────────────────────── */
 
 export async function getExistingOutboundDetailEntryNos(entryNos: number[]) {
+  await requireAuthenticatedUser()
   if (!entryNos.length) return { data: [], error: null }
 
   const { data, error } = await supabaseAdmin
@@ -151,28 +236,36 @@ export async function getExistingOutboundDetailEntryNos(entryNos: number[]) {
 }
 
 export async function updateOutboundDetailDocumentLinks(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   const updates = rows.filter(row =>
     row.entry_no !== null && row.entry_no !== undefined && row.document_no && row.outbound_header_id
   )
 
   let updated = 0
-  for (const row of updates) {
-    const { data, error } = await supabaseAdmin
-      .from('outbound_detail')
-      .update({
-        document_no: String(row.document_no).trim(),
-        outbound_header_id: Number(row.outbound_header_id),
-      })
-      .eq('entry_no', Number(row.entry_no))
-      .select('id')
-    if (error) throw error
-    updated += data?.length ?? 0
+  const BATCH = 500
+  for (let index = 0; index < updates.length; index += BATCH) {
+    const batch = updates.slice(index, index + BATCH)
+    const results = await Promise.all(batch.map(row =>
+      supabaseAdmin
+        .from('outbound_detail')
+        .update({
+          document_no: String(row.document_no).trim(),
+          outbound_header_id: Number(row.outbound_header_id),
+        })
+        .eq('entry_no', Number(row.entry_no))
+        .select('id')
+    ))
+    for (const { data, error } of results) {
+      if (error) throw error
+      updated += data?.length ?? 0
+    }
   }
 
   return { updated }
 }
 
 export async function insertOutboundDetailRows(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   if (!rows.length) return { inserted: 0, skipped: 0 }
 
   // entry_no adalah NOT NULL constraint di DB — drop baris tanpa entry_no
@@ -235,12 +328,13 @@ export async function insertOutboundDetailRows(rows: Record<string, any>[]) {
 
 /** Isi timestamp NAV pada detail yang telah ada ketika file ILE di-upload ulang. */
 export async function updateOutboundDetailCreatedTimes(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   const updates = rows.filter(row =>
     row.entry_no !== null && row.entry_no !== undefined && row.document_created_at
   )
 
-  const BATCH = 100
   let updated = 0
+  const BATCH = 500
   for (let index = 0; index < updates.length; index += BATCH) {
     const batch = updates.slice(index, index + BATCH)
     const results = await Promise.all(batch.map(row =>
@@ -261,6 +355,7 @@ export async function updateOutboundDetailCreatedTimes(rows: Record<string, any>
 
 /** Propagate the earliest NAV document timestamp for each PSS to its header. */
 export async function updateOutboundHeaderCreatedTimes(rows: Record<string, any>[]) {
+  await requireAuthenticatedUser()
   const earliestByDocument = new Map<string, string>()
 
   for (const row of rows) {
@@ -292,6 +387,7 @@ export async function updateOutboundHeaderCreatedTimes(rows: Record<string, any>
 /* ── Outbound Full Data (modal detail) ──────────────────── */
 
 export async function getOutboundFullData(pssNo: string) {
+  await requireAuthenticatedUser()
   if (!pssNo) return { header: null, details: [], customer: null, excludedItems: [], error: null }
 
   // 1. Ambil header
@@ -330,13 +426,18 @@ export async function getOutboundFullData(pssNo: string) {
     }
   }
 
+  const isAssemblyParent = (itemNo: string | null | undefined): boolean => {
+    if (!itemNo) return false
+    const clean = itemNo.trim().toUpperCase()
+    return clean.startsWith('HD SET') || clean.startsWith('HD-SET') || /^HD\s*SET/i.test(clean)
+  }
+
   const excludedItems = (details as any[])
-    .filter((d) => String(d.item_no ?? '').trim().toUpperCase() === 'HD SET BLMDN005-ANAK')
+    .filter((d) => isAssemblyParent(d.item_no))
     .map((d) => String(d.item_no ?? '').trim())
 
-  // 4. Tampilkan semua detail yang di-upload, kecuali item non-SKU tertentu yang memang
-  // bukan SKU. Beberapa item assembly / HD SET bisa tidak ada di master_sku, tetapi
-  // tetap harus muncul di modal agar user bisa melihat data yang benar-benar masuk.
+  // 4. Tampilkan semua detail yang di-upload, kecuali item assembly kit parent (seperti HD SET ...)
+  // yang bukan merupakan komponen fisik dengan Lot & Expired Date.
   const enrichedDetails = (details as any[])
     .map((d) => {
       const itemNo = String(d.item_no ?? '').trim()
@@ -345,12 +446,7 @@ export async function getOutboundFullData(pssNo: string) {
         description: skuMap.get(itemNo) || d.description || itemNo || null,
       }
     })
-    .filter((d) => {
-      const itemNo = String(d.item_no ?? '').trim().toUpperCase()
-      // Khusus item assembly yang memang bukan SKU; jangan tampilkan di list detail.
-      if (itemNo === 'HD SET BLMDN005-ANAK') return false
-      return true
-    })
+    .filter((d) => !isAssemblyParent(d.item_no))
 
   // 5. Ambil alamat customer dari tabel customers
   const customerNo = (header as any)?.customer_no ?? null

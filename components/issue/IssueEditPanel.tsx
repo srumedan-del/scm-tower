@@ -1,6 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { generateIssueNo, upsertIssue, deleteIssue } from '@/app/(app)/issues/actions'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Issue = {
   id: number
@@ -60,13 +61,13 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
   const [err, setErr] = useState<string | null>(null)
   const up = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
-  function del() {
+  async function del() {
     if (!issue) return
-    if (!confirm(`HAPUS ISSUE ${issue.issue_no}?`)) return
+    if (!(await confirmAction({ title: 'Hapus issue?', message: `Issue ${issue.issue_no} akan dihapus.` }))) return
     startDeleting(async () => {
       try {
         await deleteIssue(issue.id)
-        onSaved(); onClose()
+        notify.success('Issue dihapus'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -97,7 +98,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
       try {
         if (!issue) payload.issue_no = await generateIssueNo(issueDate)
         await upsertIssue(payload, issue?.id)
-        onSaved(); onClose()
+        notify.success('Issue tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

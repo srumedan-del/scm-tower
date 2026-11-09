@@ -2,6 +2,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { supabase as supabaseRaw } from '@/lib/supabase'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { confirmAction, notify } from '@/lib/feedback'
 const supabase: any = supabaseRaw
 
 type FleetType = 'Internal' | 'Eksternal'
@@ -85,13 +86,13 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
     })
   },[shipment?.id])
 
-  function del(){
+  async function del(){
     if(!shipment) return
-    if(!confirm(`HAPUS SHIPMENT ${shipment.shipment_no}?`)) return
+    if (!(await confirmAction({ title: 'Hapus shipment?', message: `Shipment ${shipment.shipment_no} akan dihapus.` }))) return
     startDeleting(async()=>{
       const {error}=await supabase.from('shipments').delete().eq('id',shipment.id)
       if(error){setErr(error.message);return}
-      onSaved();onClose()
+      notify.success('Shipment dihapus'); onSaved();onClose()
     })
   }
   function save(){
@@ -136,7 +137,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
         }
       }
       if(error){setErr(error.message);return}
-      onSaved();onClose()
+      notify.success('Shipment tersimpan'); onSaved();onClose()
     })
   }
 

@@ -7,6 +7,7 @@ import {
 } from '@/app/(app)/inventory/snapshot/actions'
 import { Trash2 } from 'lucide-react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Props = {
   row: InventorySnapshotRow | null
@@ -64,11 +65,11 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
     return { label: 'OK', color: 'text-green-700 bg-green-100' }
   }
 
-  function del() {
+  async function del() {
     if (!row) return
-    if (!confirm(`Hapus snapshot ${row.sku_code} — ${row.warehouse_code}?`)) return
+    if (!(await confirmAction({ title: 'Hapus snapshot stok?', message: `Snapshot ${row.sku_code} — ${row.warehouse_code} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteSnapshot(row.id); onSaved(); onClose() }
+      try { await deleteSnapshot(row.id); notify.success('Snapshot stok dihapus'); onSaved(); onClose() }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -92,7 +93,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
           source:          'manual',
           import_period:   form.snapshot_date.slice(0, 7),
         })
-        onSaved(); onClose()
+        notify.success('Snapshot stok tersimpan'); onSaved(); onClose()
       } catch (e: any) { setErr(e.message) }
     })
   }

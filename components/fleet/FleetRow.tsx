@@ -33,14 +33,14 @@ export function FleetRow({ fleet }: { fleet: Fleet }) {
   return (
     <>
       <tr className="hover:bg-blue-50 cursor-pointer transition-colors" onClick={() => setOpen(true)}>
-        <td className="px-4 py-2.5 font-mono text-xs font-bold">{nopol}</td>
-        <td className="px-4 py-2.5">{String(fleet.vehicle_type ?? '-').toUpperCase()}</td>
-        <td className="px-4 py-2.5 text-xs">{kapasitas}</td>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-3 font-mono text-sm font-bold text-slate-800">{nopol}</td>
+        <td className="px-4 py-3 text-sm text-slate-700">{String(fleet.vehicle_type ?? '-').toUpperCase()}</td>
+        <td className="px-4 py-3 text-sm text-slate-700">{kapasitas}</td>
+        <td className="px-4 py-3 text-sm">
           {String(fleet.driver_name ?? '-').toUpperCase()}
           <div className="text-xs text-gray-500">{fleet.driver_phone ?? ''}</div>
         </td>
-        <td className="px-4 py-2.5 text-center">
+        <td className="px-4 py-3 text-center">
           <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${
             isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
           }`}>

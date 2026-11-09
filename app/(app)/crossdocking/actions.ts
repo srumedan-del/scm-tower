@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type CrossdockingHeader = {
   id: number
@@ -35,7 +36,6 @@ export type CrossdockingDetail = {
   expiration_date: string | null
   notes: string | null
   created_at: string | null
-  // enriched
   item_name?: string | null
 }
 
@@ -63,17 +63,68 @@ export type PtsRecord = {
 
 /* ── Header ─────────────────────────────────────────────── */
 
-export async function getCrossdockings() {
-  const { data, error } = await supabaseAdmin
+function getNextMonthFirstDay(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+  return next
+}
+
+export async function getCrossdockingAvailableMonths() {
+  await requireAuthenticatedUser()
+  const [{ data: cdData }, { data: ptsData }] = await Promise.all([
+    supabaseAdmin
+      .from('crossdocking_header')
+      .select('received_from_hq_date')
+      .order('received_from_hq_date', { ascending: true })
+      .limit(1),
+    supabaseAdmin
+      .from('crossdocking_pts')
+      .select('document_date')
+      .order('document_date', { ascending: true })
+      .limit(1),
+  ])
+
+  const cdMin = cdData?.[0]?.received_from_hq_date?.slice(0, 7)
+  const ptsMin = ptsData?.[0]?.document_date?.slice(0, 7)
+  const minDate = [cdMin, ptsMin].filter(Boolean).sort()[0] ?? '2026-10'
+  const [minYear, minMonth] = minDate.split('-').map(Number)
+
+  const now = new Date()
+  const maxYear = Math.max(now.getFullYear(), 2026)
+  const maxMonth = now.getFullYear() === maxYear ? Math.max(now.getMonth() + 1, 11) : 12
+
+  const months: string[] = []
+  for (let y = minYear; y <= maxYear; y++) {
+    const startM = y === minYear ? minMonth : 1
+    const endM = y === maxYear ? maxMonth : 12
+    for (let m = startM; m <= endM; m++) {
+      months.push(`${y}-${String(m).padStart(2, '0')}`)
+    }
+  }
+  return months.sort().reverse()
+}
+
+export async function getCrossdockings(month?: string) {
+  await requireAuthenticatedUser()
+  let query = supabaseAdmin
     .from('crossdocking_header')
     .select('*')
     .order('promised_delivery_date', { ascending: false })
-    .limit(200)
+
+  if (month && month !== 'all') {
+    const nextMonth = getNextMonthFirstDay(month)
+    query = query
+      .gte('received_from_hq_date', `${month}-01`)
+      .lt('received_from_hq_date', nextMonth)
+  }
+
+  const { data, error } = await query.limit(200)
   if (error) throw error
   return (data ?? []) as CrossdockingHeader[]
 }
 
 export async function getCrossdockingById(id: number) {
+  await requireAuthenticatedUser()
   const { data: header, error: hErr } = await supabaseAdmin
     .from('crossdocking_header')
     .select('*')
@@ -111,8 +162,8 @@ export async function insertCrossdocking(
   header: Omit<CrossdockingHeader, 'id' | 'crossdocking_no' | 'created_at' | 'updated_at'> & { pts_ids?: number[] },
   details: Omit<CrossdockingDetail, 'id' | 'crossdocking_id' | 'created_at' | 'item_name'>[]
 ) {
+  await requireAuthenticatedUser()
   const { pts_ids: ptsIds = [], ...headerPayload } = header
-  // Insert header
   const { data: newHeader, error: hErr } = await supabaseAdmin
     .from('crossdocking_header')
     .insert(headerPayload)
@@ -134,7 +185,6 @@ export async function insertCrossdocking(
     if (ptsError) throw ptsError
   }
 
-  // Insert details kalau ada
   if (details.length > 0) {
     const detailRows = details.map(d => ({ ...d, crossdocking_id: newHeader.id }))
     const { error: dErr } = await supabaseAdmin
@@ -150,6 +200,7 @@ export async function updateCrossdockingHeader(
   id: number,
   data: Partial<Omit<CrossdockingHeader, 'id' | 'crossdocking_no' | 'created_at' | 'updated_at'>>
 ) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin
     .from('crossdocking_header')
     .update(data)
@@ -158,7 +209,7 @@ export async function updateCrossdockingHeader(
 }
 
 export async function deleteCrossdocking(id: number) {
-  // Detail terhapus otomatis via ON DELETE CASCADE
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin
     .from('crossdocking_header')
     .delete()
@@ -171,6 +222,7 @@ export async function deleteCrossdocking(id: number) {
 export async function upsertCrossdockingDetail(
   detail: Omit<CrossdockingDetail, 'created_at' | 'item_name'>
 ) {
+  await requireAuthenticatedUser()
   const { id, ...payload } = detail
   if (id) {
     const { error } = await supabaseAdmin.from('crossdocking_detail').update(payload).eq('id', id)
@@ -182,19 +234,29 @@ export async function upsertCrossdockingDetail(
 }
 
 export async function deleteCrossdockingDetail(id: number) {
+  await requireAuthenticatedUser()
   const { error } = await supabaseAdmin.from('crossdocking_detail').delete().eq('id', id)
   if (error) throw error
 }
 
-/* â”€â”€ PTS staging â”€â”€ */
+/* ── PTS staging ─────────────────────────────────────────── */
 
-export async function getPtsRecords() {
-  const { data, error } = await supabaseAdmin
+export async function getPtsRecords(month?: string) {
+  await requireAuthenticatedUser()
+  let query = supabaseAdmin
     .from('crossdocking_pts')
     .select('*')
     .order('document_date', { ascending: false, nullsFirst: false })
     .order('pts_no', { ascending: false })
-    .limit(500)
+
+  if (month && month !== 'all') {
+    const nextMonth = getNextMonthFirstDay(month)
+    query = query
+      .gte('document_date', `${month}-01`)
+      .lt('document_date', nextMonth)
+  }
+
+  const { data, error } = await query.limit(500)
   if (error) throw error
 
   const records = (data ?? []) as PtsRecord[]
@@ -269,6 +331,7 @@ export type PtsUploadRow = {
 }
 
 export async function uploadPtsRecords(rows: PtsUploadRow[], sourceFileName: string) {
+  await requireAuthenticatedUser()
   const uniqueRows = [...new Map(
     rows
       .map(row => ({
@@ -315,6 +378,7 @@ export async function updatePtsDestination(
   id: number,
   destination: { customer_name: string; destination_city?: string | null; destination_address: string; promised_delivery_date: string }
 ) {
+  await requireAuthenticatedUser()
   const customerName = destination.customer_name.trim()
   const address = destination.destination_address.trim()
   if (!customerName) throw new Error('Customer wajib diisi.')
@@ -394,7 +458,25 @@ export async function updatePtsDestination(
 
 /* ── Options ─────────────────────────────────────────────── */
 
-export async function getCrossdockingOptions() {
+export async function getCrossdockingOptions(referenceMonth?: string) {
+  await requireAuthenticatedUser()
+  // Hitung rentang tanggal: hanya muat PTS bulan saat proses dan 1 bulan sebelumnya agar loading cepat
+  const now = new Date()
+  let y = now.getFullYear()
+  let m = now.getMonth() + 1
+  if (referenceMonth && referenceMonth !== 'all') {
+    const parts = referenceMonth.split('-').map(Number)
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      y = parts[0]
+      m = parts[1]
+    }
+  }
+
+  const prevDate = new Date(y, m - 2, 1)
+  const prevYear = prevDate.getFullYear()
+  const prevMonth = prevDate.getMonth() + 1
+  const minDateStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`
+
   const [{ data: skus, error: skuError }, { data: customers, error: customerError }, { data: pts, error: ptsError }, { data: linkedPts, error: linkedPtsError }] = await Promise.all([
     supabaseAdmin
       .from('master_sku')
@@ -408,6 +490,7 @@ export async function getCrossdockingOptions() {
     supabaseAdmin
       .from('crossdocking_pts')
       .select('id, pts_no, document_date')
+      .gte('document_date', minDateStr)
       .order('document_date', { ascending: false }),
     supabaseAdmin.from('crossdocking_header_pts').select('pts_id'),
   ])
@@ -424,6 +507,7 @@ export async function getCrossdockingOptions() {
 }
 
 export async function getPtsDetailsForCrossdocking(ptsId: number) {
+  await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
     .from('crossdocking_pts_detail')
     .select('item_no, description, quantity, lot_no, expiration_date, variant_code, source_location_code')

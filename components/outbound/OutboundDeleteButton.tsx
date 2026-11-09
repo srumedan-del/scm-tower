@@ -3,6 +3,7 @@
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { confirmAction, notify } from '@/lib/feedback'
 
 type Props = {
   row: {
@@ -16,10 +17,10 @@ export default function OutboundDeleteButton({ row }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const target = row.outbound_header_id != null ? `header ${row.outbound_header_id}` : `detail ${row.id}`
 
-    if (!confirm(`Hapus data outbound ${target}?\n\nCatatan: jika header dihapus, detail yang terkait akan ikut terhapus otomatis melalui cascade.`)) {
+    if (!(await confirmAction({ title: 'Hapus data outbound?', message: `Data outbound ${target} akan dihapus. Jika header dihapus, detail yang terkait akan ikut terhapus otomatis melalui cascade.` }))) {
       return
     }
 
@@ -36,13 +37,14 @@ export default function OutboundDeleteButton({ row }: Props) {
         }
 
         if (error) {
-          alert(`Gagal hapus data: ${error.message}`)
+          notify.error('Gagal menghapus data', error.message)
           return
         }
 
+        notify.success('Data outbound dihapus')
         router.refresh()
       } catch (e: any) {
-        alert(`Gagal hapus data: ${e?.message ?? 'Unknown error'}`)
+        notify.error('Gagal menghapus data', e?.message)
       }
     })
   }

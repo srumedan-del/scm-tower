@@ -7,6 +7,7 @@ import {
 import { getVendors, type VendorRow } from '@/app/(app)/vendor/actions'
 import { Truck, Users, Route } from 'lucide-react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { notify } from '@/lib/feedback'
 
 type Props = {
   selectedPss: UntrackedPssRow[]
@@ -167,6 +168,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           // Both shipment modes start when the create button is processed.
           dispatch_time:   new Date().toISOString(),
         })
+        notify.success('Shipment berhasil dibuat')
         onSaved()
         onClose()
       } catch (e: any) {
