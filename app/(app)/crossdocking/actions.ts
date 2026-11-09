@@ -330,20 +330,35 @@ export type PtsUploadRow = {
   }>
 }
 
-export async function uploadPtsRecords(rows: PtsUploadRow[], sourceFileName: string) {
-  await requireAuthenticatedUser()
-  const uniqueRows = [...new Map(
-    rows
-      .map(row => ({
-        pts_no: String(row.pts_no ?? '').trim().toUpperCase(),
+// File ILE berisi satu baris per item/lot, jadi satu PTS bisa muncul berkali-kali.
+function mergePtsUploadRows(rows: PtsUploadRow[]) {
+  const merged = new Map<string, Required<PtsUploadRow>>()
+  for (const row of rows) {
+    const ptsNo = String(row.pts_no ?? '').trim().toUpperCase()
+    if (!ptsNo) continue
+    const transferOrderNo = row.transfer_order_no ? String(row.transfer_order_no).trim().toUpperCase() : null
+    const current = merged.get(ptsNo)
+    if (current) {
+      current.document_date ||= row.document_date || null
+      current.document_created_at ||= row.document_created_at || null
+      current.transfer_order_no ||= transferOrderNo
+      current.details.push(...(row.details ?? []))
+    } else {
+      merged.set(ptsNo, {
+        pts_no: ptsNo,
         document_date: row.document_date || null,
         document_created_at: row.document_created_at || null,
-        transfer_order_no: row.transfer_order_no ? String(row.transfer_order_no).trim().toUpperCase() : null,
-        details: row.details ?? [],
-      }))
-      .filter(row => row.pts_no)
-      .map(row => [row.pts_no, row])
-  ).values()]
+        transfer_order_no: transferOrderNo,
+        details: [...(row.details ?? [])],
+      })
+    }
+  }
+  return [...merged.values()]
+}
+
+export async function uploadPtsRecords(rows: PtsUploadRow[], sourceFileName: string) {
+  await requireAuthenticatedUser()
+  const uniqueRows = mergePtsUploadRows(rows)
 
   if (uniqueRows.length === 0) throw new Error('Tidak ditemukan nomor PTS pada file.')
 
