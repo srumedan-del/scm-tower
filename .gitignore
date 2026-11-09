@@ -20,3 +20,5 @@ PR_BODY.md
 /nul
 /outbound_detail.csv
 /scripts/.notified_tasks.json
+
+.vercel
