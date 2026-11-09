@@ -7,6 +7,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect'
 import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
+import { slaDueAt as workingDayDueAt } from '@/lib/sla'
 
 type GroupRow = {
   name: string
@@ -39,15 +40,8 @@ function vendorName(row: ServiceLevelShipmentRow) {
 
 type ServiceLevelListRow = ServiceLevelShipmentRow | (UntrackedPssRow & { untracked: true })
 
-function slaHours(row: ServiceLevelShipmentRow) {
-  return row.dk_lk === 'DK' ? 24 : 72
-}
-
 function slaDueAt(row: ServiceLevelShipmentRow) {
-  if (!row.document_created_at) return null
-  const documentCreatedAt = new Date(row.document_created_at)
-  if (Number.isNaN(documentCreatedAt.getTime())) return null
-  return new Date(documentCreatedAt.getTime() + slaHours(row) * 60 * 60 * 1000)
+  return row.document_date ? workingDayDueAt(row.document_date, row.dk_lk) : null
 }
 
 function isOnTime(row: ServiceLevelShipmentRow) {
@@ -392,7 +386,7 @@ export default function ServiceLevelPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-white overflow-hidden">
-        <div className="border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Shipment Butuh Perhatian</h2><p className="text-xs text-gray-500 mt-0.5">Melewati SLA dari Document Created Date/Time: DK 24 jam · LK 72 jam.</p></div>
+        <div className="border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Shipment Butuh Perhatian</h2><p className="text-xs text-gray-500 mt-0.5">Melewati SLA dari tanggal dokumen: DK 1 hari kerja · LK 5 hari kerja. Sabtu dan Minggu tidak dihitung.</p></div>
         <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50"><tr><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">PSS</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Customer</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Vendor</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Batas SLA</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Status</th></tr></thead>

@@ -1,6 +1,7 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
+import { jakartaToday, slaDueAt, slaDueDate, slaWorkingDaysLeft } from '@/lib/sla'
 import {
   AlertTriangle, Activity, ArrowLeftRight, Bell,
   CheckCircle2, Clock3, Minus, Package, PackageCheck,
@@ -49,7 +50,7 @@ function availableMonths() {
 async function getDashboardData(period: string) {
   const from  = `${period}-01`
   const to    = nextMonthStart(period)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = jakartaToday()
 
   const sevenDaysStr = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
   const threeDaysStr = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
@@ -154,23 +155,17 @@ async function getDashboardData(period: string) {
   }).length
 
   // OTD bulan ini
-  const slaDeadline = (docDate: string, dkLk: string | null) => {
-    const d = new Date(docDate)
-    d.setDate(d.getDate() + (dkLk === 'DK' ? 1 : 5))
-    d.setHours(23, 59, 59, 0)
-    return d
-  }
   const otdRows = allShipments.filter(s =>
     s.status === 'Delivered' && s.delivery_time &&
     s.delivery_time >= from && s.delivery_time < to && s.document_date
   )
-  const otdOnTime = otdRows.filter(s => new Date(s.delivery_time!) <= slaDeadline(s.document_date, s.dk_lk)).length
+  const otdOnTime = otdRows.filter(s => new Date(s.delivery_time!) <= slaDueAt(s.document_date, s.dk_lk)).length
   const otdTotal  = otdRows.length
   const otdRate   = otdTotal > 0 ? Math.round((otdOnTime / otdTotal) * 100) : null
 
   // Overdue
   const overdueFiltered = allShipments
-    .filter(s => s.status !== 'Delivered' && s.status !== 'Closed' && s.status !== 'Failed Delivery' && s.document_date && new Date(today) > slaDeadline(s.document_date, s.dk_lk))
+    .filter(s => s.status !== 'Delivered' && s.status !== 'Closed' && s.status !== 'Failed Delivery' && s.document_date && today > slaDueDate(s.document_date, s.dk_lk))
     .sort((a, b) => a.document_date.localeCompare(b.document_date))
 
   // Aktif (Dispatched / In Transit)
@@ -244,10 +239,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function SlaStatus({ documentDate, dkLk, today }: { documentDate: string | null; dkLk: string | null; today: string }) {
   if (!documentDate) return <span className="text-xs text-gray-400">—</span>
-  const deadline = new Date(documentDate)
-  deadline.setDate(deadline.getDate() + (dkLk === 'DK' ? 1 : 5))
-  deadline.setHours(23, 59, 59, 0)
-  const diffDays = Math.ceil((deadline.getTime() - new Date(today).getTime()) / 86_400_000)
+  const diffDays = slaWorkingDaysLeft(documentDate, dkLk, today)
   if (diffDays < 0) {
     const late = Math.abs(diffDays)
     return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${late >= 3 ? 'bg-red-200 text-red-800' : 'bg-orange-100 text-orange-700'}`}><AlertTriangle size={9} /> {late}h terlambat</span>
@@ -307,10 +299,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <span className="text-xs font-semibold text-red-600 flex items-center gap-1"><Truck size={13} /> Shipment Overdue</span>
                 <span className={`text-2xl font-bold ${d.overdueShipments.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>{d.overdueShipments.length}</span>
               </div>
-              <p className="text-xs text-gray-500">Lewat SLA (DK: +1h, LK: +5h dari doc date), belum Delivered</p>
+              <p className="text-xs text-gray-500">Lewat SLA (DK 1, LK 5 hari kerja dari tanggal dokumen), belum Delivered</p>
               {d.overdueShipments.slice(0, 2).map(s => {
-                const dl = new Date(s.document_date); dl.setDate(dl.getDate() + (s.dk_lk === 'DK' ? 1 : 5))
-                const late = Math.floor((new Date(d.today).getTime() - dl.getTime()) / 86_400_000)
+                const late = Math.abs(slaWorkingDaysLeft(s.document_date, s.dk_lk, d.today))
                 return (
                   <div key={s.id} className="mt-1.5 flex items-center gap-1.5 text-xs text-red-700">
                     <AlertTriangle size={10} />
@@ -389,7 +380,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 Dalam Kota (DK)
               </div>
               <div className="text-3xl font-bold text-blue-600">{d.counts.outboundDK}</div>
-              <div className="text-xs text-gray-400 mt-0.5">SLA 1 hari</div>
+              <div className="text-xs text-gray-400 mt-0.5">SLA 1 hari kerja</div>
             </Link>
             <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300">
               <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 mb-2">
@@ -397,7 +388,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 Luar Kota (LK)
               </div>
               <div className="text-3xl font-bold text-violet-600">{d.counts.outboundLK}</div>
-              <div className="text-xs text-gray-400 mt-0.5">SLA 5 hari</div>
+              <div className="text-xs text-gray-400 mt-0.5">SLA 5 hari kerja</div>
             </Link>
           </div>
         </div>
@@ -521,8 +512,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             ) : (
               <div className="divide-y divide-gray-50">
                 {d.activeToday.map((s: any) => {
-                  const dl = s.document_date ? (() => { const x = new Date(s.document_date); x.setDate(x.getDate() + (s.dk_lk === 'DK' ? 1 : 5)); x.setHours(23,59,59,0); return x })() : null
-                  const isLate = dl ? new Date(d.today) > dl : false
+                  const isLate = s.document_date ? d.today > slaDueDate(s.document_date, s.dk_lk) : false
                   return (
                     <div key={s.id} className={`flex items-center gap-3 px-4 py-3 ${isLate ? 'bg-red-50' : ''}`}>
                       <StatusBadge status={s.status} />
