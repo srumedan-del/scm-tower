@@ -213,9 +213,11 @@ export async function getShipmentTrackings(filters?: { status?: string; month?: 
 
   if (filters?.status === 'all') return enrichedShipments
 
+  // Retail yang sudah punya resi tampil di tab Retail; yang belum tetap di daftar ini.
   return enrichedShipments.filter(shipment => {
     const fallbackVendorName = shipment.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]
-    return !isRetailCourier(shipment.transporter_name) && !isRetailCourier(fallbackVendorName)
+    const isRetail = isRetailCourier(shipment.transporter_name) || isRetailCourier(fallbackVendorName)
+    return !isRetail || !shipment.no_resi?.trim()
   })
 }
 
