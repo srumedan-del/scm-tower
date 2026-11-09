@@ -422,7 +422,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 <DateTimeInput value={form.dispatch_time ?? null} onChange={value => up('dispatch_time', value)} />
               </Field>
             </div>
-            {isRetailCourier && (
+            {(isRetailCourier || form.cost_model === 'Retail') && (
               <div className="mt-2 grid grid-cols-2 gap-3">
                 <Field label="Nomor Resi Retail / Courier">
                   <input
