@@ -31,16 +31,26 @@ export async function clearSession() {
   await SecureStore.deleteItemAsync(DRIVER_KEY)
 }
 
-async function send<T>(path: string, init: RequestInit): Promise<T> {
+const REQUEST_TIMEOUT_MS = 30_000
+const UPLOAD_TIMEOUT_MS = 120_000
+
+// Tanpa batas waktu, permintaan yang menggantung saat sinyal lemah menahan seluruh antrean.
+async function send<T>(path: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   if (!BASE_URL) throw new ApiError('Alamat server belum dikonfigurasi', 0)
   const token = await getToken()
   const headers = new Headers(init.headers)
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
-  const response = await fetch(`${BASE_URL}/api/driver/${path}`, { ...init, headers })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new ApiError(body.error ?? 'Terjadi kesalahan pada server', response.status)
-  return body as T
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(`${BASE_URL}/api/driver/${path}`, { ...init, headers, signal: controller.signal })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new ApiError(body.error ?? 'Terjadi kesalahan pada server', response.status)
+    return body as T
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export function apiGet<T>(path: string) {
@@ -58,6 +68,6 @@ export function apiPost<T>(path: string, payload: unknown) {
 export async function apiUpload(uri: string) {
   const form = new FormData()
   form.append('file', { uri, name: 'foto.jpg', type: 'image/jpeg' } as unknown as Blob)
-  const { path } = await send<{ path: string }>('upload', { method: 'POST', body: form })
+  const { path } = await send<{ path: string }>('upload', { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS)
   return path
 }
