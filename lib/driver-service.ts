@@ -224,7 +224,14 @@ export async function listDriverTrips(driverId: number) {
   for (const result of [trips, outboundItems, crossdockingItems, customers]) if (result.error) throw result.error
 
   const vehicleIds = [...new Set(stops.map(row => row.vehicle_id).filter((id): id is number => id != null).map(Number))]
-  const odometers = await getLatestVehicleOdometers(vehicleIds)
+  const [odometers, fleet] = await Promise.all([
+    getLatestVehicleOdometers(vehicleIds),
+    vehicleIds.length
+      ? supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').in('id', vehicleIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+  ])
+  if (fleet.error) throw fleet.error
+  const vehicleById = new Map((fleet.data ?? []).map((row: any) => [Number(row.id), row]))
   const tripByNo = new Map((trips.data ?? []).map(row => [row.trip_no, row]))
   const customerByName = new Map((customers.data ?? []).map((row: any) => [String(row.customer_name).trim().toLowerCase(), row]))
   const itemsFor = (stop: (typeof stops)[number]) => {
@@ -247,6 +254,12 @@ export async function listDriverTrips(driverId: number) {
       started_at: trip?.started_at ?? null,
       odometer_start: trip?.odometer_start ?? null,
       last_odometer: vehicleId != null ? odometers.get(Number(vehicleId))?.km ?? null : null,
+      vehicle: vehicleId != null && vehicleById.has(Number(vehicleId))
+        ? {
+            vehicle_no: String(vehicleById.get(Number(vehicleId)).vehicle_no ?? '').trim().toUpperCase(),
+            vehicle_type: vehicleById.get(Number(vehicleId)).vehicle_type ?? null,
+          }
+        : null,
       stops: stops.filter(row => row.trip_id === tripNo).map(stop => {
         const customer = customerByName.get(String(stop.customer_name ?? '').trim().toLowerCase())
         return {

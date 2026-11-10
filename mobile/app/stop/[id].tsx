@@ -3,7 +3,7 @@ import { Alert, Linking, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useTrips } from '../../src/hooks'
 import { currentPosition, distanceMeters } from '../../src/tracker'
-import { isStopDone, type Stop } from '../../src/trips'
+import { isStopDone, mapsUrl } from '../../src/trips'
 import { Button, Card, Screen, StatusPill } from '../../src/ui'
 import { colors } from '../../src/theme'
 
@@ -13,13 +13,6 @@ function formatDistance(meters: number) {
   return meters < 1000 ? `${meters.toLocaleString('id-ID')} m` : `${(meters / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km`
 }
 
-/** Koordinat customer bila ada; jika tidak, cari dengan alamat. */
-function mapsUrl(stop: Stop) {
-  const destination = stop.target_lat != null && stop.target_lng != null
-    ? `${stop.target_lat},${stop.target_lng}`
-    : [stop.customer_name, stop.destination_address, stop.destination_city].filter(Boolean).join(', ')
-  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${encodeURIComponent(destination)}`
-}
 
 export default function StopScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()

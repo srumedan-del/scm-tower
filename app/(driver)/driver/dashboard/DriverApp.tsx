@@ -278,6 +278,7 @@ function TripsTab({ ctx, error }: { ctx: Ctx; error: string }) {
               <span className="text-[17px] font-bold text-[#0D1C33]">{trip.trip_no}</span>
               <span className={`text-xs font-bold ${trip.started_at ? 'text-[#1F8A5B]' : 'text-[#9A5F0F]'}`}>{trip.started_at ? 'Berjalan' : 'Siap jalan'}</span>
             </div>
+            {trip.vehicle?.vehicle_no && <Meta>Kendaraan: {[trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ')}</Meta>}
             <Meta>{done} dari {trip.stops.length} tujuan selesai</Meta>
             <Meta>{[...new Set(trip.stops.map(stop => stop.destination_city).filter(Boolean))].join(', ') || '-'}</Meta>
           </Card>
@@ -375,6 +376,13 @@ function TripScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
 
   return (
     <>
+      <Card>
+        <span className="text-[13px] text-[#4C5361]">Kendaraan</span>
+        <span className="text-[17px] font-bold text-[#0D1C33]">
+          {trip.vehicle?.vehicle_no ? [trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ') : 'Belum ditentukan admin'}
+        </span>
+      </Card>
+
       {!trip.started_at && (
         <Card>
           {trip.last_odometer != null && <Meta>KM terakhir kendaraan: {trip.last_odometer.toLocaleString('id-ID')} KM</Meta>}

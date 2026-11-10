@@ -24,12 +24,26 @@ export type Trip = {
   started_at: string | null
   odometer_start: number | null
   last_odometer?: number | null
+  vehicle?: { vehicle_no: string; vehicle_type: string | null } | null
   stops: Stop[]
 }
 
 const CACHE_KEY = 'trips'
 
 export const isStopDone = (stop: Stop) => ['Delivered', 'Failed Delivery', 'Closed'].includes(stop.status)
+
+export function vehicleLabel(trip: Trip) {
+  if (!trip.vehicle?.vehicle_no) return null
+  return [trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ')
+}
+
+/** Koordinat customer bila ada; jika tidak, cari dengan nama dan alamat. */
+export function mapsUrl(stop: Stop) {
+  const destination = stop.target_lat != null && stop.target_lng != null
+    ? `${stop.target_lat},${stop.target_lng}`
+    : [stop.customer_name, stop.destination_address, stop.destination_city].filter(Boolean).join(', ')
+  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${encodeURIComponent(destination)}`
+}
 
 /** Terapkan data yang masih di antrean agar layar sesuai dengan kerja driver. */
 function withPendingChanges(trips: Trip[]) {

@@ -1,7 +1,7 @@
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTrips } from '../../src/hooks'
-import { isStopDone, type Trip } from '../../src/trips'
+import { isStopDone, vehicleLabel, type Trip } from '../../src/trips'
 import { Card, ErrorText } from '../../src/ui'
 import { colors, radius } from '../../src/theme'
 
@@ -70,6 +70,7 @@ export default function TripsScreen() {
               <Text style={styles.tripNo}>{trip.trip_no}</Text>
               <Text style={[styles.badge, trip.started_at && styles.badgeActive]}>{trip.started_at ? 'Berjalan' : 'Siap jalan'}</Text>
             </View>
+            {vehicleLabel(trip) ? <Text style={styles.meta}>Kendaraan: {vehicleLabel(trip)}</Text> : null}
             <Text style={styles.meta}>{done} dari {trip.stops.length} tujuan selesai</Text>
             <Text style={styles.meta} numberOfLines={2}>
               {[...new Set(trip.stops.map(stop => stop.destination_city).filter(Boolean))].join(', ') || '-'}
