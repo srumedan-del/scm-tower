@@ -1651,11 +1651,13 @@ export type LiveDriverTrip = {
 
 export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> {
   await requireAuthenticatedUser()
-  // Trip aktif = masih punya pengiriman yang belum selesai.
+  // Trip aktif = masih punya pengiriman yang belum selesai. Rute hanya dicatat
+  // untuk driver internal SRU (driver dari master); vendor dan retail tidak ikut.
   const { data: openRows, error: openError } = await supabaseAdmin
     .from('shipment_tracking')
     .select('trip_id')
     .not('trip_id', 'is', null)
+    .not('driver_id', 'is', null)
     .not('status', 'in', `(${FINAL_SHIPMENT_STATUSES.map(status => `"${status}"`).join(',')})`)
     .limit(500)
   if (openError) return []
