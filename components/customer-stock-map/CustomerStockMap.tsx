@@ -381,44 +381,24 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 			{loading && <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted"><span className="rounded-full border border-white/70 bg-white/75 px-4 py-2 shadow-sm backdrop-blur">Memuat data customer...</span></div>}
 		</div>}
 		{(mode === 'maintain' || showMaintainBelow) && <div className="p-6">
-			<div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h3 className="font-semibold leading-none">DASHBOARD<br/>MONITOR<br/>STOK HD</h3></div><div className="flex flex-wrap items-center gap-2"><select id="customer-stock-filter" aria-label="Filter customer stock" value={pendingStockFilter} onChange={(event) => setPendingStockFilter(event.target.value as 'all' | 'reorder')} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="all">Semua customer</option><option value="reorder">Perlu reorder</option></select><button type="button" onClick={() => setStockFilter(pendingStockFilter)} className="rounded-lg bg-text px-3 py-2 text-sm font-medium text-white">Terapkan</button><button type="button" onClick={() => { setPendingStockFilter('all'); setStockFilter('all') }} className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Reset</button></div></div>
+			<div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h3 className="lux-display text-xl font-semibold text-indigo-900">Monitor Stok HD</h3><p className="mt-0.5 text-sm text-slate-500">{listCustomers.length} customer · kebutuhan dihitung dari jumlah mesin HD</p></div><div className="flex flex-wrap items-center gap-2"><select id="customer-stock-filter" aria-label="Filter customer stock" value={pendingStockFilter} onChange={(event) => setPendingStockFilter(event.target.value as 'all' | 'reorder')} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="all">Semua customer</option><option value="reorder">Perlu reorder</option></select><button type="button" onClick={() => setStockFilter(pendingStockFilter)} className="rounded-lg bg-text px-3 py-2 text-sm font-medium text-white">Terapkan</button><button type="button" onClick={() => { setPendingStockFilter('all'); setStockFilter('all') }} className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Reset</button></div></div>
 			{formOpen ? <form onSubmit={saveCustomer} className="mb-6 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3"><div className="rounded-lg border border-blue/20 bg-blue/5 p-3 text-xs text-muted md:col-span-3">Cara mengambil koordinat: buka Google Maps, klik kanan pada lokasi customer, lalu klik angka koordinat untuk menyalin. Tempel format seperti <strong>1.28895440385333, 97.61411017362235</strong> pada kolom koordinat; sistem otomatis memisahkan Latitude dan Longitude.</div>{([['customer_name','Nama customer'],['city','Kabupaten/kota'],['province','Provinsi'],['latitude','Latitude'],['longitude','Longitude'],['machine_count','Jumlah mesin HD']] as [keyof FormState,string][]).map(([field,label]) => <label key={field} className="text-xs font-medium text-muted">{label}<input required min={field === 'latitude' ? -90 : field === 'longitude' ? -180 : field === 'machine_count' ? 0 : undefined} max={field === 'latitude' ? 90 : field === 'longitude' ? 180 : undefined} step="any" type={field === 'province' || field === 'customer_name' || field === 'city' ? 'text' : 'number'} value={String(form[field] ?? '')} onChange={(event) => updateField(field, event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label>)}<label className="text-xs font-medium text-muted md:col-span-3">Paste koordinat Google Maps<input required type="text" inputMode="decimal" placeholder="1.28895440385333, 97.61411017362235" value={coordinateText} onChange={(event) => updateCoordinates(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text" /></label><div className="flex items-end gap-2 md:col-span-3"><button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-green px-3 py-2 text-sm font-medium text-white"><Save size={16} />{saving ? 'Menyimpan...' : 'Simpan'}</button><button type="button" onClick={() => { setEditing(null); setFormOpen(false); setForm(emptyForm); setCoordinateText('') }} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><X size={16} />Batal</button></div></form> : null}
-			<div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-     <table className="w-max text-left text-sm">
-					<thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
-					            <tr>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Customer</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Mesin<br/>HD</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Kebutuhan<br/>/ hari</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Kebutuhan<br/>/ bulan</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Safety<br/>Stock (6<br/>hari)</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">ROP<br/>(8 hari)</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Order<br/>terakhir</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">DOI</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Stock<br/>Habis<br/>Tanggal</div>
-					              </th>
-					              <th className="px-1 py-1.5 text-[0.65rem] text-left font-medium uppercase tracking-[0.05rem] text-slate-500 break-all align-top">
-					                <div className="line-clamp-3">Reorder<br/>ideal</div>
-					              </th>
-					            </tr>
-					          </thead>
+			<div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white">
+				<table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+					<thead className="sticky top-0 z-10 bg-slate-50">
+						<tr className="border-b border-slate-200 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+							<th className="px-4 py-3 font-semibold">Customer</th>
+							<th className="px-3 py-3 text-right font-semibold">Mesin HD</th>
+							<th className="px-3 py-3 text-right font-semibold">Kebutuhan<span className="block font-medium normal-case tracking-normal text-slate-400">per hari · per bulan</span></th>
+							<th className="px-3 py-3 text-right font-semibold">Safety stock<span className="block font-medium normal-case tracking-normal text-slate-400">6 hari</span></th>
+							<th className="px-3 py-3 text-right font-semibold">ROP<span className="block font-medium normal-case tracking-normal text-slate-400">8 hari</span></th>
+							<th className="px-3 py-3 text-right font-semibold">Order terakhir</th>
+							<th className="px-3 py-3 text-right font-semibold">DOI</th>
+							<th className="px-3 py-3 text-right font-semibold">Stok habis</th>
+							<th className="px-3 py-3 text-right font-semibold">Reorder ideal</th>
+							<th className="px-4 py-3 font-semibold">Status</th>
+						</tr>
+					</thead>
 					<tbody className="divide-y divide-slate-100">
 						{listCustomers.map((customer) => {
 							const status = statusFor(customer)
@@ -431,35 +411,44 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 							today.setHours(0, 0, 0, 0)
 							const reorderIsDue = reorderDate ? reorderDate < today : false
 							return (
-								<tr key={customer.id} className={status.label === 'Critical' ? 'bg-red/5' : status.label === 'Replenish now' ? 'bg-orange/5' : ''}>
-									<td className="px-4 py-3 text-xs font-medium whitespace-nowrap text-slate-600">{customer.customer_name}</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">{customer.machine_count}</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">{status.usage} set</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">{(status.usage * 25).toLocaleString('id-ID')} set</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">{(status.usage * 6).toLocaleString('id-ID')} set</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">{(status.usage * 8).toLocaleString('id-ID')} set</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">
+								<tr key={customer.id} className="transition-colors hover:bg-slate-50/80">
+									<td className="py-3 pl-0 pr-4">
+										<div className="flex items-center gap-3">
+											<span className="h-9 w-1 shrink-0 rounded-r-full" style={{ background: status.color }} aria-hidden="true" />
+											<div className="min-w-0">
+												<div className="font-medium text-slate-900">{customer.customer_name}</div>
+												{customer.city && <div className="text-xs text-slate-500">{customer.city}</div>}
+											</div>
+										</div>
+									</td>
+									<td className="px-3 py-3 text-right tabular-nums text-slate-700">{customer.machine_count}</td>
+									<td className="px-3 py-3 text-right tabular-nums text-slate-700">
+										{status.usage.toLocaleString('id-ID')} set
+										<div className="text-xs text-slate-500">{(status.usage * 25).toLocaleString('id-ID')} set</div>
+									</td>
+									<td className="px-3 py-3 text-right tabular-nums text-slate-700">{(status.usage * 6).toLocaleString('id-ID')} set</td>
+									<td className="px-3 py-3 text-right tabular-nums text-slate-700">{(status.usage * 8).toLocaleString('id-ID')} set</td>
+									<td className="px-3 py-3 text-right tabular-nums">
 										{latestOrder ? (
-											<span className="font-medium text-text">{formatDate(latestOrder.documentDate)} · {latestOrder.totalSets.toLocaleString('id-ID')} set</span>
-										) : 'Belum ada data'}
+											<>
+												<div className="text-slate-900">{formatDate(latestOrder.documentDate)}</div>
+												<div className="text-xs text-slate-500">{latestOrder.totalSets.toLocaleString('id-ID')} set</div>
+											</>
+										) : <span className="text-xs text-slate-400">Belum ada data</span>}
 									</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">
-										{coverage !== null ? `${coverage.toFixed(1)} hari` : '—'}
+									<td className="px-3 py-3 text-right tabular-nums text-slate-700">{coverage !== null ? `${coverage.toFixed(1)} hari` : '—'}</td>
+									<td className="px-3 py-3 text-right tabular-nums text-slate-700">{stockoutDate ? formatDate(stockoutDate.toISOString()) : '—'}</td>
+									<td className="px-3 py-3 text-right tabular-nums">
+										{reorderDate ? <div className={reorderIsDue ? 'font-semibold text-red-700' : 'text-slate-700'}>{formatDate(reorderDate.toISOString())}</div> : <span className="text-slate-400">—</span>}
+										{reorderIsDue && <div className="text-xs text-red-700">Lewat jadwal</div>}
 									</td>
-									<td className="px-4 py-3 text-xs font-medium text-right whitespace-nowrap text-slate-600">
-										{stockoutDate ? formatDate(stockoutDate.toISOString()) : '—'}
+									<td className="px-4 py-3">
+										<span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: `${status.color}1f`, color: status.color }}>
+											{status.label}
+										</span>
+										{qty > 0 && <div className="mt-1 text-xs text-slate-500">Reorder {qty.toLocaleString('id-ID')} set</div>}
 									</td>
-									<td className={`whitespace-nowrap px-4 py-3 text-right ${reorderIsDue ? 'text-red-600' : 'text-muted'}`}>
-										{reorderDate ? <span className="font-medium">{formatDate(reorderDate.toISOString())}</span> : '—'}
-										{reorderIsDue && <span className="block text-xs">Perlu reorder</span>}
-									</td>
-									<td className="px-4 py-3 text-xs font-medium text-slate-600">
-									<span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `${status.color}22`, color: status.color }}>
-									{status.label}
-									{qty > 0 && <span className="ml-1 opacity-80">· reorder {qty}</span>}
-									</span>
-									</td>
-									</tr>
+								</tr>
 							)
 						})}
 					</tbody>

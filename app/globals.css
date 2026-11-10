@@ -906,6 +906,64 @@ a.bg-indigo-600:hover {
   animation: lux-modal 300ms var(--ease-out-soft) backwards;
 }
 
+/* Pin lokasi rumah sakit di Peta & Stok HD */
+.hospital-marker-wrap {
+  background: transparent;
+  border: 0;
+}
+
+.hospital-marker {
+  position: relative;
+  width: 36px;
+  height: 42px;
+}
+
+.hospital-marker-pin {
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: var(--marker-color, #1F3F6E);
+  box-shadow: 0 2px 6px rgba(8, 18, 34, 0.35);
+  transform: rotate(-45deg);
+}
+
+.hospital-marker-pin span {
+  transform: rotate(45deg);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hospital-marker-shadow {
+  position: absolute;
+  left: 11px;
+  bottom: 0;
+  width: 14px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(8, 18, 34, 0.28);
+}
+
+.hospital-marker-pulse .hospital-marker-pin {
+  animation: hospital-marker-pulse 1.6s ease-out infinite;
+}
+
+@keyframes hospital-marker-pulse {
+  0% { box-shadow: 0 2px 6px rgba(8, 18, 34, 0.35), 0 0 0 0 color-mix(in srgb, var(--marker-color) 60%, transparent); }
+  100% { box-shadow: 0 2px 6px rgba(8, 18, 34, 0.35), 0 0 0 14px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hospital-marker-pulse .hospital-marker-pin { animation: none; }
+}
+
 /* Kontrol form di dalam modal */
 .inp {
   width: 100%;
