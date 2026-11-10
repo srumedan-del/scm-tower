@@ -1636,6 +1636,7 @@ export type LiveDriverTrip = {
   delivered_count: number
   customers: string[]
   cities: string[]
+  destinations: { name: string; latitude: number; longitude: number; done: boolean }[]
   last_location: {
     latitude: number
     longitude: number
@@ -1650,17 +1651,42 @@ export type LiveDriverTrip = {
 
 export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> {
   await requireAuthenticatedUser()
+  // Trip aktif = masih punya pengiriman yang belum selesai.
+  const { data: openRows, error: openError } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('trip_id')
+    .not('trip_id', 'is', null)
+    .not('status', 'in', `(${FINAL_SHIPMENT_STATUSES.map(status => `"${status}"`).join(',')})`)
+    .limit(500)
+  if (openError) return []
+  const openTripIds = [...new Set((openRows ?? []).map(row => String(row.trip_id)))]
+  if (!openTripIds.length) return []
+
   const { data: shipments, error } = await supabaseAdmin
     .from('shipment_tracking')
     .select(`
       id, trip_id, pss_no, customer_name, destination_city, status,
       driver_id, vehicle_id, notes, bbm_liter, bbm_rupiah
     `)
-    .not('trip_id', 'is', null)
-    .order('id', { ascending: false })
-    .limit(100)
+    .in('trip_id', openTripIds)
+    .order('trip_id', { ascending: false })
+    .order('delivery_sequence', { ascending: true, nullsFirst: false })
+    .order('id', { ascending: true })
 
   if (error || !shipments) return []
+
+  const vehicleIds = [...new Set(shipments.map(s => s.vehicle_id).filter((id): id is number => id != null))]
+  const customerNames = [...new Set(shipments.map(s => s.customer_name).filter(Boolean))] as string[]
+  const [fleetResult, customerResult] = await Promise.all([
+    vehicleIds.length
+      ? supabaseAdmin.from('transport_fleet').select('id, vehicle_no, vehicle_type').in('id', vehicleIds)
+      : Promise.resolve({ data: [] as any[] }),
+    customerNames.length
+      ? supabaseAdmin.from('customers').select('customer_name, latitude, longitude').in('customer_name', customerNames)
+      : Promise.resolve({ data: [] as any[] }),
+  ])
+  const vehicleById = new Map((fleetResult.data ?? []).map((row: any) => [Number(row.id), row]))
+  const customerByName = new Map((customerResult.data ?? []).map((row: any) => [String(row.customer_name).trim().toLowerCase(), row]))
 
   const tripMap = new Map<string, any[]>()
   for (const s of shipments) {
@@ -1687,8 +1713,22 @@ export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> 
     const first = items[0]
     const driverInfo = first.driver_id ? driverMap.get(first.driver_id) : null
 
-    const nopolMatch = first.notes?.match(/Nopol:\s*([^|]+)/i)?.[1]?.trim() ?? null
-    const typeMatch = first.notes?.match(/Tipe:\s*([^|]+)/i)?.[1]?.trim() ?? null
+    // Armada dari master lebih dulu; catatan hanya untuk kendaraan vendor.
+    const vehicle = first.vehicle_id != null ? vehicleById.get(Number(first.vehicle_id)) : null
+    const nopolMatch = vehicle?.vehicle_no ?? first.notes?.match(/Nopol:\s*([^|]+)/i)?.[1]?.trim() ?? null
+    const typeMatch = vehicle?.vehicle_type ?? first.notes?.match(/Tipe:\s*([^|]+)/i)?.[1]?.trim() ?? null
+    const destinations = [...new Map(items.map((item: any) => [String(item.customer_name ?? ''), item])).values()]
+      .map((item: any) => {
+        const customer = customerByName.get(String(item.customer_name ?? '').trim().toLowerCase())
+        if (customer?.latitude == null || customer?.longitude == null) return null
+        return {
+          name: String(item.customer_name),
+          latitude: Number(customer.latitude),
+          longitude: Number(customer.longitude),
+          done: items.filter((row: any) => row.customer_name === item.customer_name).every((row: any) => FINAL_SHIPMENT_STATUSES.includes(row.status)),
+        }
+      })
+      .filter((destination): destination is NonNullable<typeof destination> => destination != null)
 
     const { data: locLogs } = await supabaseAdmin
       .from('driver_location_logs')
@@ -1724,6 +1764,7 @@ export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> 
       delivered_count: deliveredCount,
       customers: [...new Set(items.map((i: any) => i.customer_name).filter(Boolean))] as string[],
       cities: [...new Set(items.map((i: any) => i.destination_city).filter(Boolean))] as string[],
+      destinations,
       last_location: locLogs?.[0] ?? null,
       fuel_logs_count: fuelLogs?.length ?? 0,
       total_fuel_liters: totalLiters,
@@ -1752,9 +1793,10 @@ export async function getTripLocationHistory(tripId: string) {
     .from('driver_location_logs')
     .select('latitude, longitude, speed_kmh, recorded_at')
     .eq('trip_id', tripId)
-    .order('recorded_at', { ascending: true })
-    .limit(200)
+    .order('recorded_at', { ascending: false })
+    .limit(2000)
 
   if (error) return []
-  return data ?? []
+  // Ambil titik terbaru, lalu urutkan dari awal perjalanan.
+  return (data ?? []).reverse()
 }

@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { MotionConfig, motion } from 'framer-motion'
 import {
-  AlertTriangle, ArrowLeftRight, ChartNoAxesCombined, CheckSquare, Database, DollarSign, HandCoins,
-  LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, Settings, Truck, Warehouse, X,
+  ArrowLeftRight, ChartNoAxesCombined, CheckSquare, Database, DollarSign,
+  LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, Radio, Truck, Warehouse, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -14,10 +14,10 @@ type NavItem = readonly [string, string, typeof LayoutDashboard]
 
 const dashboard: NavItem = ['Dashboard', '/dashboard', LayoutDashboard]
 const groups: readonly { label: string; items: readonly NavItem[] }[] = [
-  { label: 'Workspace', items: [['Task Board', '/', CheckSquare], ['Peta & Stok HD', '/peta-stok-hd', MapPin]] },
-  { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', PackageOpen], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign], ['Pengajuan Dana', '/shipment/budget-request', HandCoins]] },
-  { label: 'Monitoring', items: [['Service Level', '/service-level', ChartNoAxesCombined], ['Inventory', '/inventory', Warehouse], ['Issue Log', '/issues', AlertTriangle]] },
-  { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database], ['Settings', '/settings', Settings]] },
+  { label: 'Workspace', items: [['Task Board', '/', CheckSquare], ['Peta & Stok HD', '/peta-stok-hd', MapPin], ['Live Tracking', '/live-tracking', Radio]] },
+  { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', PackageOpen], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign]] },
+  { label: 'Monitoring', items: [['Service Level', '/service-level', ChartNoAxesCombined], ['Inventory', '/inventory', Warehouse]] },
+  { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database]] },
 ]
 
 const allHrefs = [dashboard[1], ...groups.flatMap(group => group.items.map(item => item[1]))]

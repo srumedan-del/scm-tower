@@ -9,9 +9,8 @@ import MonthFilter from '@/components/shared/MonthFilter'
 import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
-import DriverLiveTrackingMap from '@/components/shipment/DriverLiveTrackingMap'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
-import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, Radio } from 'lucide-react'
+import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned } from 'lucide-react'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -43,7 +42,7 @@ const formatRupiah = (amount: number | null) => {
 
 export default function ShipmentPage() {
   // Tab utama: planning, daftar outbound, atau retail yang sedang dalam perjalanan.
-  const [mainTab, setMainTab]           = useState<'untracked' | 'tracking' | 'retail-in-transit' | 'live-tracking'>('untracked')
+  const [mainTab, setMainTab]           = useState<'untracked' | 'tracking' | 'retail-in-transit'>('untracked')
 
   // ── untracked state ──
   const [untracked, setUntracked]       = useState<UntrackedPssRow[]>([])
@@ -240,17 +239,6 @@ export default function ShipmentPage() {
               {retailInTransit.length}
             </span>
           )}
-        </button>
-        <button
-          onClick={() => setMainTab('live-tracking')}
-          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-            mainTab === 'live-tracking'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Radio className="h-4 w-4 text-green-500 animate-pulse" />
-          Live Tracking Driver (GPS)
         </button>
         </nav>
       </div>
@@ -595,9 +583,6 @@ export default function ShipmentPage() {
         </>
       )}
 
-      {mainTab === 'live-tracking' && (
-        <DriverLiveTrackingMap />
-      )}
 
       {(selected || adding) && (
         <ShipmentTMSPanel

@@ -144,7 +144,7 @@ export function DriverApp({ driver }: { driver: DriverSession }) {
       <main className={`flex flex-1 flex-col gap-3 p-4 ${route ? 'pb-8' : 'pb-24'}`}>
         {loading ? <Meta>Memuat data trip...</Meta> : route ? <RouteView route={route} ctx={ctx} /> : (
           <>
-            {tab === 'trips' && <TripsTab ctx={ctx} error={loadError} />}
+            {tab === 'trips' && <TripsTab driverName={driver.driver_name} ctx={ctx} error={loadError} />}
             {tab === 'money' && <MoneyTab ctx={ctx} />}
             {tab === 'profile' && <ProfileTab ctx={ctx} driver={driver} onLogout={async () => { await driverLogout(); router.replace('/driver/login') }} />}
           </>
@@ -236,7 +236,15 @@ function useSubmit(ctx: Ctx) {
 
 // ── Tab ───────────────────────────────────────────────────────────────────────
 
-function TripsTab({ ctx, error }: { ctx: Ctx; error: string }) {
+function greeting() {
+  const hour = new Date().getHours()
+  if (hour < 11) return 'Selamat pagi'
+  if (hour < 15) return 'Selamat siang'
+  if (hour < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
+
+function TripsTab({ ctx, error, driverName }: { ctx: Ctx; error: string; driverName: string }) {
   const stops = ctx.trips.flatMap(trip => trip.stops)
   const tiles = [
     { label: 'Menunggu', value: stops.filter(stop => !isStopDone(stop)).length, className: 'bg-[#FAF0E0] text-[#9A5F0F]' },
@@ -246,6 +254,10 @@ function TripsTab({ ctx, error }: { ctx: Ctx; error: string }) {
 
   return (
     <>
+      <div>
+        <p className="text-xl font-bold text-[#0D1C33]" suppressHydrationWarning>{greeting()}, {driverName}</p>
+        <Meta>Utamakan keselamatan. Semoga pengiriman hari ini lancar.</Meta>
+      </div>
       {error ? <ErrorText>{error}</ErrorText> : null}
       <section className="flex flex-col gap-3 rounded-[18px] bg-[#0D1C33] p-4">
         <p className="text-[13px] font-semibold text-[#E8D5A3]">Tujuan di trip aktif</p>

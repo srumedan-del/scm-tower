@@ -32,6 +32,14 @@ const CACHE_KEY = 'trips'
 
 export const isStopDone = (stop: Stop) => ['Delivered', 'Failed Delivery', 'Closed'].includes(stop.status)
 
+export function greeting(now = new Date()) {
+  const hour = now.getHours()
+  if (hour < 11) return 'Selamat pagi'
+  if (hour < 15) return 'Selamat siang'
+  if (hour < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
+
 export function vehicleLabel(trip: Trip) {
   if (!trip.vehicle?.vehicle_no) return null
   return [trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ')

@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { getDriver } from '../../src/api'
 import { useTrips } from '../../src/hooks'
-import { isStopDone, vehicleLabel, type Trip } from '../../src/trips'
+import { greeting, isStopDone, vehicleLabel, type Trip } from '../../src/trips'
 import { Card, ErrorText } from '../../src/ui'
 import { colors, radius } from '../../src/theme'
 
@@ -42,6 +44,8 @@ function Summary({ trips, onHistory }: { trips: Trip[]; onHistory: () => void })
 export default function TripsScreen() {
   const router = useRouter()
   const { trips, refreshing, error, refresh } = useTrips()
+  const [driverName, setDriverName] = useState('')
+  useEffect(() => { void getDriver().then(driver => setDriverName(driver?.driver_name ?? '')) }, [])
 
   return (
     <FlatList
@@ -52,6 +56,10 @@ export default function TripsScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       ListHeaderComponent={
         <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{greeting()}{driverName ? `, ${driverName}` : ''}</Text>
+            <Text style={styles.meta}>Utamakan keselamatan. Semoga pengiriman hari ini lancar.</Text>
+          </View>
           {error ? <ErrorText>{error}</ErrorText> : null}
           <Summary trips={trips} onHistory={() => router.push('/history')} />
         </View>
@@ -86,6 +94,7 @@ const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: colors.ivory },
   content: { padding: 16, gap: 12 },
   header: { gap: 12 },
+  greeting: { fontSize: 20, fontWeight: '700', color: colors.midnight },
   summary: { backgroundColor: colors.midnight, borderRadius: radius.lg, padding: 16, gap: 12 },
   summaryTitle: { fontSize: 13, fontWeight: '600', color: colors.goldLight },
   tiles: { flexDirection: 'row', gap: 8 },

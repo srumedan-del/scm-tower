@@ -1,11 +1,19 @@
 'use client'
 
 import React, { useEffect, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import {
   getActiveDriverLiveLocations,
   getTripFuelAuditLogs,
+  getTripLocationHistory,
   type LiveDriverTrip,
 } from '@/app/(app)/shipment/actions'
+import type { RoutePoint } from './TripRouteMap'
+
+const TripRouteMap = dynamic(() => import('./TripRouteMap'), {
+  ssr: false,
+  loading: () => <div className="grid h-[420px] place-items-center rounded-xl bg-slate-100 text-sm text-slate-500">Memuat peta...</div>,
+})
 import {
   Truck,
   MapPin,
@@ -29,6 +37,19 @@ export default function DriverLiveTrackingMap() {
   const [fuelLoading, setFuelLoading] = useState(false)
   const [loading, startTransition] = useTransition()
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
+  const [route, setRoute] = useState<{ tripId: string; points: RoutePoint[] } | null>(null)
+  const selectedTripId = selectedTrip?.trip_id ?? null
+  const lastRecordedAt = selectedTrip?.last_location?.recorded_at ?? null
+
+  // Jalur dimuat ulang saat trip berganti atau ada titik GPS baru.
+  useEffect(() => {
+    if (!selectedTripId) return
+    let cancelled = false
+    void getTripLocationHistory(selectedTripId).then(points => {
+      if (!cancelled) setRoute({ tripId: selectedTripId, points: points as RoutePoint[] })
+    })
+    return () => { cancelled = true }
+  }, [selectedTripId, lastRecordedAt])
 
   function reload() {
     startTransition(async () => {
@@ -37,7 +58,7 @@ export default function DriverLiveTrackingMap() {
       setLastRefreshed(new Date())
       if (selectedTrip) {
         const updated = data.find(t => t.trip_id === selectedTrip.trip_id)
-        if (updated) setSelectedTrip(updated)
+        setSelectedTrip(updated ?? data[0] ?? null)
       } else if (data.length > 0) {
         setSelectedTrip(data[0])
       }
@@ -62,7 +83,8 @@ export default function DriverLiveTrackingMap() {
     })
   }
 
-  const activeInTransitCount = trips.filter(t => t.status === 'In Transit').length
+  const trackedCount = trips.filter(t => t.last_location).length
+  const routePoints = route && route.tripId === selectedTripId ? route.points : []
 
   return (
     <div className="space-y-4">
@@ -88,7 +110,7 @@ export default function DriverLiveTrackingMap() {
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700 border border-green-200">
             <span className="h-2 w-2 rounded-full bg-green-500 animate-ping" />
-            {activeInTransitCount} Armada Bergerak
+            {trackedCount} dari {trips.length} trip terlacak
           </span>
           <button
             onClick={reload}
@@ -106,12 +128,12 @@ export default function DriverLiveTrackingMap() {
         {/* Left Column: Trip Cards */}
         <div className="lg:col-span-5 space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
-            Daftar Trip Armada ({trips.length})
+            Trip Aktif ({trips.length})
           </h3>
 
           {trips.length === 0 && !loading && (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-              Belum ada Trip yang tercatat. Buat pengiriman di tab <strong>For Transport Planning</strong>.
+              Tidak ada trip yang sedang berjalan. Trip muncul di sini selama masih ada pengiriman yang belum selesai.
             </div>
           )}
 
@@ -223,6 +245,12 @@ export default function DriverLiveTrackingMap() {
                     </a>
                   )}
                 </div>
+
+                <TripRouteMap tripId={selectedTrip.trip_id} points={routePoints} destinations={selectedTrip.destinations} />
+                <p className="text-xs text-slate-500">
+                  Titik merah: posisi terakhir driver. Garis biru: jalur yang sudah dilalui ({routePoints.length} titik).
+                  Titik emas: tujuan yang punya koordinat, hijau jika sudah selesai.
+                </p>
 
                 {/* GPS Live Coordinates Status Box */}
                 {selectedTrip.last_location ? (
