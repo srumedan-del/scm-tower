@@ -21,7 +21,8 @@ function FitToRoute({ fitKey, positions }: { fitKey: string; positions: [number,
   return null
 }
 
-export default function TripRouteMap({ tripId, points, destinations }: {
+export default function TripRouteMap({ tripId, points, destinations, className = 'h-[420px]' }: {
+  className?: string
   tripId: string
   points: RoutePoint[]
   destinations: RouteDestination[]
@@ -31,7 +32,7 @@ export default function TripRouteMap({ tripId, points, destinations }: {
   const all = [...path, ...destinations.map(destination => [destination.latitude, destination.longitude] as [number, number])]
 
   return (
-    <MapContainer center={current ?? MEDAN} zoom={13} scrollWheelZoom className="h-[420px] w-full rounded-xl">
+    <MapContainer center={current ?? MEDAN} zoom={13} scrollWheelZoom className={`${className} w-full rounded-xl`}>
       <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <FitToRoute fitKey={`${tripId}:${path.length > 0}:${destinations.length}`} positions={all} />
 
