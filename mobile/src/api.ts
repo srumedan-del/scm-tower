@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system'
 import * as SecureStore from 'expo-secure-store'
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '')
@@ -67,7 +68,8 @@ export function apiPost<T>(path: string, payload: unknown) {
 
 export async function apiUpload(uri: string) {
   const form = new FormData()
-  form.append('file', { uri, name: 'foto.jpg', type: 'image/jpeg' } as unknown as Blob)
+  // fetch bawaan Expo menolak bagian { uri } gaya React Native; File dari expo-file-system adalah Blob.
+  form.append('file', new File(uri) as unknown as Blob, 'foto.jpg')
   const { path } = await send<{ path: string }>('upload', { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS)
   return path
 }

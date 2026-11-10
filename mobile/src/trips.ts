@@ -40,6 +40,41 @@ export function greeting(now = new Date()) {
   return 'Selamat malam'
 }
 
+let greetingPending = true
+
+/** Dipanggil setelah login agar pop-up salam muncul lagi. */
+export function requestGreeting() {
+  greetingPending = true
+}
+
+export function consumeGreeting() {
+  const pending = greetingPending
+  greetingPending = false
+  return pending
+}
+
+export function taskSummary(trips: Trip[]) {
+  if (!trips.length) return 'Belum ada tugas pengiriman untuk Anda saat ini.'
+  const blocks = trips.map(trip => {
+    const open = trip.stops.filter(stop => !isStopDone(stop))
+    const vehicle = vehicleLabel(trip)
+    const head = vehicle ? `${trip.trip_no} · ${vehicle}` : trip.trip_no
+    const state = trip.started_at
+      ? `Sedang berjalan: ${trip.stops.length - open.length} dari ${trip.stops.length} tujuan selesai.`
+      : `Belum dimulai: ${trip.stops.length} tujuan.`
+    const names = open.slice(0, 3).map(stop => stop.customer_name ?? stop.reference_no).join(', ')
+    const more = open.length > 3 ? ` dan ${open.length - 3} lainnya` : ''
+    const next = open.length ? `\n${trip.started_at ? 'Berikutnya' : 'Tujuan'}: ${names}${more}` : ''
+    return `${head}\n${state}${next}`
+  })
+  return `${blocks.join('\n\n')}\n\nUtamakan keselamatan di jalan.`
+}
+
+/** True jika stop ini adalah tujuan terakhir yang belum selesai di trip-nya. */
+export function isLastOpenStop(trip: Trip, stopId: number) {
+  return trip.stops.every(stop => stop.id === stopId || isStopDone(stop))
+}
+
 export function vehicleLabel(trip: Trip) {
   if (!trip.vehicle?.vehicle_no) return null
   return [trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ')

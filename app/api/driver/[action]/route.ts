@@ -69,7 +69,10 @@ export async function POST(request: Request, context: Context) {
       const form = await request.formData()
       const file = form.get('file')
       if (!(file instanceof File)) throw new DriverInputError('File foto tidak ditemukan')
-      const path = await storeDriverImage(new Uint8Array(await file.arrayBuffer()), file.type, session.id)
+      // Sebagian klien tidak mengirim tipe file; foto dari aplikasi selalu JPEG.
+      const untyped = !file.type || file.type === 'application/octet-stream'
+      const contentType = untyped ? (/\.png$/i.test(file.name) ? 'image/png' : 'image/jpeg') : file.type
+      const path = await storeDriverImage(new Uint8Array(await file.arrayBuffer()), contentType, session.id)
       return json({ path })
     }
 

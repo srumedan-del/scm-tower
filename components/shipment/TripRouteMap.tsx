@@ -21,8 +21,9 @@ function FitToRoute({ fitKey, positions }: { fitKey: string; positions: [number,
   return null
 }
 
-export default function TripRouteMap({ tripId, points, destinations, className = 'h-[420px]' }: {
+export default function TripRouteMap({ tripId, points, destinations, speedKmh, className = 'h-[420px]' }: {
   className?: string
+  speedKmh?: number
   tripId: string
   points: RoutePoint[]
   destinations: RouteDestination[]
@@ -58,6 +59,7 @@ export default function TripRouteMap({ tripId, points, destinations, className =
         <CircleMarker center={current} radius={10} pathOptions={{ color: '#ffffff', fillColor: '#C8372D', fillOpacity: 1, weight: 3 }}>
           <Tooltip permanent direction="top" offset={[0, -10]}>
             Posisi driver · {new Date(points[points.length - 1].recorded_at).toLocaleTimeString('id-ID')}
+            {speedKmh != null ? ` · ${speedKmh} km/jam` : ''}
           </Tooltip>
         </CircleMarker>
       )}

@@ -51,10 +51,11 @@ export async function startTracking(tripNo: string) {
 
   setKv(TRIP_KEY, tripNo)
   await Location.startLocationUpdatesAsync(TASK_NAME, {
-    accuracy: Location.Accuracy.Balanced,
-    distanceInterval: 200,
-    timeInterval: 60_000,
-    deferredUpdatesInterval: 60_000,
+    // GPS penuh: titik tiap ~50 m agar jalur mengikuti jalan dan kecepatan terbaca.
+    accuracy: Location.Accuracy.High,
+    distanceInterval: 50,
+    timeInterval: 15_000,
+    deferredUpdatesInterval: 15_000,
     foregroundService: {
       notificationTitle: 'Trip sedang berjalan',
       notificationBody: 'Lokasi dicatat selama pengiriman',

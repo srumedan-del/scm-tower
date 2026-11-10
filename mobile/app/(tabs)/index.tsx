@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { getDriver } from '../../src/api'
 import { useTrips } from '../../src/hooks'
-import { greeting, isStopDone, vehicleLabel, type Trip } from '../../src/trips'
+import { consumeGreeting, getCachedTrips, greeting, isStopDone, refreshTrips, taskSummary, vehicleLabel, type Trip } from '../../src/trips'
 import { Card, ErrorText } from '../../src/ui'
 import { colors, radius } from '../../src/theme'
 
@@ -46,6 +46,16 @@ export default function TripsScreen() {
   const { trips, refreshing, error, refresh } = useTrips()
   const [driverName, setDriverName] = useState('')
   useEffect(() => { void getDriver().then(driver => setDriverName(driver?.driver_name ?? '')) }, [])
+
+  // Pop-up salam sekali setiap login atau aplikasi dibuka, berisi ringkasan tugas.
+  useEffect(() => {
+    if (!consumeGreeting()) return
+    void (async () => {
+      const [driver, list] = await Promise.all([getDriver(), refreshTrips().catch(() => getCachedTrips())])
+      if (!driver) return
+      Alert.alert(`${greeting()}, ${driver.driver_name}`, taskSummary(list))
+    })()
+  }, [])
 
   return (
     <FlatList

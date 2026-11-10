@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Alert, Linking, StyleSheet, Text, View } from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useTrips } from '../../src/hooks'
 import { enqueue } from '../../src/queue'
 import { startTracking } from '../../src/tracker'
-import { isStopDone, mapsUrl, vehicleLabel } from '../../src/trips'
+import { isStopDone, vehicleLabel } from '../../src/trips'
 import { Button, Card, ErrorText, Field, Screen, StatusPill } from '../../src/ui'
 import { colors } from '../../src/theme'
 
@@ -34,25 +34,12 @@ export default function TripScreen() {
     void beginTrip(value)
   }
 
-  // Setelah trip dimulai, langsung arahkan driver ke tujuan pertama yang belum selesai.
-  function openFirstDestination() {
-    const next = trip?.stops.find(stop => !isStopDone(stop))
-    if (!next) return
-    Linking.openURL(mapsUrl(next)).catch(() => Alert.alert('Tidak bisa membuka peta', 'Pastikan Google Maps atau browser terpasang.'))
-  }
-
   async function beginTrip(value: number) {
     enqueue('trip-start', `Mulai trip ${tripNo}`, { trip_id: tripNo, odometer_start: value })
     const tracking = await startTracking(tripNo)
     if (!tracking) {
-      Alert.alert(
-        'Pelacakan lokasi tidak aktif',
-        'Izinkan lokasi "Sepanjang waktu" di pengaturan ponsel agar admin bisa memantau trip.',
-        [{ text: 'OK', onPress: openFirstDestination }],
-      )
-      return
+      Alert.alert('Pelacakan lokasi tidak aktif', 'Izinkan lokasi "Sepanjang waktu" di pengaturan ponsel agar admin bisa memantau trip.')
     }
-    openFirstDestination()
   }
 
   const allDone = trip.stops.every(isStopDone)
@@ -80,7 +67,8 @@ export default function TripScreen() {
         </View>
       )}
 
-      <Text style={styles.heading}>Tujuan ({trip.stops.length})</Text>
+      <Text style={styles.heading}>Urutan pengiriman ({trip.stops.length})</Text>
+      {trip.started_at ? <Text style={styles.meta}>Ketuk tujuan untuk navigasi dan bukti terima.</Text> : null}
       {trip.stops.map((stop, index) => (
         <Card key={stop.id} onPress={() => router.push(`/stop/${stop.id}`)}>
           <Text style={styles.title}>{index + 1}. {stop.customer_name ?? '-'}</Text>

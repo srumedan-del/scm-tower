@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Text } from 'react-native'
+import { Alert, Text } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { enqueue } from '../../src/queue'
-import { findStop } from '../../src/trips'
+import { findStop, isLastOpenStop } from '../../src/trips'
 import { Button, ChoiceRow, ErrorText, Field, PhotoField, Screen } from '../../src/ui'
 
 const REASONS = ['Salah barang', 'Customer tutup', 'Alamat tidak ditemukan', 'Ditolak penerima', 'Lainnya']
@@ -17,7 +17,7 @@ export default function FailedScreen() {
   const [error, setError] = useState('')
 
   if (!found) return <Screen><Text>Pengiriman tidak ditemukan.</Text></Screen>
-  const { stop } = found
+  const { stop, trip } = found
 
   function submit() {
     if (!photo) return setError('Foto bukti wajib diambil')
@@ -28,6 +28,17 @@ export default function FailedScreen() {
       photo_url: photo,
       failed_at: new Date().toISOString(),
     })
+    if (isLastOpenStop(trip, stop.id)) {
+      Alert.alert(
+        'Semua pengiriman selesai',
+        'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.',
+        [
+          { text: 'Nanti', style: 'cancel', onPress: () => router.back() },
+          { text: 'Catat BBM', onPress: () => router.replace(`/fuel?tripNo=${encodeURIComponent(trip.trip_no)}`) },
+        ],
+      )
+      return
+    }
     router.back()
   }
 

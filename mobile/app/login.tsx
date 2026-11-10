@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { apiPost, saveSession, type Driver } from '../src/api'
+import { requestGreeting } from '../src/trips'
 import { Button, ErrorText, Field, Screen } from '../src/ui'
 import { colors } from '../src/theme'
 
@@ -31,6 +32,7 @@ export default function LoginScreen() {
         setMustChangePin(true)
       } else if (response.token && response.driver) {
         await saveSession(response.token, response.driver)
+        requestGreeting()
         router.replace('/')
       }
     } catch (caught) {

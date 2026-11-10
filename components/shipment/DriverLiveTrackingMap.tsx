@@ -30,15 +30,32 @@ import {
   Camera,
 } from 'lucide-react'
 
+/** Kecepatan dari HP; jika HP tidak melaporkannya, hitung dari dua titik terakhir. */
+function estimateSpeedKmh(reported: number | null | undefined, points: RoutePoint[]) {
+  if (Number(reported) > 0) return Math.round(Number(reported))
+  if (points.length < 2) return 0
+  const [from, to] = points.slice(-2)
+  const seconds = (new Date(to.recorded_at).getTime() - new Date(from.recorded_at).getTime()) / 1000
+  if (!(seconds >= 5 && seconds <= 600)) return 0
+  const toRad = (value: number) => (value * Math.PI) / 180
+  const dLat = toRad(to.latitude - from.latitude)
+  const dLng = toRad(to.longitude - from.longitude)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(from.latitude)) * Math.cos(toRad(to.latitude)) * Math.sin(dLng / 2) ** 2
+  const meters = 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return Math.round((meters / seconds) * 3.6)
+}
+
 export default function DriverLiveTrackingMap() {
   const [trips, setTrips] = useState<LiveDriverTrip[]>([])
-  const [selectedTrip, setSelectedTrip] = useState<LiveDriverTrip | null>(null)
+  // Simpan ID-nya saja: refresh otomatis tidak boleh mengganti trip yang dipilih admin.
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
+  const selectedTrip = trips.find(trip => trip.trip_id === selectedTripId) ?? null
+  const setSelectedTrip = (trip: LiveDriverTrip | null) => setSelectedTripId(trip?.trip_id ?? null)
   const [fuelModalLogs, setFuelModalLogs] = useState<any[] | null>(null)
   const [fuelLoading, setFuelLoading] = useState(false)
   const [loading, startTransition] = useTransition()
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
   const [route, setRoute] = useState<{ tripId: string; points: RoutePoint[] } | null>(null)
-  const selectedTripId = selectedTrip?.trip_id ?? null
   const lastRecordedAt = selectedTrip?.last_location?.recorded_at ?? null
 
   // Jalur dimuat ulang saat trip berganti atau ada titik GPS baru.
@@ -56,12 +73,7 @@ export default function DriverLiveTrackingMap() {
       const data = await getActiveDriverLiveLocations()
       setTrips(data)
       setLastRefreshed(new Date())
-      if (selectedTrip) {
-        const updated = data.find(t => t.trip_id === selectedTrip.trip_id)
-        setSelectedTrip(updated ?? data[0] ?? null)
-      } else if (data.length > 0) {
-        setSelectedTrip(data[0])
-      }
+      setSelectedTripId(current => (data.some(trip => trip.trip_id === current) ? current : data[0]?.trip_id ?? null))
     })
   }
 
@@ -85,6 +97,7 @@ export default function DriverLiveTrackingMap() {
 
   const trackedCount = trips.filter(t => t.last_location).length
   const routePoints = route && route.tripId === selectedTripId ? route.points : []
+  const speedKmh = estimateSpeedKmh(selectedTrip?.last_location?.speed_kmh, routePoints)
 
   return (
     <div className="space-y-4">
@@ -144,6 +157,7 @@ export default function DriverLiveTrackingMap() {
               className="h-[calc(100dvh-15rem)] min-h-[26rem]"
               tripId={selectedTrip.trip_id}
               points={routePoints}
+              speedKmh={speedKmh}
               destinations={selectedTrip.destinations}
             />
           </div>
@@ -158,7 +172,7 @@ export default function DriverLiveTrackingMap() {
               {selectedTrip.last_location ? (
                 <dl className="space-y-1.5 text-sm">
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Waktu</dt><dd className="font-semibold text-slate-900">{new Date(selectedTrip.last_location.recorded_at).toLocaleTimeString('id-ID')}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Kecepatan</dt><dd className="font-semibold text-slate-900">{Math.round(Number(selectedTrip.last_location.speed_kmh) || 0)} km/jam</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Kecepatan</dt><dd className="font-semibold text-slate-900">{speedKmh} km/jam</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Koordinat</dt><dd className="font-mono text-xs text-slate-700">{selectedTrip.last_location.latitude.toFixed(6)}, {selectedTrip.last_location.longitude.toFixed(6)}</dd></div>
                 </dl>
               ) : (

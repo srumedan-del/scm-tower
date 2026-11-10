@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { StyleSheet, Text } from 'react-native'
+import { Alert, StyleSheet, Text } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { enqueue } from '../../src/queue'
 import { currentPosition, distanceMeters } from '../../src/tracker'
-import { findStop } from '../../src/trips'
+import { findStop, isLastOpenStop } from '../../src/trips'
 import { Button, ChoiceRow, ErrorText, Field, PhotoField, Screen } from '../../src/ui'
 import { colors } from '../../src/theme'
 
@@ -24,7 +24,7 @@ export default function PodScreen() {
   useEffect(() => { void currentPosition().then(setPosition) }, [])
 
   if (!found) return <Screen><Text>Pengiriman tidak ditemukan.</Text></Screen>
-  const { stop } = found
+  const { stop, trip } = found
 
   const target = stop.target_lat != null && stop.target_lng != null ? { lat: stop.target_lat, lng: stop.target_lng } : null
   const distance = position && target ? distanceMeters(position, target) : null
@@ -43,6 +43,17 @@ export default function PodScreen() {
       lng: position?.lng,
       received_at: new Date().toISOString(),
     })
+    if (isLastOpenStop(trip, stop.id)) {
+      Alert.alert(
+        'Semua pengiriman selesai',
+        'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.',
+        [
+          { text: 'Nanti', style: 'cancel', onPress: () => router.back() },
+          { text: 'Catat BBM', onPress: () => router.replace(`/fuel?tripNo=${encodeURIComponent(trip.trip_no)}`) },
+        ],
+      )
+      return
+    }
     router.back()
   }
 
