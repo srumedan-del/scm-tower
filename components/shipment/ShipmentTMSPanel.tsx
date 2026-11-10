@@ -182,12 +182,24 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     ?? ''
   const isRetailCourier = /indah\s+logistik|jne/i.test(transporterName) || Boolean(String(form.no_resi ?? '').trim())
   const hadExternalCrew = Boolean(readNoteField(shipment?.notes, 'Nopol') || readNoteField(shipment?.notes, 'Driver'))
-  const showExternalCrew = Boolean(shipment) && !isInternal && (hadExternalCrew || !isRetailCourier)
+  // Shipment yang sudah memakai armada/driver dari master diedit lewat master,
+  // walaupun transporternya terdaftar Eksternal (mis. SRU MEDAN).
+  const usesMasterFleet = isInternal || form.vehicle_id != null || form.driver_id != null
+  const showExternalCrew = Boolean(shipment) && !usesMasterFleet && (hadExternalCrew || !isRetailCourier)
 
   function notesFor(row: ShipmentTrackingRow | null) {
     const base = row == null || row.id === shipment?.id ? form.notes : row.notes
-    if (!showExternalCrew) return base ?? null
-    return writeNoteField(writeNoteField(base, 'Nopol', externalNopol), 'Driver', externalDriver)
+    if (showExternalCrew) return writeNoteField(writeNoteField(base, 'Nopol', externalNopol), 'Driver', externalDriver)
+    // Catatan lama yang menyimpan Nopol/Driver ikut disesuaikan dengan pilihan master.
+    if (usesMasterFleet && (readNoteField(base, 'Nopol') || readNoteField(base, 'Driver'))) {
+      const vehicle = vehicles.find(v => v.id === Number(form.vehicle_id))
+      const driver = allCrew.find(d => d.id === Number(form.driver_id))
+      let next = base ?? null
+      if (vehicle) next = writeNoteField(writeNoteField(next, 'Nopol', vehicle.vehicle_no), 'Tipe', vehicle.vehicle_type ?? '')
+      if (driver) next = writeNoteField(next, 'Driver', driver.driver_name)
+      return next
+    }
+    return base ?? null
   }
 
   useEffect(() => {
@@ -208,8 +220,8 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     startSaving(async () => {
       setErr(null)
       if (!form.status) { setErr('Status wajib diisi'); return }
-      if (hadExternalCrew && !externalNopol.trim()) { setErr('Nomor polisi wajib diisi'); return }
-      if (hadExternalCrew && !externalDriver.trim()) { setErr('Nama driver wajib diisi'); return }
+      if (showExternalCrew && hadExternalCrew && !externalNopol.trim()) { setErr('Nomor polisi wajib diisi'); return }
+      if (showExternalCrew && hadExternalCrew && !externalDriver.trim()) { setErr('Nama driver wajib diisi'); return }
       try {
         const selectedVendor = transporters.find(t => t.id === Number(effectiveTransporterId))
         const retailFields = Boolean(String(form.no_resi ?? '').trim()) || form.cost_model === 'Retail' || isRetailCourier
@@ -374,7 +386,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 <SearchableSelect value={form.route_id ?? ''} onChange={value => up('route_id', value ? Number(value) : null)} placeholder="-- Opsional --" options={routes.map(r => ({ value: r.id, label: `${r.route_code} — ${r.origin} → ${r.destination}` }))} />
               </Field>
             </div>
-            {isInternal && (
+            {usesMasterFleet && (
               <div className="mt-3 grid grid-cols-3 gap-3">
                 <Field label="Armada">
                   <SearchableSelect value={form.vehicle_id ?? ''} onChange={value => up('vehicle_id', value ? Number(value) : null)} placeholder="-- Pilih --" options={vehicles.map(v => ({ value: v.id, label: `${v.vehicle_no}${v.vehicle_type ? ` (${v.vehicle_type})` : ''}` }))} />
