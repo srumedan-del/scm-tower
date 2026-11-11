@@ -24,6 +24,10 @@ export default function FuelScreen() {
     const amountValue = Number(amount.replace(/\D/g, ''))
     if (!spbu.trim()) return setError('Nama SPBU wajib diisi')
     if (!(litersValue > 0) || !(amountValue > 0)) return setError('Liter dan nominal wajib diisi')
+    const pricePerLiter = amountValue / litersValue
+    if (pricePerLiter < 5_000 || pricePerLiter > 25_000) {
+      return setError(`Periksa jumlah liter. Rp ${amountValue.toLocaleString('id-ID')} untuk ${litersValue.toLocaleString('id-ID')} liter berarti Rp ${Math.round(pricePerLiter).toLocaleString('id-ID')} per liter. Gunakan koma untuk desimal, contoh 7,21.`)
+    }
     if (!odoPhoto || !receiptPhoto) return setError('Foto odometer dan foto struk wajib diambil')
 
     setBusy(true)

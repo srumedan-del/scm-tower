@@ -12,6 +12,7 @@ import {
 import { displayVendorName } from '@/lib/vendor-display'
 import { Plus, Trash2, Fuel, Truck, Gauge, Building2, MapPin, Wallet } from 'lucide-react'
 import { showSuccess } from '@/lib/feedback'
+import { getTripFuelAuditLogs } from '@/app/(app)/shipment/actions'
 
 type Props = {
   row: ShipmentCostRow
@@ -166,6 +167,21 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           amount: initialRupiah,
         },
       ])
+      // Belum pernah disimpan dari form ini: pakai catatan BBM driver (SPBU, odometer, liter).
+      if (row.trip_id) {
+        void getTripFuelAuditLogs(row.trip_id).then((logs: any[]) => {
+          if (!logs.length) return
+          setBbmEntries(
+            [...logs].reverse().map((log, idx) => ({
+              id: String(idx + 1),
+              label: log.spbu_name_location || `Pengisian ${idx + 1}`,
+              odometer: log.odometer_after ?? log.odometer_before ? String(log.odometer_after ?? log.odometer_before) : '',
+              liter: Number(log.liters) || '',
+              amount: Number(log.amount_rupiah) || 0,
+            }))
+          )
+        }).catch(() => {})
+      }
     }
 
     // Inisialisasi TKBM per PSS / Surat Jalan

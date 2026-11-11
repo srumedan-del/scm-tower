@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useTransition } from 'react'
+import React, { useEffect, useRef, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import {
   getActiveDriverLiveLocations,
@@ -106,9 +106,18 @@ export default function DriverLiveTrackingMap() {
     return () => { cancelled = true }
   }, [selectedTripId, lastRecordedAt])
 
+  const [includeFinished, setIncludeFinished] = useState(false)
+  // Ref agar refresh otomatis memakai pilihan terbaru.
+  const includeFinishedRef = useRef(includeFinished)
+  useEffect(() => {
+    includeFinishedRef.current = includeFinished
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeFinished])
+
   function reload() {
     startTransition(async () => {
-      const data = await getActiveDriverLiveLocations()
+      const data = await getActiveDriverLiveLocations(includeFinishedRef.current)
       setTrips(data)
       setLastRefreshed(new Date())
       setSelectedTripId(current => (data.some(trip => trip.trip_id === current) ? current : data[0]?.trip_id ?? null))
@@ -116,7 +125,6 @@ export default function DriverLiveTrackingMap() {
   }
 
   useEffect(() => {
-    reload()
     // Auto refresh every 20 seconds
     const interval = setInterval(() => {
       reload()
@@ -136,7 +144,7 @@ export default function DriverLiveTrackingMap() {
   const trackedCount = trips.filter(t => t.last_location).length
   const routePoints = route && route.tripId === selectedTripId ? route.points : []
   const speedKmh = estimateSpeedKmh(selectedTrip?.last_location?.speed_kmh, routePoints)
-  const movement = movementStatus(routePoints)
+  const movement = selectedTrip?.finished ? { tone: 'moving' as const, label: 'Trip selesai' } : movementStatus(routePoints)
   const [showRaw, setShowRaw] = useState(false)
   const displayPoints = showRaw ? routePoints : smoothRoute(routePoints)
 
@@ -145,7 +153,7 @@ export default function DriverLiveTrackingMap() {
       {/* Pilih trip dan aksi */}
       <div className="flex flex-wrap items-end gap-3">
         <label className="block min-w-0 flex-1 basis-80">
-          <span className="mb-1.5 block text-[13px] font-medium text-slate-700">Trip aktif ({trips.length})</span>
+          <span className="mb-1.5 block text-[13px] font-medium text-slate-700">{includeFinished ? 'Trip aktif dan selesai 7 hari terakhir' : 'Trip aktif'} ({trips.length})</span>
           <select
             className="inp"
             value={selectedTrip?.trip_id ?? ''}
@@ -160,11 +168,15 @@ export default function DriverLiveTrackingMap() {
                   trip.driver_name ?? 'Driver belum ditugaskan',
                   trip.vehicle_nopol,
                   `${trip.delivered_count}/${trip.total_deliveries} terkirim`,
-                  trip.last_location ? null : 'menunggu GPS',
+                  trip.finished ? 'selesai' : trip.last_location ? null : 'menunggu GPS',
                 ].filter(Boolean).join(' · ')}
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-slate-600">
+          <input type="checkbox" checked={includeFinished} onChange={event => setIncludeFinished(event.target.checked)} className="h-4 w-4 accent-indigo-600" />
+          Trip selesai 7 hari
         </label>
         <span className="pb-3 text-xs text-slate-500">
           {trackedCount} dari {trips.length} terlacak · diperbarui {lastRefreshed.toLocaleTimeString('id-ID')}

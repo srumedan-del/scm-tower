@@ -1636,6 +1636,7 @@ export type LiveDriverTrip = {
   delivered_count: number
   customers: string[]
   cities: string[]
+  finished: boolean
   destinations: { name: string; latitude: number; longitude: number; done: boolean }[]
   last_location: {
     latitude: number
@@ -1649,7 +1650,7 @@ export type LiveDriverTrip = {
   total_fuel_rupiah: number
 }
 
-export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> {
+export async function getActiveDriverLiveLocations(includeFinished = false): Promise<LiveDriverTrip[]> {
   await requireAuthenticatedUser()
   // Trip aktif = masih punya pengiriman yang belum selesai. Rute hanya dicatat
   // untuk driver internal SRU (driver dari master); vendor dan retail tidak ikut.
@@ -1662,7 +1663,20 @@ export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> 
     .limit(500)
   if (openError) return []
   const openTripIds = [...new Set((openRows ?? []).map(row => String(row.trip_id)))]
-  if (!openTripIds.length) return []
+  let tripIds = openTripIds
+  if (includeFinished) {
+    // Trip driver internal yang berangkat dalam 7 hari terakhir, untuk melihat riwayat perjalanan.
+    const since = new Date(Date.now() - 7 * 86_400_000).toISOString()
+    const { data: recentRows } = await supabaseAdmin
+      .from('shipment_tracking')
+      .select('trip_id')
+      .not('trip_id', 'is', null)
+      .not('driver_id', 'is', null)
+      .gte('dispatch_time', since)
+      .limit(1000)
+    tripIds = [...new Set([...openTripIds, ...(recentRows ?? []).map(row => String(row.trip_id))])]
+  }
+  if (!tripIds.length) return []
 
   const { data: shipments, error } = await supabaseAdmin
     .from('shipment_tracking')
@@ -1670,7 +1684,7 @@ export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> 
       id, trip_id, pss_no, customer_name, destination_city, status,
       driver_id, vehicle_id, notes, bbm_liter, bbm_rupiah
     `)
-    .in('trip_id', openTripIds)
+    .in('trip_id', tripIds)
     .order('trip_id', { ascending: false })
     .order('delivery_sequence', { ascending: true, nullsFirst: false })
     .order('id', { ascending: true })
@@ -1767,6 +1781,7 @@ export async function getActiveDriverLiveLocations(): Promise<LiveDriverTrip[]> 
       customers: [...new Set(items.map((i: any) => i.customer_name).filter(Boolean))] as string[],
       cities: [...new Set(items.map((i: any) => i.destination_city).filter(Boolean))] as string[],
       destinations,
+      finished: !openTripIds.includes(tripId),
       last_location: locLogs?.[0] ?? null,
       fuel_logs_count: fuelLogs?.length ?? 0,
       total_fuel_liters: totalLiters,

@@ -46,7 +46,7 @@ export default function PodScreen() {
     if (isLastOpenStop(trip, stop.id)) {
       Alert.alert(
         'Semua pengiriman selesai',
-        'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.',
+        'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.\n\nSetelah tiba di gudang SRU, tekan Tutup Trip dan isi KM akhir.',
         [
           { text: 'Nanti', style: 'cancel', onPress: () => router.back() },
           { text: 'Catat BBM', onPress: () => router.replace(`/fuel?tripNo=${encodeURIComponent(trip.trip_no)}`) },
