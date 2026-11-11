@@ -24,17 +24,11 @@ const NumericFieldAdapter = dynamic(
   { ssr: false }
 )
 
-const AppHealthMonitor = dynamic(
-  () => import('@/components/monitor/AppHealthMonitor'),
-  { ssr: false }
-)
-
 export default function RootLayout({children}:{children:React.ReactNode}){
   return (
     <html lang="id" data-scroll-behavior="smooth" className={`${inter.variable} ${playfair.variable} ${inter.className}`}>
       <body className={inter.className}>
         <NumericFieldAdapter />
-        <AppHealthMonitor />
         {children}
         <FeedbackHost />
       </body>
