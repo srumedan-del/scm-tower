@@ -1,7 +1,8 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
-import { jakartaToday, slaDueAt, slaDueDate, slaWorkingDaysLeft } from '@/lib/sla'
+import { jakartaToday, slaDueAt, slaDueDate, slaWorkingDaysLeft, workingDaysSince, PTS_PENDING_REMINDER_DAYS } from '@/lib/sla'
+import { getPendingPts } from '@/app/(app)/crossdocking/actions'
 import { AlertTriangle, ArrowLeftRight, Bell, CheckCircle2, Clock3, Minus, Package, PackageCheck, TrendingDown, TrendingUp, Truck, Warehouse } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -177,6 +178,11 @@ async function getDashboardData(period: string) {
       destination_city: string | null; promised_delivery_date: string; status: string
     }[]
 
+  // PTS yang lebih dari 2 hari kerja belum diputuskan (Crossdocking atau Realokasi)
+  const pendingPts = (await getPendingPts(DATA_START).catch(() => []))
+    .map(row => ({ ...row, days: workingDaysSince(row.document_date, today) }))
+    .filter(row => row.days > PTS_PENDING_REMINDER_DAYS)
+
   // Outbound counts
   const outboundMonth = outboundRows?.length ?? 0
   const outboundDK    = (outboundRows ?? []).filter((r: any) => dkLkMap.get(r.customer_no) === 'DK').length
@@ -196,6 +202,7 @@ async function getDashboardData(period: string) {
     otd: { rate: otdRate, onTime: otdOnTime, late: otdTotal - otdOnTime, total: otdTotal },
     overdueShipments: overdueFiltered,
     crossdockingDeadline,
+    pendingPts,
     activeToday,
     recentPtr: (recentPtr ?? []) as {
       id: number; ptr_no: string | null; transfer_from_code: string | null
@@ -239,7 +246,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const d = await getDashboardData(period)
 
-  const totalAlerts = d.overdueShipments.length + d.crossdockingDeadline.length + d.counts.untrackedPss
+  const totalAlerts = d.overdueShipments.length + d.crossdockingDeadline.length + d.counts.untrackedPss + d.pendingPts.length
 
   return (
     <div className="space-y-6">
@@ -270,7 +277,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             Alert Aktif
             <span className="rounded-full bg-red-600 text-white text-xs font-bold px-2 py-0.5">{totalAlerts}</span>
           </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
 
             <Link href="/shipment" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.overdueShipments.length > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white opacity-50'}`}>
               <div className="flex items-center justify-between mb-2">
@@ -314,6 +321,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               ))}
               {d.crossdockingDeadline.length > 2 && <p className="mt-1 text-xs text-amber-500">+{d.crossdockingDeadline.length - 2} lainnya →</p>}
+            </Link>
+
+            <Link href="/crossdocking" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.pendingPts.length > 0 ? 'border-violet-200 bg-violet-50' : 'border-gray-200 bg-white opacity-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-violet-700 flex items-center gap-1"><Package size={13} /> PTS Belum Diputuskan</span>
+                <span className={`text-2xl font-bold ${d.pendingPts.length > 0 ? 'text-violet-700' : 'text-gray-400'}`}>{d.pendingPts.length}</span>
+              </div>
+              <p className="text-xs text-gray-500">Lebih dari {PTS_PENDING_REMINDER_DAYS} hari kerja, belum Crossdocking atau Realokasi</p>
+              {d.pendingPts.slice(0, 2).map(p => (
+                <div key={p.id} className="mt-1.5 flex items-center gap-1.5 text-xs text-violet-700">
+                  <Clock3 size={10} />
+                  <span className="truncate font-medium">{p.pts_no}</span>
+                  <span className="shrink-0 text-violet-500">{p.days}h kerja</span>
+                </div>
+              ))}
+              {d.pendingPts.length > 2 && <p className="mt-1 text-xs text-violet-500">+{d.pendingPts.length - 2} lainnya →</p>}
             </Link>
 
           </div>

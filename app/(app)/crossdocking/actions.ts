@@ -56,6 +56,8 @@ export type PtsRecord = {
   destination_city: string | null
   destination_address: string | null
   status: 'Menunggu Crossdocking' | 'Terhubung Crossdocking' | 'Realokasi'
+  realokasi_by?: string | null
+  realokasi_at?: string | null
   crossdocking_id: number | null
   source_file_name: string | null
   uploaded_at: string | null
@@ -548,19 +550,49 @@ export async function getCrossdockingOptions(referenceMonth?: string) {
 
 /** Tandai PTS sebagai Realokasi MDN-PAR ke JKT-JP12 (tanpa crossdocking, tanpa biaya), atau batalkan. */
 export async function setPtsRealokasi(id: number, realokasi: boolean) {
-  await requireAuthenticatedUser()
+  const user = await requireAuthenticatedUser()
+  const by = String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'unknown')
+  const now = new Date().toISOString()
   const { data: linked } = await supabaseAdmin
     .from('crossdocking_header_pts').select('pts_id').eq('pts_id', id).limit(1)
   if (realokasi && linked?.length) throw new Error('PTS ini sudah terhubung ke Crossdocking.')
   const { error } = await supabaseAdmin
     .from('crossdocking_pts')
-    .update({ status: realokasi ? 'Realokasi' : 'Menunggu Crossdocking', updated_at: new Date().toISOString() })
+    .update({
+      status: realokasi ? 'Realokasi' : 'Menunggu Crossdocking',
+      realokasi_by: realokasi ? by : null,
+      realokasi_at: realokasi ? now : null,
+      updated_at: now,
+    })
     .eq('id', id)
     .is('crossdocking_id', null)
   if (error) {
     if (error.message.includes('status_check')) throw new Error('Jalankan dulu supabase/migration_v43_pts_realokasi_cd_in_transit.sql di Supabase.')
+    if (error.message.includes('realokasi_')) throw new Error('Jalankan dulu supabase/migration_v44_pts_realokasi_audit.sql di Supabase.')
     throw new Error(error.message)
   }
+  return { realokasi_by: realokasi ? by : null, realokasi_at: realokasi ? now : null }
+}
+
+/** PTS yang belum diputuskan (belum Crossdocking, belum Realokasi) sejak tanggal tertentu. */
+export async function getPendingPts(sinceDate: string) {
+  await requireAuthenticatedUser()
+  const [{ data: pts, error }, { data: linked }] = await Promise.all([
+    supabaseAdmin
+      .from('crossdocking_pts')
+      .select('id, pts_no, document_date, status, crossdocking_id')
+      .is('crossdocking_id', null)
+      .neq('status', 'Realokasi')
+      .gte('document_date', sinceDate)
+      .order('document_date', { ascending: true })
+      .limit(500),
+    supabaseAdmin.from('crossdocking_header_pts').select('pts_id'),
+  ])
+  if (error) throw error
+  const linkedIds = new Set((linked ?? []).map(row => Number(row.pts_id)))
+  return (pts ?? [])
+    .filter(row => !linkedIds.has(Number(row.id)) && row.document_date)
+    .map(row => ({ id: Number(row.id), pts_no: String(row.pts_no), document_date: String(row.document_date) }))
 }
 
 export async function getPtsDetailsForCrossdocking(ptsId: number) {

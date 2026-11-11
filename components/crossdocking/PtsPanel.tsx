@@ -10,6 +10,13 @@ import {
   type PtsRecord,
 } from '@/app/(app)/crossdocking/actions'
 import { notify, confirmAction } from '@/lib/feedback'
+import { jakartaToday, workingDaysSince, PTS_PENDING_REMINDER_DAYS } from '@/lib/sla'
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(value))
+}
 
 interface Props {
   selectedMonth?: string
@@ -45,9 +52,9 @@ export default function PtsPanel({ selectedMonth }: Props) {
     }))) return
     setSavingId(row.id)
     try {
-      await setPtsRealokasi(row.id, toRealokasi)
+      const audit = await setPtsRealokasi(row.id, toRealokasi)
       setRows(current => current.map(item => item.id === row.id
-        ? { ...item, status: toRealokasi ? 'Realokasi' : 'Menunggu Crossdocking' }
+        ? { ...item, ...audit, status: toRealokasi ? 'Realokasi' : 'Menunggu Crossdocking' }
         : item))
       notify.success(toRealokasi ? 'Ditandai Realokasi' : 'Realokasi dibatalkan', row.pts_no)
     } catch (error: any) {
@@ -58,6 +65,10 @@ export default function PtsPanel({ selectedMonth }: Props) {
   }
 
   const realokasiCount = rows.filter(row => row.status === 'Realokasi').length
+  const today = jakartaToday()
+  const waitingDays = (row: PtsRecord) =>
+    row.status === 'Menunggu Crossdocking' && row.document_date ? workingDaysSince(row.document_date, today) : 0
+  const overdueCount = rows.filter(row => waitingDays(row) > PTS_PENDING_REMINDER_DAYS).length
   const pendingCount = useMemo(
     () => rows.filter(row => row.status === 'Menunggu Crossdocking').length,
     [rows]
@@ -71,6 +82,12 @@ export default function PtsPanel({ selectedMonth }: Props) {
         (<span className="font-semibold text-amber-700">{pendingCount}</span> siap dipilih saat membuat Crossdocking
         {realokasiCount > 0 && <>, <span className="font-semibold text-violet-700">{realokasiCount}</span> realokasi ke JKT-JP12</>}).
       </p>
+      {overdueCount > 0 && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[14px] text-red-700">
+          <span className="font-bold">{overdueCount} PTS</span> sudah lebih dari {PTS_PENDING_REMINDER_DAYS} hari kerja belum diputuskan.
+          Buat Crossdocking jika ada pesanan pelanggan, atau tandai Realokasi jika hanya pindah stok ke JKT-JP12.
+        </p>
+      )}
 
       {/* ── Tabel ── */}
       <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-12rem)] overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
@@ -146,6 +163,16 @@ export default function PtsPanel({ selectedMonth }: Props) {
                   }`} title={row.status === 'Realokasi' ? 'Realokasi MDN-PAR ke JKT-JP12, tanpa biaya' : undefined}>
                     {row.status === 'Realokasi' ? 'Realokasi ke JKT-JP12' : row.status}
                   </span>
+                  {row.status === 'Realokasi' && (row.realokasi_by || row.realokasi_at) && (
+                    <span className="mt-1 block text-xs font-normal text-slate-500">
+                      {[row.realokasi_by, row.realokasi_at && formatDateTime(row.realokasi_at)].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                  {waitingDays(row) > PTS_PENDING_REMINDER_DAYS && (
+                    <span className="mt-1 block text-xs font-semibold text-red-600">
+                      {waitingDays(row)} hari kerja belum diputuskan
+                    </span>
+                  )}
                 </td>
                 {/* Detail */}
                 <td className="px-4 py-3 text-center whitespace-nowrap">

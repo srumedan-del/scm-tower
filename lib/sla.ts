@@ -32,6 +32,14 @@ function workingDaysBetween(from: IsoDate, to: IsoDate) {
   return count
 }
 
+/** Hari kerja yang sudah lewat sejak tanggal dokumen (tanggal dokumen sendiri tidak dihitung). */
+export function workingDaysSince(from: IsoDate, today: IsoDate) {
+  return today <= from.slice(0, 10) ? 0 : workingDaysBetween(from, today)
+}
+
+/** PTS yang belum diputuskan (Crossdocking atau Realokasi) lebih dari ini masuk pengingat. */
+export const PTS_PENDING_REMINDER_DAYS = 2
+
 export function jakartaToday(now = new Date()): IsoDate {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now)
 }
