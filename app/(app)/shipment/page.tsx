@@ -139,7 +139,6 @@ export default function ShipmentPage() {
   function openFromUntracked(pss: UntrackedPssRow) {
     setPrefillPss(pss)
     setAdding(true)
-    setMainTab('tracking')
   }
 
   // Checkbox helpers untuk untracked
@@ -591,10 +590,9 @@ export default function ShipmentPage() {
           prefillPss={prefillPss}
           onClose={() => { setSelected(null); setAdding(false); setPrefillPss(null) }}
           onSaved={() => {
-            const activeTab = mainTab
+            // Tetap di tab yang sedang dibuka, agar bisa lanjut membuat trip untuk PSS lain.
             setSelected(null); setAdding(false); setPrefillPss(null)
             loadTracking(); loadUntracked(); loadRetailInTransit()
-            setMainTab(activeTab === 'retail-in-transit' ? 'retail-in-transit' : 'tracking')
           }}
         />
       )}
@@ -609,7 +607,7 @@ export default function ShipmentPage() {
         <BulkShipmentPanel
           selectedPss={selectedUtRows}
           onClose={() => setBulkOpen(false)}
-          onSaved={() => { setBulkOpen(false); loadUntracked(); loadTracking(); loadRetailInTransit(); setMainTab('tracking') }}
+          onSaved={() => { setBulkOpen(false); setCheckedUt(new Set()); loadUntracked(); loadTracking(); loadRetailInTransit() }}
         />
       )}
     </div>
