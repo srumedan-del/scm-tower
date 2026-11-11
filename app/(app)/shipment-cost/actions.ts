@@ -236,6 +236,39 @@ function normalizeRateText(value: unknown) {
   return String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
+/**
+ * Tarif charter dibayar sekali per Trip: shipment dengan tujuan termahal di Trip
+ * menanggung tarif, shipment lain di Trip yang sama bernilai 0.
+ */
+export async function getTripTruckingRate(input: {
+  shipmentId: number
+  tripId: string | null
+  destination: string | null
+  vehicleType: string | null
+  transporterName: string | null
+}): Promise<{ price: number | null; chargedOn: string | null }> {
+  await requireAuthenticatedUser()
+  const own = await getTruckingRate(input.destination, input.vehicleType, input.transporterName)
+  if (!input.tripId) return { price: own, chargedOn: null }
+
+  const { data: tripRows } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('id, pss_no, destination_city, status')
+    .eq('trip_id', input.tripId)
+    .neq('status', 'Failed Delivery')
+  if (!tripRows || tripRows.length < 2) return { price: own, chargedOn: null }
+
+  let best: { id: number; pss: string | null; price: number } | null = null
+  for (const row of [...tripRows].sort((a, b) => Number(a.id) - Number(b.id))) {
+    const price = Number(row.id) === input.shipmentId
+      ? own
+      : await getTruckingRate(row.destination_city, input.vehicleType, input.transporterName)
+    if (price != null && (!best || price > best.price)) best = { id: Number(row.id), pss: row.pss_no, price }
+  }
+  if (!best || best.id === input.shipmentId) return { price: own, chargedOn: null }
+  return { price: 0, chargedOn: best.pss ?? `#${best.id}` }
+}
+
 export async function getTruckingRate(destination: string | null, vehicleType: string | null, transporterName: string | null) {
   await requireAuthenticatedUser()
   const normalizedDestination = normalizeRateText(destination)

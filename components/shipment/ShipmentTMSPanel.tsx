@@ -7,6 +7,7 @@ import {
   upsertShipmentTracking, deleteShipmentTracking, markShipmentFailed, undoShipmentFailed,
   updateShipmentRetailCost,
   getShipmentTMSOptions, lookupCustomerDkLk,
+  getVendorVehicleTypes, logVehicleTypeChange,
   type ShipmentTrackingRow,
   type TransporterOption, type VehicleOption,
   type DriverOption, type RouteOption,
@@ -98,6 +99,9 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
   const [applyTo, setApplyTo] = useState<'trip' | 'single'>('trip')
   const [externalNopol, setExternalNopol] = useState(() => readNoteField(shipment?.notes, 'Nopol'))
   const [externalDriver, setExternalDriver] = useState(() => readNoteField(shipment?.notes, 'Driver'))
+  const originalType = readNoteField(shipment?.notes, 'Tipe').toUpperCase()
+  const [externalType, setExternalType] = useState(originalType)
+  const [vendorTypes, setVendorTypes] = useState<string[]>([])
   const tripRows = relatedShipments?.length ? relatedShipments : shipment ? [shipment] : []
 
   const up = (k: keyof ShipmentTrackingRow, v: any) =>
@@ -187,9 +191,19 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
   const usesMasterFleet = isInternal || form.vehicle_id != null || form.driver_id != null
   const showExternalCrew = Boolean(shipment) && !usesMasterFleet && (hadExternalCrew || !isRetailCourier)
 
+  // Jenis unit menentukan tarif charter vendor di Shipment Cost.
+  useEffect(() => {
+    if (!effectiveTransporterId || isInternal) { setVendorTypes([]); return }
+    getVendorVehicleTypes(Number(effectiveTransporterId)).then(setVendorTypes).catch(() => setVendorTypes([]))
+  }, [effectiveTransporterId, isInternal])
+  const typeOptions = [...new Set([...vendorTypes, ...(externalType ? [externalType] : [])])]
+
   function notesFor(row: ShipmentTrackingRow | null) {
     const base = row == null || row.id === shipment?.id ? form.notes : row.notes
-    if (showExternalCrew) return writeNoteField(writeNoteField(base, 'Nopol', externalNopol), 'Driver', externalDriver)
+    if (showExternalCrew) {
+      const crew = writeNoteField(writeNoteField(base, 'Nopol', externalNopol), 'Driver', externalDriver)
+      return externalType ? writeNoteField(crew, 'Tipe', externalType) : crew
+    }
     // Catatan lama yang menyimpan Nopol/Driver ikut disesuaikan dengan pilihan master.
     if (usesMasterFleet && (readNoteField(base, 'Nopol') || readNoteField(base, 'Driver'))) {
       const vehicle = vehicles.find(v => v.id === Number(form.vehicle_id))
@@ -252,6 +266,14 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
           status: (row ?? form).status === 'Delivered' ? 'Delivered' : sharedFields.status,
           id: row?.id,
         })))
+        if (showExternalCrew && externalType && externalType !== originalType) {
+          await logVehicleTypeChange({
+            shipmentIds: rowsToUpdate.filter((row): row is ShipmentTrackingRow => row?.id != null).map(row => row.id),
+            tripId: form.trip_id ?? null,
+            from: originalType || null,
+            to: externalType,
+          }).catch(() => {})
+        }
         if (retailFields) {
           await Promise.all(rowsToUpdate
             .filter((row): row is ShipmentTrackingRow => row != null && row.id != null)
@@ -401,6 +423,21 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
             )}
             {showExternalCrew && (
               <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field label="Jenis unit">
+                  <select value={externalType} onChange={e => setExternalType(e.target.value)} className="inp">
+                    <option value="">-- Pilih jenis unit --</option>
+                    {typeOptions.map(type => <option key={type} value={type}>{type}</option>)}
+                  </select>
+                  {externalType && externalType !== originalType && originalType && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      Diubah dari {originalType}. Biaya trucking di Shipment Cost akan mengikuti tarif {externalType}.
+                    </p>
+                  )}
+                  {!vendorTypes.length && Boolean(effectiveTransporterId) && (
+                    <p className="mt-1 text-xs text-slate-500">Vendor ini belum punya tarif di Rate Card.</p>
+                  )}
+                </Field>
+                <div />
                 <Field label="No. polisi kendaraan">
                   <input value={externalNopol} onChange={e => setExternalNopol(e.target.value.toLocaleUpperCase('id-ID'))} className="inp font-mono" placeholder="BK 1234 AB" />
                 </Field>

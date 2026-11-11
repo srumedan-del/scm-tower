@@ -1277,6 +1277,33 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
     .slice(0, 300)
 }
 
+/** Jenis unit yang punya tarif aktif untuk vendor ini (Rate Card). */
+export async function getVendorVehicleTypes(vendorId: number) {
+  await requireAuthenticatedUser()
+  const { data, error } = await supabaseAdmin
+    .from('transport_rate_card')
+    .select('vehicle_type, status')
+    .eq('vendor_id', vendorId)
+  if (error) throw new Error(error.message)
+  return [...new Set((data ?? [])
+    .filter(row => ['aktif', 'active'].includes(String(row.status ?? '').toLowerCase()) && row.vehicle_type)
+    .map(row => String(row.vehicle_type).trim().toUpperCase()))].sort()
+}
+
+/** Catat perubahan jenis unit karena memengaruhi biaya trucking. */
+export async function logVehicleTypeChange(input: { shipmentIds: number[]; tripId: string | null; from: string | null; to: string }) {
+  const user = await requireAuthenticatedUser()
+  if (!input.shipmentIds.length) return
+  const by = String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'unknown')
+  await supabaseAdmin.from('shipment_event_log').insert(input.shipmentIds.map(id => ({
+    shipment_tracking_id: id,
+    event_type: 'Correction',
+    reason: `Jenis unit diubah ${input.from || '-'} menjadi ${input.to}`,
+    actor_id: user.id,
+    metadata: { field: 'vehicle_type', from: input.from, to: input.to, trip_id: input.tripId, by },
+  })))
+}
+
 export async function getShipmentTMSOptions() {
   await requireAuthenticatedUser()
   const [vend, veh, drv, rt, pss, tracked] = await Promise.all([

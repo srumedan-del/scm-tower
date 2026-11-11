@@ -3,7 +3,7 @@
 import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass } from '@/components/ui/FormDialog'
 import { useEffect, useState, useTransition } from 'react'
 import {
-  getTruckingRate,
+  getTripTruckingRate,
   upsertShipmentCost,
   getShipmentCostTripItems,
   type ShipmentCostRow,
@@ -376,9 +376,18 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
   useEffect(() => {
     if (model !== 'Trucking' || !row.destination_city || !row.vehicle_type) return
     setRateLoading(true)
-    getTruckingRate(row.destination_city, row.vehicle_type, row.transporter_name)
-      .then((rate) => {
-        if (rate != null) {
+    getTripTruckingRate({
+      shipmentId: row.id,
+      tripId: row.trip_id,
+      destination: row.destination_city,
+      vehicleType: row.vehicle_type,
+      transporterName: row.transporter_name,
+    })
+      .then(({ price: rate, chargedOn }) => {
+        if (chargedOn) {
+          setForm((current) => ({ ...current, biaya_trucking: 0 }))
+          setRateMessage(`Charter ${row.vehicle_type} ${row.trip_id} sudah ditagih di ${chargedOn} (tujuan terjauh), jadi biaya trucking dokumen ini Rp 0.`)
+        } else if (rate != null) {
           setForm((current) => ({ ...current, biaya_trucking: rate }))
           setRateMessage(`Rate ${displayVendorName(row.transporter_name) || 'Trucking'}: Rp ${rate.toLocaleString('id-ID')}`)
         } else {
@@ -387,7 +396,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       })
       .catch(() => setRateMessage('Rate tidak dapat dimuat.'))
       .finally(() => setRateLoading(false))
-  }, [model, row.destination_city, row.vehicle_type, row.transporter_name])
+  }, [model, row.id, row.trip_id, row.destination_city, row.vehicle_type, row.transporter_name])
 
   function save() {
     startSaving(async () => {
