@@ -2,11 +2,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
 import { jakartaToday, slaDueAt, slaDueDate, slaWorkingDaysLeft } from '@/lib/sla'
-import {
-  AlertTriangle, Activity, ArrowLeftRight, Bell,
-  CheckCircle2, Clock3, Minus, Package, PackageCheck,
-  TrendingDown, TrendingUp, Truck, Warehouse,
-} from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Bell, CheckCircle2, Clock3, Minus, Package, PackageCheck, TrendingDown, TrendingUp, Truck, Warehouse } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +57,6 @@ async function getDashboardData(period: string) {
     { count: crossdockingActive },
     { count: deliveredToday },
     { data: openIssues },
-    { data: hdAlertRaw },
     { data: crossdockingDeadlineRaw },
     { data: recentPtr },
   ] = await Promise.all([
@@ -79,10 +74,6 @@ async function getDashboardData(period: string) {
       .in('status', ['Open', 'In Progress'])
       .order('due_date', { ascending: true }).limit(5),
 
-    supabase.from('hd_stock_monitoring')
-      .select('customer_id, fu_po_date, estimated_stock, customers!inner(customer_name, city)')
-      .lte('fu_po_date', sevenDaysStr).not('fu_po_date', 'is', null)
-      .order('fu_po_date', { ascending: true }).limit(30),
 
     supabase.from('crossdocking_header')
       .select('id, crossdocking_no, customer_name, destination_city, promised_delivery_date, status')
@@ -191,13 +182,6 @@ async function getDashboardData(period: string) {
   const outboundDK    = (outboundRows ?? []).filter((r: any) => dkLkMap.get(r.customer_no) === 'DK').length
   const outboundLK    = (outboundRows ?? []).filter((r: any) => dkLkMap.get(r.customer_no) === 'LK').length
 
-  // HD alert deduplikasi
-  const hdByCustomer = Object.values(
-    (hdAlertRaw ?? []).reduce<Record<number, any>>((acc, r: any) => {
-      if (!acc[r.customer_id] || r.fu_po_date < acc[r.customer_id].fu_po_date) acc[r.customer_id] = r
-      return acc
-    }, {})
-  )
 
   return {
     period, today,
@@ -219,10 +203,6 @@ async function getDashboardData(period: string) {
     }[],
     openIssues: (openIssues ?? []) as {
       issue_no: string; title: string; status: string; category: string | null; due_date: string | null
-    }[],
-    hdAlerts: hdByCustomer as {
-      customer_id: number; fu_po_date: string; estimated_stock: number | null
-      customers: { customer_name: string | null; city: string | null } | null
     }[],
   }
 }
@@ -259,9 +239,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const d = await getDashboardData(period)
 
-  const hdKritis    = d.hdAlerts.filter(r => r.fu_po_date < d.today || (r.estimated_stock ?? 0) < 0)
-  const hdMendekati = d.hdAlerts.filter(r => r.fu_po_date >= d.today && (r.estimated_stock ?? 0) >= 0)
-  const totalAlerts = d.overdueShipments.length + d.crossdockingDeadline.length + d.counts.untrackedPss + hdKritis.length
+  const totalAlerts = d.overdueShipments.length + d.crossdockingDeadline.length + d.counts.untrackedPss
 
   return (
     <div className="space-y-6">
@@ -292,7 +270,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             Alert Aktif
             <span className="rounded-full bg-red-600 text-white text-xs font-bold px-2 py-0.5">{totalAlerts}</span>
           </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
 
             <Link href="/shipment" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.overdueShipments.length > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white opacity-50'}`}>
               <div className="flex items-center justify-between mb-2">
@@ -336,20 +314,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               ))}
               {d.crossdockingDeadline.length > 2 && <p className="mt-1 text-xs text-amber-500">+{d.crossdockingDeadline.length - 2} lainnya →</p>}
-            </Link>
-
-            <Link href="/inventory/hd-monitoring" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${hdKritis.length > 0 ? 'border-purple-200 bg-purple-50' : hdMendekati.length > 0 ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 bg-white opacity-50'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-xs font-semibold flex items-center gap-1 ${hdKritis.length > 0 ? 'text-purple-700' : 'text-yellow-700'}`}><Activity size={13} /> HD FU-PO Alert</span>
-                <span className={`text-2xl font-bold ${hdKritis.length > 0 ? 'text-purple-700' : hdMendekati.length > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>{hdKritis.length + hdMendekati.length}</span>
-              </div>
-              <p className="text-xs text-gray-500">{hdKritis.length > 0 ? `${hdKritis.length} kritis` : ''}{hdKritis.length > 0 && hdMendekati.length > 0 ? ', ' : ''}{hdMendekati.length > 0 ? `${hdMendekati.length} mendekati` : ''}{hdKritis.length + hdMendekati.length === 0 ? 'Semua aman' : ''}</p>
-              {[...hdKritis, ...hdMendekati].slice(0, 2).map(r => (
-                <div key={r.customer_id} className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700">
-                  <span className="truncate font-medium">{r.customers?.customer_name ?? `#${r.customer_id}`}</span>
-                  <span className="shrink-0 text-purple-400">{r.fu_po_date}</span>
-                </div>
-              ))}
             </Link>
 
           </div>
@@ -596,7 +560,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             { href: '/shipment-cost',           label: 'Shipment Cost',    icon: <TrendingUp size={16} />,     color: 'text-violet-600 bg-violet-50' },
             { href: '/service-level',           label: 'Service Level',    icon: <CheckCircle2 size={16} />,   color: 'text-teal-600 bg-teal-50' },
             { href: '/inventory',               label: 'Inventory',        icon: <Warehouse size={16} />,      color: 'text-orange-600 bg-orange-50' },
-            { href: '/inventory/hd-monitoring', label: 'HD Monitoring',    icon: <Activity size={16} />,       color: 'text-purple-600 bg-purple-50' },
             { href: '/issues',                  label: 'Issue Log',        icon: <AlertTriangle size={16} />,  color: 'text-red-600 bg-red-50' },
             { href: '/master-data',             label: 'Master Data',      icon: <Minus size={16} />,          color: 'text-gray-600 bg-gray-100' },
             { href: '/shipment/budget-request', label: 'Pengajuan Dana',   icon: <TrendingDown size={16} />,   color: 'text-pink-600 bg-pink-50' },

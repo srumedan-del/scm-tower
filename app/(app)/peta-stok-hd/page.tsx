@@ -1,5 +1,3 @@
-import Link from 'next/link'
-import { Activity } from 'lucide-react'
 import { CustomerStockMapClient } from '@/components/customer-stock-map/CustomerStockMapClient'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
@@ -38,12 +36,6 @@ export default async function PetaStokHdPage() {
             {located}/{customerCount} lokasi ({coverage}%)
           </p>
         </div>
-        <Link
-          href="/inventory/hd-monitoring"
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-        >
-          <Activity className="h-4 w-4" /> HD Monitoring
-        </Link>
       </header>
 
       <CustomerStockMapClient showMaintainBelow />

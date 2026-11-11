@@ -1,6 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import Link from 'next/link'
-import { Activity, BarChart3 } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 
 export default async function Inventory() {
   const { data } = await supabase.from('vw_inventory_alert').select('*').limit(50)
@@ -15,12 +15,6 @@ export default async function Inventory() {
             className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <BarChart3 className="h-4 w-4" /> Snapshot
-          </Link>
-          <Link
-            href="/inventory/hd-monitoring"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
-          >
-            <Activity className="h-4 w-4" /> HD Monitoring
           </Link>
         </div>
       </div>
@@ -41,22 +35,6 @@ export default async function Inventory() {
             </div>
           </div>
           <div className="ml-auto text-gray-400 text-lg">→</div>
-        </Link>
-
-        <Link
-          href="/inventory/hd-monitoring"
-          className="flex items-center gap-4 rounded-xl border border-indigo-200 bg-indigo-50 p-4 hover:bg-indigo-100 transition-colors"
-        >
-          <div className="rounded-xl bg-indigo-100 p-3">
-            <Activity className="h-6 w-6 text-indigo-600" />
-          </div>
-          <div>
-            <div className="font-semibold text-indigo-800">HD Machine Utilization & Replenishment</div>
-            <div className="text-sm text-indigo-600 mt-0.5">
-              Monitoring stok consumable HD Set per customer — estimasi FU-PO, DOI, badge status
-            </div>
-          </div>
-          <div className="ml-auto text-indigo-400 text-lg">→</div>
         </Link>
       </div>
 
