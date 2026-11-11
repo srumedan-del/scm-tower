@@ -5,6 +5,7 @@ import {
   Plus,
   AlertTriangle,
   MessageSquare,
+  Paperclip,
   ListTodo,
   ChevronRight,
   ChevronLeft,
@@ -227,6 +228,12 @@ export function ScmKanbanBoard({
                               <span className="inline-flex items-center gap-0.5 text-slate-500">
                                 <MessageSquare size={12} />
                                 {t.commentsCount}
+                              </span>
+                            )}
+                            {!!t.attachmentsCount && (
+                              <span className="inline-flex items-center gap-0.5 text-slate-500" title={`${t.attachmentsCount} lampiran`}>
+                                <Paperclip size={12} />
+                                {t.attachmentsCount}
                               </span>
                             )}
                             {t.subtasks && (

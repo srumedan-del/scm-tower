@@ -464,6 +464,9 @@ export function ScmTaskHub() {
         initialStatus={modalInitialStatus}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        onAttachmentsChange={(taskId, count) =>
+          setTasks(prev => prev.map(task => (task.id === taskId ? { ...task, attachmentsCount: count } : task)))
+        }
       />
     </div>
   )

@@ -23,6 +23,7 @@ export interface ScmTask {
   subtasks?: string
   warningCount?: number
   commentsCount?: number
+  attachmentsCount?: number
   icon?: string
 }
 

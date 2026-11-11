@@ -5,6 +5,7 @@ import { showSuccess } from '@/lib/feedback'
 import React, { useState, useEffect } from 'react'
 import { Calendar, User, Clock, AlertCircle, Trash2, Tag, CheckSquare } from 'lucide-react'
 import { ScmTask, TaskStatus, TaskFrequency, STATUS_CONFIG } from './types'
+import { TaskAttachments } from './TaskAttachments'
 
 interface TaskModalProps {
   isOpen: boolean
@@ -13,6 +14,7 @@ interface TaskModalProps {
   initialStatus?: TaskStatus
   onSave: (task: ScmTask) => void
   onDelete?: (taskId: string) => void
+  onAttachmentsChange?: (taskId: string, count: number) => void
 }
 
 export function TaskModal({
@@ -22,6 +24,7 @@ export function TaskModal({
   initialStatus = 'TODO',
   onSave,
   onDelete,
+  onAttachmentsChange,
 }: TaskModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -81,6 +84,7 @@ export function TaskModal({
       warningCount: task?.warningCount,
       subtasks: task?.subtasks,
       icon: task?.icon,
+      attachmentsCount: task?.attachmentsCount,
     }
 
     onSave(updatedTask)
@@ -209,6 +213,12 @@ export function TaskModal({
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-primary focus:outline-none"
               />
             </div>
+
+            {task ? (
+              <TaskAttachments taskId={task.id} onCountChange={count => onAttachmentsChange?.(task.id, count)} />
+            ) : (
+              <p className="text-xs text-slate-500">Lampiran bisa ditambahkan setelah task disimpan.</p>
+            )}
 
             </div>
 

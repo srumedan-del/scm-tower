@@ -62,8 +62,13 @@ export async function getScmTasks(): Promise<{ tasks: ScmTask[]; isSupabaseAvail
       return { tasks: [], isSupabaseAvailable: true }
     }
 
+    // Jumlah lampiran per task; tabel lampiran mungkin belum dibuat (migration v42).
+    const counts = new Map<string, number>()
+    const { data: attachments } = await supabaseAdmin.from('scm_task_attachments').select('task_id')
+    for (const row of attachments ?? []) counts.set(row.task_id, (counts.get(row.task_id) ?? 0) + 1)
+
     return {
-      tasks: data.map(mapDbToTask),
+      tasks: data.map(row => ({ ...mapDbToTask(row), attachmentsCount: counts.get(row.id) ?? 0 })),
       isSupabaseAvailable: true,
     }
   } catch (err: any) {
