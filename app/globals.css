@@ -951,6 +951,19 @@ a.bg-indigo-600:hover {
   background: rgba(8, 18, 34, 0.28);
 }
 
+.hospital-cluster {
+  display: grid;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--marker-color, #1F3F6E);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--marker-color) 30%, transparent), 0 2px 6px rgba(8, 18, 34, 0.35);
+  cursor: pointer;
+}
+
 .hospital-marker-pulse .hospital-marker-pin {
   animation: hospital-marker-pulse 1.6s ease-out infinite;
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { Check, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -62,6 +62,147 @@ function reorderQty(customer: Customer, usage: number) {
 	return Math.max(0, Math.ceil(usage * daysNeeded - customer.stock_quantity))
 }
 
+type ReorderState = { key: 'overdue' | 'soon' | 'ok' | 'nodata'; label: string; color: string }
+
+const REORDER_STATES: Record<ReorderState['key'], ReorderState> = {
+	overdue: { key: 'overdue', label: 'Jadwal reorder lewat', color: '#E56458' },
+	soon: { key: 'soon', label: 'Reorder ≤ 3 hari', color: '#D5803B' },
+	ok: { key: 'ok', label: 'Aman', color: '#46A171' },
+	nodata: { key: 'nodata', label: 'Belum ada data order', color: '#98989A' },
+}
+const STATE_ORDER: ReorderState['key'][] = ['overdue', 'soon', 'ok', 'nodata']
+
+function reorderState(customer: Customer, latestOrder?: LatestCustomerOrder): ReorderState {
+	const reorderDate = idealReorderDate(customer, latestOrder)
+	if (!reorderDate) return REORDER_STATES.nodata
+	const today = new Date()
+	today.setHours(0, 0, 0, 0)
+	if (reorderDate < today) return REORDER_STATES.overdue
+	const soon = new Date(today)
+	soon.setDate(soon.getDate() + 3)
+	return reorderDate <= soon ? REORDER_STATES.soon : REORDER_STATES.ok
+}
+
+function createClusterIcon(count: number, color: string) {
+	const size = count < 10 ? 38 : 44
+	return L.divIcon({
+		className: 'hospital-marker-wrap',
+		html: `<div class="hospital-cluster" style="--marker-color:${color};width:${size}px;height:${size}px">${count}</div>`,
+		iconSize: [size, size],
+		iconAnchor: [size / 2, size / 2],
+	})
+}
+
+const CLUSTER_RADIUS_PX = 46
+
+/** Pin yang berdekatan pada zoom saat ini digabung menjadi satu lingkaran berangka. */
+function ClusteredMarkers({ customers, latestOrders }: { customers: Customer[]; latestOrders: Record<string, LatestCustomerOrder> }) {
+	const map = useMap()
+	const [zoom, setZoom] = useState(map.getZoom())
+	useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+
+	const clusters = useMemo(() => {
+		const groups: { point: L.Point; members: Customer[] }[] = []
+		for (const customer of customers) {
+			const point = map.project([customer.latitude, customer.longitude], zoom)
+			const group = groups.find(item => item.point.distanceTo(point) < CLUSTER_RADIUS_PX)
+			if (group) group.members.push(customer)
+			else groups.push({ point, members: [customer] })
+		}
+		return groups
+	}, [customers, map, zoom])
+
+	return <>
+		{clusters.map(({ members }) => {
+			if (members.length === 1) {
+				const customer = members[0]
+				return <CustomerMarker key={customer.id} customer={customer} latestOrder={latestOrders[customer.customer_code]} />
+			}
+			const states = members.map(member => reorderState(member, latestOrders[member.customer_code]))
+			const worst = STATE_ORDER.find(key => states.some(state => state.key === key)) ?? 'ok'
+			const bounds = L.latLngBounds(members.map(member => [member.latitude, member.longitude] as [number, number]))
+			const center = bounds.getCenter()
+			return (
+				<Marker
+					key={members.map(member => member.id).join('|')}
+					position={center}
+					icon={createClusterIcon(members.length, REORDER_STATES[worst].color)}
+					eventHandlers={{
+						click: () => {
+							const target = Math.min(map.getBoundsZoom(bounds.pad(0.3)), 15)
+							map.flyTo(center, Math.max(target, zoom + 2), { duration: 0.5 })
+						},
+					}}
+				>
+					<Tooltip direction="top">
+						<strong>{members.length} customer</strong>
+						{members.slice(0, 6).map(member => <div key={member.id}>{member.customer_name}</div>)}
+						{members.length > 6 && <div>dan {members.length - 6} lainnya</div>}
+						<div className="mt-1 text-[11px] opacity-70">Klik untuk memperbesar</div>
+					</Tooltip>
+				</Marker>
+			)
+		})}
+	</>
+}
+
+function MapLegend() {
+	return (
+		<div className="pointer-events-auto absolute bottom-6 left-3 z-[400] rounded-xl border border-gray-200 bg-white/95 px-3 py-2.5 text-xs shadow-sm backdrop-blur">
+			<p className="mb-1.5 font-semibold text-slate-700">Status reorder</p>
+			<ul className="space-y-1">
+				{STATE_ORDER.map(key => (
+					<li key={key} className="flex items-center gap-2 text-slate-600">
+						<span className="h-3 w-3 rounded-full border-2 border-white shadow" style={{ background: REORDER_STATES[key].color }} aria-hidden="true" />
+						{REORDER_STATES[key].label}
+					</li>
+				))}
+				<li className="flex items-center gap-2 text-slate-600">
+					<span className="grid h-4 w-4 place-items-center rounded-full bg-slate-500 text-[9px] font-bold text-white" aria-hidden="true">3</span>
+					Beberapa customer berdekatan
+				</li>
+			</ul>
+		</div>
+	)
+}
+
+function SummaryCards({ customers, latestOrders }: { customers: Customer[]; latestOrders: Record<string, LatestCustomerOrder> }) {
+	const counts = { overdue: 0, soon: 0, ok: 0, nodata: 0 }
+	const today = new Date()
+	today.setHours(0, 0, 0, 0)
+	const week = new Date(today)
+	week.setDate(week.getDate() + 7)
+	let stockoutThisWeek = 0
+	for (const customer of customers) {
+		const latestOrder = latestOrders[customer.customer_code]
+		counts[reorderState(customer, latestOrder).key]++
+		const stockout = stockOutDate(customer, latestOrder)
+		if (stockout && stockout >= today && stockout <= week) stockoutThisWeek++
+	}
+	const machines = customers.reduce((sum, customer) => sum + (Number(customer.machine_count) || 0), 0)
+	const cards = [
+		{ label: 'Customer HD', value: customers.length, note: `${machines.toLocaleString('id-ID')} mesin`, color: '#1F3F6E' },
+		{ label: REORDER_STATES.overdue.label, value: counts.overdue, note: 'perlu reorder sekarang', color: REORDER_STATES.overdue.color },
+		{ label: REORDER_STATES.soon.label, value: counts.soon, note: 'siapkan order', color: REORDER_STATES.soon.color },
+		{ label: 'Stok habis ≤ 7 hari', value: stockoutThisWeek, note: 'perkiraan dari order terakhir', color: '#856828' },
+		{ label: REORDER_STATES.ok.label, value: counts.ok, note: counts.nodata ? `${counts.nodata} belum ada data order` : 'stok mencukupi', color: REORDER_STATES.ok.color },
+	]
+	return (
+		<div className="grid grid-cols-2 gap-3 border-b border-border bg-white p-4 md:grid-cols-3 xl:grid-cols-5">
+			{cards.map(card => (
+				<div key={card.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+					<p className="flex items-center gap-2 text-xs font-medium text-slate-500">
+						<span className="h-2 w-2 shrink-0 rounded-full" style={{ background: card.color }} aria-hidden="true" />
+						{card.label}
+					</p>
+					<p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{card.value}</p>
+					<p className="text-xs text-slate-500">{card.note}</p>
+				</div>
+			))}
+		</div>
+	)
+}
+
 function createHospitalIcon(color: string, pulse = false) {
 	return L.divIcon({
 		className: 'hospital-marker-wrap',
@@ -92,7 +233,7 @@ function FitBounds({ province, customers }: { province: string; customers: Custo
 		if (customers.length > 0) {
 			// Fit ke semua marker yang terlihat
 			const bounds = L.latLngBounds(customers.map(c => [c.latitude, c.longitude] as [number, number]))
-			map.fitBounds(bounds, { padding: [40, 40] })
+			map.fitBounds(bounds, { padding: [28, 28] })
 			fittedRef.current = true
 		} else {
 			// Fallback ke provinceBounds jika belum ada data
@@ -167,6 +308,73 @@ function stockOutDate(customer: Customer, latestOrder?: LatestCustomerOrder) {
 	return latestOrder && doi !== null
 		? addOperatingDays(latestOrder.documentDate, Math.ceil(doi))
 		: null
+}
+
+function CustomerMarker({ customer, latestOrder }: { customer: Customer; latestOrder?: LatestCustomerOrder }) {
+	const status = statusFor(customer)
+	const qty = reorderQty(customer, status.usage)
+	const reorderDate = idealReorderDate(customer, latestOrder)
+	const coverage = coverageFromLastOrder(customer, latestOrder)
+	const needReorder = qty > 0
+	const state = reorderState(customer, latestOrder)
+	const markerColor = state.color
+	const reorderIsOverdue = state.key === 'overdue'
+	return (
+			<Marker key={customer.id} position={[customer.latitude, customer.longitude]} icon={createHospitalIcon(markerColor, reorderIsOverdue)}>
+				<Tooltip direction="top">{customer.customer_name}</Tooltip>
+				<Popup>
+					<div className="min-w-[240px] text-sm">
+						<strong className="block text-base">{customer.customer_name}</strong>
+						<span className="text-muted">{customer.city}, {customer.province}</span>
+
+						{/* Status badge */}
+						<div className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: `${status.color}22`, color: status.color }}>
+							<span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} />
+							{status.label}
+						</div>
+
+						{/* Stock & mesin */}
+						<dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+							<dt className="text-muted">Mesin HD</dt>
+							<dd className="text-right font-medium">{customer.machine_count} unit</dd>
+
+							<dt className="text-muted">Kebutuhan/hari</dt>
+							<dd className="text-right font-medium">{status.usage} set</dd>
+
+							<dt className="text-muted">Stock saat ini</dt>
+							<dd className="text-right font-semibold">{customer.stock_quantity} set</dd>
+
+						<dt className="text-muted">Coverage</dt>
+						<dd className="text-right font-medium">
+							{coverage !== null ? `${coverage.toFixed(1)} hari` : '—'}
+						</dd>
+
+						<dt className="text-muted">Order terakhir</dt>
+						<dd className="text-right font-medium">{latestOrder ? `${formatDate(latestOrder.documentDate)} · ${latestOrder.totalSets.toLocaleString('id-ID')} set` : 'Belum ada data'}</dd>
+
+						<dt className="text-muted">Reorder ideal</dt>
+						<dd className="text-right font-medium">{reorderDate ? formatDate(reorderDate.toISOString()) : '—'}</dd>
+						</dl>
+
+						{/* Reorder box */}
+						{needReorder && (
+							<div className="mt-3 rounded-lg border border-orange/30 bg-orange/10 px-3 py-2">
+								<p className="text-xs font-semibold text-orange">Perlu reorder segera</p>
+								<p className="mt-0.5 text-xs text-muted">
+									Qty direkomendasikan: <strong className="text-text">{qty} set</strong>
+									<span className="ml-1">(untuk {customer.lead_time_days + customer.safety_buffer_days * 2} hari ke depan)</span>
+								</p>
+							</div>
+						)}
+
+						<div className="mt-3 border-t border-border pt-2 text-xs text-muted">
+							Lead time {customer.lead_time_days}h · buffer {customer.safety_buffer_days}h ·
+							basis {SETS_PER_MACHINE_PER_DAY} set/mesin/hari
+						</div>
+					</div>
+				</Popup>
+			</Marker>
+	)
 }
 
 export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false }: { publicOnly?: boolean; showMaintainBelow?: boolean }) {
@@ -304,80 +512,15 @@ export function CustomerStockMap({ publicOnly = false, showMaintainBelow = false
 
 		{message && showControls && <div className="border-b border-border bg-orange/10 px-6 py-3 text-sm text-orange">{message}</div>}
 
-		{(mode === 'map' || showMaintainBelow) && <div className={`relative ${publicOnly && !maintenanceOpen ? 'h-[700px] min-h-[70vh]' : 'h-[560px]'}`}>
+		{(mode === 'map' || showMaintainBelow) && !loading && <SummaryCards customers={visibleCustomers} latestOrders={latestOrders} />}
+		{(mode === 'map' || showMaintainBelow) && <div className={`relative ${publicOnly && !maintenanceOpen ? 'h-[700px] min-h-[70vh]' : 'h-[620px]'}`}>
 			<MapContainer center={[3.2, 98.5]} zoom={7} scrollWheelZoom={false} className="h-full w-full">
 				<CtrlScrollZoom />
 				<TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 				<FitBounds province={province} customers={visibleCustomers} />
-				{visibleCustomers.map((customer) => {
-					const status = statusFor(customer)
-					const qty = reorderQty(customer, status.usage)
-					const latestOrder = latestOrders[customer.customer_code]
-					const reorderDate = idealReorderDate(customer, latestOrder)
-					const coverage = coverageFromLastOrder(customer, latestOrder)
-					const needReorder = qty > 0
-					const today = new Date()
-					today.setHours(0, 0, 0, 0)
-					const reorderIsOverdue = reorderDate ? reorderDate < today : false
-					const markerColor = reorderIsOverdue ? '#E56458' : '#46A171'
-					return (
-						<Marker key={customer.id} position={[customer.latitude, customer.longitude]} icon={createHospitalIcon(markerColor, reorderIsOverdue)}>
-							<Tooltip direction="top">{customer.customer_name}</Tooltip>
-							<Popup>
-								<div className="min-w-[240px] text-sm">
-									<strong className="block text-base">{customer.customer_name}</strong>
-									<span className="text-muted">{customer.city}, {customer.province}</span>
-
-									{/* Status badge */}
-									<div className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: `${status.color}22`, color: status.color }}>
-										<span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} />
-										{status.label}
-									</div>
-
-									{/* Stock & mesin */}
-									<dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
-										<dt className="text-muted">Mesin HD</dt>
-										<dd className="text-right font-medium">{customer.machine_count} unit</dd>
-
-										<dt className="text-muted">Kebutuhan/hari</dt>
-										<dd className="text-right font-medium">{status.usage} set</dd>
-
-										<dt className="text-muted">Stock saat ini</dt>
-										<dd className="text-right font-semibold">{customer.stock_quantity} set</dd>
-
-									<dt className="text-muted">Coverage</dt>
-									<dd className="text-right font-medium">
-										{coverage !== null ? `${coverage.toFixed(1)} hari` : '—'}
-									</dd>
-
-									<dt className="text-muted">Order terakhir</dt>
-									<dd className="text-right font-medium">{latestOrder ? `${formatDate(latestOrder.documentDate)} · ${latestOrder.totalSets.toLocaleString('id-ID')} set` : 'Belum ada data'}</dd>
-
-									<dt className="text-muted">Reorder ideal</dt>
-									<dd className="text-right font-medium">{reorderDate ? formatDate(reorderDate.toISOString()) : '—'}</dd>
-									</dl>
-
-									{/* Reorder box */}
-									{needReorder && (
-										<div className="mt-3 rounded-lg border border-orange/30 bg-orange/10 px-3 py-2">
-											<p className="text-xs font-semibold text-orange">Perlu reorder segera</p>
-											<p className="mt-0.5 text-xs text-muted">
-												Qty direkomendasikan: <strong className="text-text">{qty} set</strong>
-												<span className="ml-1">(untuk {customer.lead_time_days + customer.safety_buffer_days * 2} hari ke depan)</span>
-											</p>
-										</div>
-									)}
-
-									<div className="mt-3 border-t border-border pt-2 text-xs text-muted">
-										Lead time {customer.lead_time_days}h · buffer {customer.safety_buffer_days}h ·
-										basis {SETS_PER_MACHINE_PER_DAY} set/mesin/hari
-									</div>
-								</div>
-							</Popup>
-						</Marker>
-					)
-				})}
+				<ClusteredMarkers customers={visibleCustomers} latestOrders={latestOrders} />
 			</MapContainer>
+			<MapLegend />
 			{loading && <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted"><span className="rounded-full border border-white/70 bg-white/75 px-4 py-2 shadow-sm backdrop-blur">Memuat data customer...</span></div>}
 		</div>}
 		{(mode === 'maintain' || showMaintainBelow) && <div className="p-6">
