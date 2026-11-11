@@ -1,0 +1,12 @@
+{
+  "name": "laporan-tracking-sync",
+  "private": true,
+  "description": "Mengisi kolom Y, Z, AA Laporan Tracking Pengiriman dari data shipment SCM Tower",
+  "scripts": {
+    "sync": "node update-laporan.cjs",
+    "dry-run": "node update-laporan.cjs --dry-run"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0"
+  }
+}
