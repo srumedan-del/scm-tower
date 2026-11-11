@@ -9,6 +9,7 @@ import {
   type LiveDriverTrip,
 } from '@/app/(app)/shipment/actions'
 import type { RoutePoint } from './TripRouteMap'
+import { smoothRoute } from './route-smoothing'
 
 const TripRouteMap = dynamic(() => import('./TripRouteMap'), {
   ssr: false,
@@ -136,6 +137,8 @@ export default function DriverLiveTrackingMap() {
   const routePoints = route && route.tripId === selectedTripId ? route.points : []
   const speedKmh = estimateSpeedKmh(selectedTrip?.last_location?.speed_kmh, routePoints)
   const movement = movementStatus(routePoints)
+  const [showRaw, setShowRaw] = useState(false)
+  const displayPoints = showRaw ? routePoints : smoothRoute(routePoints)
 
   return (
     <div className="space-y-4">
@@ -194,15 +197,22 @@ export default function DriverLiveTrackingMap() {
             <TripRouteMap
               className="h-[calc(100dvh-15rem)] min-h-[26rem]"
               tripId={selectedTrip.trip_id}
-              points={routePoints}
+              points={displayPoints}
               speedKmh={speedKmh}
               destinations={selectedTrip.destinations}
             />
           </div>
-          <p className="text-xs text-slate-500">
-            Titik merah: posisi terakhir driver. Garis biru: jalur yang sudah dilalui ({routePoints.length} titik).
-            Titik emas: tujuan yang punya koordinat, hijau jika sudah selesai.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              Titik merah: posisi terakhir driver. Garis biru: jalur yang sudah dilalui
+              {showRaw ? ` (${routePoints.length} titik asli GPS)` : ` (dihaluskan dari ${routePoints.length} titik GPS)`}.
+              Titik emas: tujuan yang punya koordinat, hijau jika sudah selesai.
+            </p>
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+              <input type="checkbox" checked={showRaw} onChange={event => setShowRaw(event.target.checked)} className="h-4 w-4 accent-indigo-600" />
+              Tampilkan titik asli GPS
+            </label>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <section className="rounded-2xl border border-slate-200 bg-white p-4">

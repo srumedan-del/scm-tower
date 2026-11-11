@@ -11,6 +11,8 @@ const BATCH_SIZE = 100
 // agar admin bisa membedakan kendaraan parkir dari HP yang berhenti melacak.
 const MOVE_METERS = 40
 const HEARTBEAT_MS = 5 * 60_000
+// Bacaan GPS yang perkiraan melesetnya lebih dari ini tidak dipakai sebagai posisi.
+const MAX_ACCURACY_METERS = 25
 
 type LastPoint = { lat: number; lng: number; at: number }
 
@@ -22,15 +24,19 @@ TaskManager.defineTask<TaskData>(TASK_NAME, async ({ data, error }) => {
   if (!tripNo) return
   let last = getKv<LastPoint>(LAST_POINT_KEY)
   for (const point of data.locations) {
-    const here = { lat: point.coords.latitude, lng: point.coords.longitude }
-    if (last && distanceMeters(last, here) < MOVE_METERS && point.timestamp - last.at < HEARTBEAT_MS) continue
+    const heartbeatDue = !last || point.timestamp - last.at >= HEARTBEAT_MS
+    const accurate = (point.coords.accuracy ?? 0) <= MAX_ACCURACY_METERS
+    // Sinyal rutin tetap dikirim walau GPS kurang akurat, memakai posisi akurat terakhir.
+    const here = accurate || !last ? { lat: point.coords.latitude, lng: point.coords.longitude } : { lat: last.lat, lng: last.lng }
+    if (!accurate && !heartbeatDue) continue
+    if (last && !heartbeatDue && distanceMeters(last, here) < MOVE_METERS) continue
     last = { ...here, at: point.timestamp }
     setKv(LAST_POINT_KEY, last)
     db.runSync(
       'INSERT INTO locations (trip_id, latitude, longitude, speed_kmh, recorded_at) VALUES (?, ?, ?, ?, ?)',
       tripNo,
-      point.coords.latitude,
-      point.coords.longitude,
+      here.lat,
+      here.lng,
       Math.max(0, (point.coords.speed ?? 0) * 3.6),
       new Date(point.timestamp).toISOString(),
     )
