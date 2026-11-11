@@ -12,7 +12,7 @@ import {
 } from '@/app/(app)/crossdocking/actions'
 import { confirmAction, showSuccess } from '@/lib/feedback'
 
-const STATUS_OPTS = ['Draft', 'Ready', 'Dispatched', 'Delivered'] as const
+const STATUS_OPTS = ['Draft', 'Ready', 'Dispatched', 'In Transit', 'Delivered'] as const
 
 type DetailDraft = Omit<CrossdockingDetail, 'id' | 'crossdocking_id' | 'created_at' | 'item_name'> & {
   _key: string

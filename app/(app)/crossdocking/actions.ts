@@ -18,7 +18,7 @@ export type CrossdockingHeader = {
   hq_reference_no: string | null
   received_from_hq_date: string
   promised_delivery_date: string
-  status: 'Draft' | 'Ready' | 'Dispatched' | 'Delivered'
+  status: 'Draft' | 'Ready' | 'Dispatched' | 'In Transit' | 'Delivered'
   notes: string | null
   created_by: string | null
   created_at: string | null
@@ -55,7 +55,7 @@ export type PtsRecord = {
   customer_name: string | null
   destination_city: string | null
   destination_address: string | null
-  status: 'Menunggu Crossdocking' | 'Terhubung Crossdocking'
+  status: 'Menunggu Crossdocking' | 'Terhubung Crossdocking' | 'Realokasi'
   crossdocking_id: number | null
   source_file_name: string | null
   uploaded_at: string | null
@@ -120,7 +120,28 @@ export async function getCrossdockings(month?: string) {
 
   const { data, error } = await query.limit(200)
   if (error) throw error
-  return (data ?? []) as CrossdockingHeader[]
+  const headers = (data ?? []) as CrossdockingHeader[]
+  if (!headers.length) return headers
+
+  // Status mengikuti shipment yang terhubung: punya PSS dan Trip (atau resi retail) = In Transit.
+  const { data: shipments } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('crossdocking_id, status')
+    .in('crossdocking_id', headers.map(header => header.id))
+  const statusesById = new Map<number, string[]>()
+  for (const shipment of shipments ?? []) {
+    const id = Number(shipment.crossdocking_id)
+    statusesById.set(id, [...(statusesById.get(id) ?? []), String(shipment.status)])
+  }
+  return headers.map(header => {
+    const statuses = statusesById.get(header.id) ?? []
+    const status: CrossdockingHeader['status'] =
+      statuses.some(s => s === 'Delivered' || s === 'Closed') ? 'Delivered'
+      : statuses.includes('In Transit') ? 'In Transit'
+      : statuses.includes('Dispatched') && header.status !== 'Delivered' ? 'Dispatched'
+      : header.status
+    return { ...header, status }
+  })
 }
 
 export async function getCrossdockingById(id: number) {
@@ -281,9 +302,12 @@ export async function getPtsRecords(month?: string) {
     }
   }
 
+  const ptsStatus = (record: PtsRecord, linked: boolean): PtsRecord['status'] =>
+    linked ? 'Terhubung Crossdocking' : record.status === 'Realokasi' ? 'Realokasi' : 'Menunggu Crossdocking'
+
   if (!linkedHeaderIds.length) return records.map(record => ({
     ...record,
-    status: 'Menunggu Crossdocking' as const,
+    status: ptsStatus(record, false),
   }))
 
   const { data: headers, error: headersError } = await supabaseAdmin
@@ -307,7 +331,7 @@ export async function getPtsRecords(month?: string) {
       customer_name: customerName,
       destination_city: destinationCity,
       destination_address: destinationAddress,
-      status: header ? 'Terhubung Crossdocking' as const : 'Menunggu Crossdocking' as const,
+      status: ptsStatus(record, Boolean(header)),
     }
   })
 }
@@ -505,6 +529,7 @@ export async function getCrossdockingOptions(referenceMonth?: string) {
     supabaseAdmin
       .from('crossdocking_pts')
       .select('id, pts_no, document_date')
+      .neq('status', 'Realokasi')
       .gte('document_date', minDateStr)
       .order('document_date', { ascending: false }),
     supabaseAdmin.from('crossdocking_header_pts').select('pts_id'),
@@ -518,6 +543,23 @@ export async function getCrossdockingOptions(referenceMonth?: string) {
     skus:      (skus ?? []) as SkuOption[],
     customers: (customers ?? []) as CustomerOption[],
     pts:       (pts ?? []).filter(row => !linkedIds.has(Number(row.id))) as Array<{ id: number; pts_no: string; document_date: string | null }>,
+  }
+}
+
+/** Tandai PTS sebagai Realokasi MDN-PAR ke JKT-JP12 (tanpa crossdocking, tanpa biaya), atau batalkan. */
+export async function setPtsRealokasi(id: number, realokasi: boolean) {
+  await requireAuthenticatedUser()
+  const { data: linked } = await supabaseAdmin
+    .from('crossdocking_header_pts').select('pts_id').eq('pts_id', id).limit(1)
+  if (realokasi && linked?.length) throw new Error('PTS ini sudah terhubung ke Crossdocking.')
+  const { error } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .update({ status: realokasi ? 'Realokasi' : 'Menunggu Crossdocking', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('crossdocking_id', null)
+  if (error) {
+    if (error.message.includes('status_check')) throw new Error('Jalankan dulu supabase/migration_v43_pts_realokasi_cd_in_transit.sql di Supabase.')
+    throw new Error(error.message)
   }
 }
 

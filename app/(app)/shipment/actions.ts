@@ -538,7 +538,7 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     const cdStatus =
       payload.status === 'Delivered'  ? 'Delivered'  :
       payload.status === 'Dispatched' ? 'Dispatched' :
-      payload.status === 'In Transit' ? 'Dispatched' :
+      payload.status === 'In Transit' ? 'In Transit' :
       null // Draft → tidak ubah status crossdocking
 
     if (cdStatus) {

@@ -2,13 +2,14 @@
 
 import { DialogShell, DialogHeader, dialogCancelClass } from '@/components/ui/FormDialog'
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import { Loader2, Package } from 'lucide-react'
+import { Loader2, Package, Undo2, Shuffle } from 'lucide-react'
 import {
   getPtsDetailsForCrossdocking,
   getPtsRecords,
+  setPtsRealokasi,
   type PtsRecord,
 } from '@/app/(app)/crossdocking/actions'
-import { notify } from '@/lib/feedback'
+import { notify, confirmAction } from '@/lib/feedback'
 
 interface Props {
   selectedMonth?: string
@@ -32,6 +33,31 @@ export default function PtsPanel({ selectedMonth }: Props) {
     load(selectedMonth)
   }, [selectedMonth])
 
+  const [savingId, setSavingId] = useState<number | null>(null)
+
+  async function toggleRealokasi(row: PtsRecord) {
+    const toRealokasi = row.status !== 'Realokasi'
+    if (toRealokasi && !(await confirmAction({
+      title: `Realokasi ${row.pts_no}?`,
+      message: 'PTS ini dipindah dari MDN-PAR ke JKT-JP12. Tidak dibuatkan Crossdocking dan tidak ada biaya.',
+      confirmLabel: 'Tandai Realokasi',
+      tone: 'info',
+    }))) return
+    setSavingId(row.id)
+    try {
+      await setPtsRealokasi(row.id, toRealokasi)
+      setRows(current => current.map(item => item.id === row.id
+        ? { ...item, status: toRealokasi ? 'Realokasi' : 'Menunggu Crossdocking' }
+        : item))
+      notify.success(toRealokasi ? 'Ditandai Realokasi' : 'Realokasi dibatalkan', row.pts_no)
+    } catch (error: any) {
+      notify.error('Tidak dapat mengubah status', error.message)
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const realokasiCount = rows.filter(row => row.status === 'Realokasi').length
   const pendingCount = useMemo(
     () => rows.filter(row => row.status === 'Menunggu Crossdocking').length,
     [rows]
@@ -42,12 +68,13 @@ export default function PtsPanel({ selectedMonth }: Props) {
       {/* ── Info bar ── */}
       <p className="text-[14px] text-slate-500 font-medium">
         <span className="font-bold text-indigo-700">{rows.length}</span> PTS ditampilkan{' '}
-        (<span className="font-semibold text-amber-700">{pendingCount}</span> siap dipilih saat membuat Crossdocking).
+        (<span className="font-semibold text-amber-700">{pendingCount}</span> siap dipilih saat membuat Crossdocking
+        {realokasiCount > 0 && <>, <span className="font-semibold text-violet-700">{realokasiCount}</span> realokasi ke JKT-JP12</>}).
       </p>
 
       {/* ── Tabel ── */}
       <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-12rem)] overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-        <table className="w-full min-w-[860px] text-left text-[14px]">
+        <table className="w-full min-w-[1000px] text-left text-[14px]">
           <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap w-44">PTS No.</th>
@@ -56,12 +83,13 @@ export default function PtsPanel({ selectedMonth }: Props) {
               <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800">Alamat Tujuan</th>
               <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 text-center w-44">Status</th>
               <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 text-center w-28">Detail</th>
+              <th className="px-4 py-3 text-[14px] font-bold uppercase tracking-wider text-slate-800 text-center w-36">Realokasi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center">
+                <td colSpan={7} className="px-4 py-12 text-center">
                   <div className="flex items-center justify-center gap-2 text-slate-400 text-[14px]">
                     <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
                     <span>Memuat data PTS...</span>
@@ -71,7 +99,7 @@ export default function PtsPanel({ selectedMonth }: Props) {
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-[14px] text-slate-400">
+                <td colSpan={7} className="px-4 py-12 text-center text-[14px] text-slate-400">
                   Belum ada data PTS untuk periode bulan ini.
                 </td>
               </tr>
@@ -112,9 +140,11 @@ export default function PtsPanel({ selectedMonth }: Props) {
                   <span className={`inline-flex rounded-lg px-2.5 py-1 text-[13px] font-bold ${
                     row.status === 'Terhubung Crossdocking'
                       ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                  }`}>
-                    {row.status}
+                      : row.status === 'Realokasi'
+                        ? 'bg-violet-50 text-violet-700 border border-violet-200/60'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                  }`} title={row.status === 'Realokasi' ? 'Realokasi MDN-PAR ke JKT-JP12, tanpa biaya' : undefined}>
+                    {row.status === 'Realokasi' ? 'Realokasi ke JKT-JP12' : row.status}
                   </span>
                 </td>
                 {/* Detail */}
@@ -127,6 +157,28 @@ export default function PtsPanel({ selectedMonth }: Props) {
                     <Package className="h-4 w-4" />
                     <span>Lihat Item</span>
                   </button>
+                </td>
+                {/* Realokasi */}
+                <td className="px-4 py-3 text-center whitespace-nowrap">
+                  {row.status === 'Terhubung Crossdocking' ? (
+                    <span className="text-slate-300">—</span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={savingId === row.id}
+                      onClick={() => toggleRealokasi(row)}
+                      className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-all disabled:opacity-50 ${
+                        row.status === 'Realokasi'
+                          ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                      }`}
+                    >
+                      {savingId === row.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : row.status === 'Realokasi' ? <Undo2 className="h-4 w-4" /> : <Shuffle className="h-4 w-4" />}
+                      {row.status === 'Realokasi' ? 'Batalkan' : 'Realokasi'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
