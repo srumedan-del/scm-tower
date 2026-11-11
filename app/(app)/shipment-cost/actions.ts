@@ -52,6 +52,8 @@ export type ShipmentCostRow = {
   transporter_service_model: string | null
   vehicle_type: string | null
   notes: string | null
+  /** Vendor trucking all-in: TKBM sudah termasuk tarif. */
+  tkbm_included?: boolean
 }
 
 function getNextMonthFirstDay(month: string): string {
@@ -205,6 +207,16 @@ export async function getShipmentCosts(filters?: {
     }
   }
 
+  // Vendor all-in TKBM (kolom dari migrasi v46; abaikan jika belum ada).
+  const tkbmIncludedNames = new Set<string>()
+  {
+    const { data: allInVendors, error: allInError } = await supabaseAdmin
+      .from('vendors')
+      .select('vendor_name')
+      .eq('tkbm_included', true)
+    if (!allInError) for (const vendor of allInVendors ?? []) tkbmIncludedNames.add(normalizeRateText(vendor.vendor_name))
+  }
+
   // Transporter type is authoritative for legacy rows whose cost_model was
   // saved before the current Internal/External transporter flow existed. The
   // trip vendor is the fallback when the legacy view has no transporter join.
@@ -228,6 +240,7 @@ export async function getShipmentCosts(filters?: {
         ? 'Internal'
         : row.transporter_service_model || row.cost_model,
       vehicle_type: row.vehicle_type ?? notesVehicleType,
+      tkbm_included: tkbmIncludedNames.has(normalizeRateText(transporterName)),
     }
   }) as ShipmentCostRow[]
 }

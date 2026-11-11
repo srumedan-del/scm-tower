@@ -237,8 +237,11 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
   const totalBbmLiter = bbmEntries.reduce((sum, item) => sum + (Number(item.liter) || 0), 0)
   const totalBbmRupiah = bbmEntries.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
+  // Vendor all-in (mis. RSA, Raja Cepat): TKBM sudah termasuk tarif trucking.
+  const tkbmAllIn = model === 'Trucking' && Boolean(row.tkbm_included)
+
   // Hitung total TKBM
-  const totalTkbm = tkbmEntries.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+  const totalTkbm = tkbmAllIn ? 0 : tkbmEntries.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
   // Handler BBM
   const addBbmEntry = () => {
@@ -423,11 +426,12 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
         // Filter sibling updates jika ID numerik
         const siblingTkbm = tkbmEntries
           .filter((t) => typeof t.id === 'number')
-          .map((t) => ({ id: Number(t.id), tkbm: Number(t.amount) || 0 }))
+          .map((t) => ({ id: Number(t.id), tkbm: tkbmAllIn ? 0 : Number(t.amount) || 0 }))
 
         // Cari tkbm untuk row ini
-        const currentRowTkbm =
-          tkbmEntries.find((t) => t.id === row.id)?.amount ?? totalTkbm
+        const currentRowTkbm = tkbmAllIn
+          ? 0
+          : tkbmEntries.find((t) => t.id === row.id)?.amount ?? totalTkbm
 
         await upsertShipmentCost({
           id: row.id,
@@ -683,8 +687,14 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
             </div>
           )}
 
+          {tkbmAllIn && (
+            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              Tarif {displayVendorName(row.transporter_name) || 'vendor ini'} sudah all-in, termasuk TKBM. Biaya TKBM tidak ditagih terpisah.
+            </p>
+          )}
+
           {/* ── BIAYA TKBM / SPSI PER PSS ATAU SURAT JALAN ── */}
-          {(model === 'Internal' || model === 'Trucking' || !model) && (
+          {(model === 'Internal' || model === 'Trucking' || !model) && !tkbmAllIn && (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                 <div className="flex items-center gap-2">

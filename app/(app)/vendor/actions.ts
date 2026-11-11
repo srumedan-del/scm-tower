@@ -14,6 +14,8 @@ export type VendorRow = {
   coverage_area: string | null
   default_sla: number | null
   is_active: boolean | null
+  /** Tarif trucking sudah termasuk TKBM (all-in). */
+  tkbm_included?: boolean | null
   created_at?: string | null
 }
 

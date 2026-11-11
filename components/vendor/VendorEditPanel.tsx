@@ -17,6 +17,7 @@ type Vendor = {
   coverage_area: string | null
   default_sla: number | null
   is_active: boolean | null
+  tkbm_included?: boolean | null
 }
 
 type VendorForm = Omit<Vendor, 'id' | 'vendor_code'>
@@ -32,7 +33,7 @@ const VENDOR_TYPES = [
 const EMPTY_FORM: VendorForm = {
   vendor_name: '', vendor_type: 'TRUCKING',
   pic_name: '', phone: '', email: '', coverage_area: '',
-  default_sla: null, is_active: true,
+  default_sla: null, is_active: true, tkbm_included: false,
 }
 
 function toForm(vendor: Vendor | null): VendorForm {
@@ -46,6 +47,7 @@ function toForm(vendor: Vendor | null): VendorForm {
     coverage_area: vendor.coverage_area ?? '',
     default_sla:   vendor.default_sla,
     is_active:     vendor.is_active     ?? true,
+    tkbm_included: vendor.tkbm_included ?? false,
   }
 }
 
@@ -123,6 +125,7 @@ export default function VendorEditPanel({
           coverage_area: (form.coverage_area ?? '').trim().toUpperCase() || null,
           default_sla:   form.default_sla == null || Number.isNaN(Number(form.default_sla)) ? null : Number(form.default_sla),
           is_active:     !!form.is_active,
+          tkbm_included: form.vendor_type === 'TRUCKING' ? !!form.tkbm_included : false,
         })
         onClose()
         void showSuccess({
@@ -292,6 +295,20 @@ export default function VendorEditPanel({
             </label>
           </div>
         </div>
+        {form.vendor_type === 'TRUCKING' && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-300 px-3.5 py-3">
+            <input
+              type="checkbox"
+              checked={!!form.tkbm_included}
+              onChange={e => up('tkbm_included', e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-indigo-600"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-700">Tarif all-in, sudah termasuk TKBM</span>
+              <span className="block text-xs text-slate-500">Isian TKBM di Shipment Cost disembunyikan untuk vendor ini. Kosongkan jika TKBM ditagih terpisah (mis. ASSA).</span>
+            </span>
+          </label>
+        )}
       </FormSection>
 
       {err && (
