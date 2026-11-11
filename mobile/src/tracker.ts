@@ -5,7 +5,14 @@ import { db, deleteKv, getKv, setKv } from './db'
 
 const TASK_NAME = 'driver-trip-location'
 const TRIP_KEY = 'tracking_trip'
+const LAST_POINT_KEY = 'tracking_last_point'
 const BATCH_SIZE = 100
+// Titik disimpan saat kendaraan bergerak, dan tetap tiap 5 menit saat diam,
+// agar admin bisa membedakan kendaraan parkir dari HP yang berhenti melacak.
+const MOVE_METERS = 40
+const HEARTBEAT_MS = 5 * 60_000
+
+type LastPoint = { lat: number; lng: number; at: number }
 
 type TaskData = { locations: Location.LocationObject[] }
 
@@ -13,7 +20,12 @@ TaskManager.defineTask<TaskData>(TASK_NAME, async ({ data, error }) => {
   if (error || !data) return
   const tripNo = getKv<string>(TRIP_KEY)
   if (!tripNo) return
+  let last = getKv<LastPoint>(LAST_POINT_KEY)
   for (const point of data.locations) {
+    const here = { lat: point.coords.latitude, lng: point.coords.longitude }
+    if (last && distanceMeters(last, here) < MOVE_METERS && point.timestamp - last.at < HEARTBEAT_MS) continue
+    last = { ...here, at: point.timestamp }
+    setKv(LAST_POINT_KEY, last)
     db.runSync(
       'INSERT INTO locations (trip_id, latitude, longitude, speed_kmh, recorded_at) VALUES (?, ?, ?, ?, ?)',
       tripNo,
@@ -50,10 +62,11 @@ export async function startTracking(tripNo: string) {
   if (!background.granted) return false
 
   setKv(TRIP_KEY, tripNo)
+  deleteKv(LAST_POINT_KEY)
   await Location.startLocationUpdatesAsync(TASK_NAME, {
-    // GPS penuh: titik tiap ~50 m agar jalur mengikuti jalan dan kecepatan terbaca.
+    // GPS penuh tiap 15 detik; penyaringan jarak dan sinyal rutin dilakukan di atas.
     accuracy: Location.Accuracy.High,
-    distanceInterval: 50,
+    distanceInterval: 0,
     timeInterval: 15_000,
     deferredUpdatesInterval: 15_000,
     foregroundService: {
@@ -67,6 +80,7 @@ export async function startTracking(tripNo: string) {
 
 export async function stopTracking() {
   deleteKv(TRIP_KEY)
+  deleteKv(LAST_POINT_KEY)
   if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME)) {
     await Location.stopLocationUpdatesAsync(TASK_NAME)
   }

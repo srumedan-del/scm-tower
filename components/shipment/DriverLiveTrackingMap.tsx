@@ -45,6 +45,43 @@ function estimateSpeedKmh(reported: number | null | undefined, points: RoutePoin
   return Math.round((meters / seconds) * 3.6)
 }
 
+const SIGNAL_LOST_MINUTES = 10
+const STATIONARY_METERS = 60
+const STATIONARY_MINUTES = 5
+
+function metersBetween(from: RoutePoint, to: RoutePoint) {
+  const toRad = (value: number) => (value * Math.PI) / 180
+  const dLat = toRad(to.latitude - from.latitude)
+  const dLng = toRad(to.longitude - from.longitude)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(from.latitude)) * Math.cos(toRad(to.latitude)) * Math.sin(dLng / 2) ** 2
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+/** Bergerak, diam (HP masih mengirim sinyal), atau tidak ada sinyal. */
+function movementStatus(points: RoutePoint[], now = Date.now()) {
+  if (!points.length) return null
+  const last = points[points.length - 1]
+  const lastAt = new Date(last.recorded_at).getTime()
+  const time = (value: number) => new Date(value).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  if (now - lastAt > SIGNAL_LOST_MINUTES * 60_000) {
+    return { tone: 'lost' as const, label: `Tidak ada sinyal sejak ${time(lastAt)}` }
+  }
+  let since = lastAt
+  for (let i = points.length - 1; i >= 0 && metersBetween(points[i], last) < STATIONARY_METERS; i--) {
+    since = new Date(points[i].recorded_at).getTime()
+  }
+  if (lastAt - since >= STATIONARY_MINUTES * 60_000 || now - since >= STATIONARY_MINUTES * 60_000) {
+    return { tone: 'idle' as const, label: `Diam sejak ${time(since)}` }
+  }
+  return { tone: 'moving' as const, label: 'Bergerak' }
+}
+
+const STATUS_STYLE = {
+  moving: 'bg-green-100 text-green-800',
+  idle: 'bg-amber-100 text-amber-800',
+  lost: 'bg-red-100 text-red-800',
+}
+
 export default function DriverLiveTrackingMap() {
   const [trips, setTrips] = useState<LiveDriverTrip[]>([])
   // Simpan ID-nya saja: refresh otomatis tidak boleh mengganti trip yang dipilih admin.
@@ -98,6 +135,7 @@ export default function DriverLiveTrackingMap() {
   const trackedCount = trips.filter(t => t.last_location).length
   const routePoints = route && route.tripId === selectedTripId ? route.points : []
   const speedKmh = estimateSpeedKmh(selectedTrip?.last_location?.speed_kmh, routePoints)
+  const movement = movementStatus(routePoints)
 
   return (
     <div className="space-y-4">
@@ -171,6 +209,12 @@ export default function DriverLiveTrackingMap() {
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">Posisi terakhir</h3>
               {selectedTrip.last_location ? (
                 <dl className="space-y-1.5 text-sm">
+                  {movement && (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-slate-500">Status</dt>
+                      <dd><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[movement.tone]}`}>{movement.label}</span></dd>
+                    </div>
+                  )}
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Waktu</dt><dd className="font-semibold text-slate-900">{new Date(selectedTrip.last_location.recorded_at).toLocaleTimeString('id-ID')}</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Kecepatan</dt><dd className="font-semibold text-slate-900">{speedKmh} km/jam</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Koordinat</dt><dd className="font-mono text-xs text-slate-700">{selectedTrip.last_location.latitude.toFixed(6)}, {selectedTrip.last_location.longitude.toFixed(6)}</dd></div>
