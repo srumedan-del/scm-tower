@@ -18,6 +18,8 @@ type Vendor = {
   default_sla: number | null
   is_active: boolean | null
   tkbm_included?: boolean | null
+  multidrop_fee_in_city?: number | null
+  multidrop_fee_out_city?: number | null
 }
 
 type VendorForm = Omit<Vendor, 'id' | 'vendor_code'>
@@ -34,6 +36,7 @@ const EMPTY_FORM: VendorForm = {
   vendor_name: '', vendor_type: 'TRUCKING',
   pic_name: '', phone: '', email: '', coverage_area: '',
   default_sla: null, is_active: true, tkbm_included: false,
+  multidrop_fee_in_city: null, multidrop_fee_out_city: null,
 }
 
 function toForm(vendor: Vendor | null): VendorForm {
@@ -48,6 +51,8 @@ function toForm(vendor: Vendor | null): VendorForm {
     default_sla:   vendor.default_sla,
     is_active:     vendor.is_active     ?? true,
     tkbm_included: vendor.tkbm_included ?? false,
+    multidrop_fee_in_city: vendor.multidrop_fee_in_city ?? null,
+    multidrop_fee_out_city: vendor.multidrop_fee_out_city ?? null,
   }
 }
 
@@ -126,6 +131,8 @@ export default function VendorEditPanel({
           default_sla:   form.default_sla == null || Number.isNaN(Number(form.default_sla)) ? null : Number(form.default_sla),
           is_active:     !!form.is_active,
           tkbm_included: form.vendor_type === 'TRUCKING' ? !!form.tkbm_included : false,
+          multidrop_fee_in_city: form.vendor_type === 'TRUCKING' && form.multidrop_fee_in_city != null ? Number(form.multidrop_fee_in_city) : null,
+          multidrop_fee_out_city: form.vendor_type === 'TRUCKING' && form.multidrop_fee_out_city != null ? Number(form.multidrop_fee_out_city) : null,
         })
         onClose()
         void showSuccess({
@@ -308,6 +315,29 @@ export default function VendorEditPanel({
               <span className="block text-xs text-slate-500">Isian TKBM di Shipment Cost disembunyikan untuk vendor ini. Kosongkan jika TKBM ditagih terpisah (mis. ASSA).</span>
             </span>
           </label>
+        )}
+        {form.vendor_type === 'TRUCKING' && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {([
+              ['multidrop_fee_in_city', 'Multidrop dalam kota', 'Per titik tambahan di kota yang sama'],
+              ['multidrop_fee_out_city', 'Multidrop luar kota', 'Per titik tambahan di kota lain'],
+            ] as const).map(([key, label, hint]) => (
+              <FormField key={key} label={label}>
+                <span className="relative block">
+                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-slate-500">Rp</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form[key] ?? ''}
+                    onChange={e => up(key, e.target.value === '' ? null : Number(e.target.value))}
+                    className={`${formControlClass} pl-10`}
+                    placeholder="Kosong = tidak ada"
+                  />
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">{hint}</span>
+              </FormField>
+            ))}
+          </div>
         )}
       </FormSection>
 

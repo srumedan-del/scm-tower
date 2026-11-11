@@ -4,6 +4,7 @@ import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialog
 import { useEffect, useState, useTransition } from 'react'
 import {
   getTripTruckingRate,
+  type TripTruckingCharge,
   upsertShipmentCost,
   getShipmentCostTripItems,
   type ShipmentCostRow,
@@ -374,6 +375,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
   const [saving, startSaving] = useTransition()
   const [rateLoading, setRateLoading] = useState(false)
   const [rateMessage, setRateMessage] = useState<string | null>(null)
+  const [charge, setCharge] = useState<TripTruckingCharge | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
@@ -386,16 +388,10 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       vehicleType: row.vehicle_type,
       transporterName: row.transporter_name,
     })
-      .then(({ price: rate, chargedOn }) => {
-        if (chargedOn) {
-          setForm((current) => ({ ...current, biaya_trucking: 0 }))
-          setRateMessage(`Charter ${row.vehicle_type} ${row.trip_id} sudah ditagih di ${chargedOn} (tujuan terjauh), jadi biaya trucking dokumen ini Rp 0.`)
-        } else if (rate != null) {
-          setForm((current) => ({ ...current, biaya_trucking: rate }))
-          setRateMessage(`Rate ${displayVendorName(row.transporter_name) || 'Trucking'}: Rp ${rate.toLocaleString('id-ID')}`)
-        } else {
-          setRateMessage(`Rate ${displayVendorName(row.transporter_name) || 'Trucking'} tidak ditemukan untuk rute ini.`)
-        }
+      .then((result) => {
+        setCharge(result)
+        if (result.price != null) setForm((current) => ({ ...current, biaya_trucking: result.price as number }))
+        setRateMessage(chargeMessage(result, row.trip_id))
       })
       .catch(() => setRateMessage('Rate tidak dapat dimuat.'))
       .finally(() => setRateLoading(false))
@@ -829,6 +825,24 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
             </div>
           )}
 
+          {/* ── TARIF BERLAKU ── */}
+          {model === 'Trucking' && charge?.rate && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 text-xs text-slate-700">
+              <div className="mb-1.5 font-bold uppercase tracking-wider text-indigo-800">Tarif berlaku</div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                <div><dt className="text-slate-500">Vendor</dt><dd className="font-semibold">{displayVendorName(charge.vendorName) || '-'}</dd></div>
+                <div><dt className="text-slate-500">Jenis unit</dt><dd className="font-semibold">{charge.vehicleType ?? '-'}</dd></div>
+                <div><dt className="text-slate-500">Tujuan charter</dt><dd className="font-semibold">{charge.mainDestination ?? '-'}</dd></div>
+                <div><dt className="text-slate-500">Tarif charter</dt><dd className="font-mono font-semibold">Rp {charge.rate.price.toLocaleString('id-ID')}</dd></div>
+                <div><dt className="text-slate-500">Leadtime</dt><dd className="font-semibold">{charge.rate.route_notes ?? (charge.rate.lead_time_days ? `${charge.rate.lead_time_days} hari` : '-')}</dd></div>
+                <div><dt className="text-slate-500">Titik antar</dt><dd className="font-semibold">{charge.dropCount}</dd></div>
+                <div><dt className="text-slate-500">Multidrop dalam kota</dt><dd className="font-mono">{charge.multidropFeeInCity != null ? `Rp ${charge.multidropFeeInCity.toLocaleString('id-ID')}` : 'Tidak ada'}</dd></div>
+                <div><dt className="text-slate-500">Multidrop luar kota</dt><dd className="font-mono">{charge.multidropFeeOutCity != null ? `Rp ${charge.multidropFeeOutCity.toLocaleString('id-ID')}` : 'Tidak ada'}</dd></div>
+                <div><dt className="text-slate-500">Kode / kontrak</dt><dd className="truncate" title={charge.rate.source_document ?? undefined}>{[charge.rate.rate_code, charge.rate.source_document].filter(Boolean).join(' · ') || '-'}</dd></div>
+              </dl>
+            </div>
+          )}
+
           {/* ── TRUCKING (SEWA VENDOR) ── */}
           {model === 'Trucking' && (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
@@ -935,4 +949,27 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
         </div>
     </DialogShell>
   )
+}
+
+function chargeMessage(charge: TripTruckingCharge, tripId: string | null) {
+  const rp = (value: number) => `Rp ${value.toLocaleString('id-ID')}`
+  const vendor = displayVendorName(charge.vendorName) || 'Vendor'
+  switch (charge.role) {
+    case 'charter':
+      return charge.dropCount > 1
+        ? `Tarif charter ${charge.vehicleType} ke ${charge.mainDestination} ditagih di dokumen ini (${charge.dropCount} titik antar di ${tripId}).`
+        : `Tarif charter ${vendor} ${charge.vehicleType} ke ${charge.mainDestination}.`
+    case 'multidrop_in_city':
+      return charge.multidropFeeInCity == null
+        ? `Titik antar tambahan sekota. Charter sudah ditagih di ${charge.mainPss}. ${vendor} belum punya tarif multidrop, isi di Master Vendor bila ada.`
+        : `Titik antar tambahan sekota: biaya multidrop dalam kota ${rp(charge.multidropFeeInCity)}. Charter ditagih di ${charge.mainPss}.`
+    case 'multidrop_out_city':
+      return charge.multidropFeeOutCity == null
+        ? `Titik antar tambahan di kota lain. Charter sudah ditagih di ${charge.mainPss}. ${vendor} belum punya tarif multidrop, isi di Master Vendor bila ada.`
+        : `Titik antar tambahan di kota lain: biaya multidrop luar kota ${rp(charge.multidropFeeOutCity)}. Charter ditagih di ${charge.mainPss}.`
+    case 'same_drop':
+      return `Pelanggan yang sama dengan dokumen lain di ${tripId}, dihitung satu titik antar. Biaya Rp 0.`
+    default:
+      return `Tarif ${vendor} ${charge.vehicleType ?? ''} ke ${charge.mainDestination ?? 'tujuan ini'} tidak ditemukan di Rate Card.`
+  }
 }

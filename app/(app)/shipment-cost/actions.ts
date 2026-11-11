@@ -249,9 +249,92 @@ function normalizeRateText(value: unknown) {
   return String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
+type RateCardMatch = {
+  rate_code: string | null
+  price: number
+  lead_time_days: number | null
+  route_notes: string | null
+  source_document: string | null
+}
+
+type TruckingVendor = {
+  id: number
+  vendor_name: string
+  multidrop_fee_in_city: number | null
+  multidrop_fee_out_city: number | null
+}
+
+async function findTruckingVendor(transporterName: string | null): Promise<TruckingVendor | null> {
+  const normalizedTransporter = normalizeRateText(transporterName)
+  if (!normalizedTransporter) return null
+  let { data, error } = await supabaseAdmin
+    .from('vendors')
+    .select('id, vendor_name, multidrop_fee_in_city, multidrop_fee_out_city')
+  if (error) {
+    // Kolom multidrop dari migrasi v47 belum ada.
+    const fallback = await supabaseAdmin.from('vendors').select('id, vendor_name')
+    data = (fallback.data ?? []).map(vendor => ({ ...vendor, multidrop_fee_in_city: null, multidrop_fee_out_city: null }))
+  }
+  const candidates = (data ?? []).filter(vendor => {
+    const vendorName = normalizeRateText(vendor.vendor_name)
+    return vendorName === normalizedTransporter || vendorName.includes(normalizedTransporter) || normalizedTransporter.includes(vendorName)
+  })
+  const exact = candidates.find(vendor => normalizeRateText(vendor.vendor_name) === normalizedTransporter)
+  const vendor = exact ?? candidates[0]
+  if (!vendor) return null
+  return {
+    id: Number(vendor.id),
+    vendor_name: String(vendor.vendor_name),
+    multidrop_fee_in_city: vendor.multidrop_fee_in_city == null ? null : Number(vendor.multidrop_fee_in_city),
+    multidrop_fee_out_city: vendor.multidrop_fee_out_city == null ? null : Number(vendor.multidrop_fee_out_city),
+  }
+}
+
+async function findRateCard(vendorId: number, destination: string | null, vehicleType: string | null): Promise<RateCardMatch | null> {
+  const normalizedDestination = normalizeRateText(destination)
+  const normalizedVehicleType = normalizeRateText(vehicleType)
+  if (!normalizedDestination || !normalizedVehicleType) return null
+  const { data, error } = await supabaseAdmin
+    .from('transport_rate_card')
+    .select('rate_code, price, destination, vehicle_type, status, lead_time_days, route_notes, source_document')
+    .eq('vendor_id', vendorId)
+  if (error) throw new Error(error.message)
+  const match = (data ?? []).find(rate =>
+    normalizeRateText(rate.destination) === normalizedDestination &&
+    normalizeRateText(rate.vehicle_type) === normalizedVehicleType &&
+    ['AKTIF', 'ACTIVE'].includes(normalizeRateText(rate.status)) &&
+    Number.isFinite(Number(rate.price))
+  )
+  if (!match) return null
+  return {
+    rate_code: match.rate_code ?? null,
+    price: Number(match.price),
+    lead_time_days: match.lead_time_days == null ? null : Number(match.lead_time_days),
+    route_notes: match.route_notes ?? null,
+    source_document: match.source_document ?? null,
+  }
+}
+
+export type TripTruckingCharge = {
+  /** Biaya trucking untuk dokumen ini. null = tarif tidak ditemukan. */
+  price: number | null
+  role: 'charter' | 'multidrop_in_city' | 'multidrop_out_city' | 'same_drop' | 'no_rate'
+  vendorName: string | null
+  vehicleType: string | null
+  /** Tujuan dan tarif charter utama Trip. */
+  mainDestination: string | null
+  mainPss: string | null
+  rate: RateCardMatch | null
+  multidropFeeInCity: number | null
+  multidropFeeOutCity: number | null
+  dropCount: number
+}
+
 /**
- * Tarif charter dibayar sekali per Trip: shipment dengan tujuan termahal di Trip
- * menanggung tarif, shipment lain di Trip yang sama bernilai 0.
+ * Charter dibayar sekali per Trip: titik antar dengan tarif tertinggi menanggung
+ * tarif charter. Setiap titik antar tambahan (pelanggan berbeda) dikenai biaya
+ * multidrop vendor: dalam kota bila sekota dengan tujuan utama, luar kota bila
+ * di kota lain. PSS ke pelanggan yang sama dihitung satu titik.
  */
 export async function getTripTruckingRate(input: {
   shipmentId: number
@@ -259,64 +342,73 @@ export async function getTripTruckingRate(input: {
   destination: string | null
   vehicleType: string | null
   transporterName: string | null
-}): Promise<{ price: number | null; chargedOn: string | null }> {
+}): Promise<TripTruckingCharge> {
   await requireAuthenticatedUser()
-  const own = await getTruckingRate(input.destination, input.vehicleType, input.transporterName)
-  if (!input.tripId) return { price: own, chargedOn: null }
-
-  const { data: tripRows } = await supabaseAdmin
-    .from('shipment_tracking')
-    .select('id, pss_no, destination_city, status')
-    .eq('trip_id', input.tripId)
-    .neq('status', 'Failed Delivery')
-  if (!tripRows || tripRows.length < 2) return { price: own, chargedOn: null }
-
-  let best: { id: number; pss: string | null; price: number } | null = null
-  for (const row of [...tripRows].sort((a, b) => Number(a.id) - Number(b.id))) {
-    const price = Number(row.id) === input.shipmentId
-      ? own
-      : await getTruckingRate(row.destination_city, input.vehicleType, input.transporterName)
-    if (price != null && (!best || price > best.price)) best = { id: Number(row.id), pss: row.pss_no, price }
+  const vendor = await findTruckingVendor(input.transporterName)
+  const base = {
+    vendorName: vendor?.vendor_name ?? input.transporterName,
+    vehicleType: input.vehicleType,
+    multidropFeeInCity: vendor?.multidrop_fee_in_city ?? null,
+    multidropFeeOutCity: vendor?.multidrop_fee_out_city ?? null,
   }
-  if (!best || best.id === input.shipmentId) return { price: own, chargedOn: null }
-  return { price: 0, chargedOn: best.pss ?? `#${best.id}` }
+  if (!vendor) return { ...base, price: null, role: 'no_rate', mainDestination: input.destination, mainPss: null, rate: null, dropCount: 1 }
+
+  const { data: tripRows } = input.tripId
+    ? await supabaseAdmin
+      .from('shipment_tracking')
+      .select('id, pss_no, customer_name, destination_city, status')
+      .eq('trip_id', input.tripId)
+      .neq('status', 'Failed Delivery')
+    : { data: [] as any[] }
+  const rows = (tripRows?.length ? tripRows : [{ id: input.shipmentId, pss_no: null, customer_name: null, destination_city: input.destination }])
+    .map(row => ({ ...row, id: Number(row.id) }))
+    .sort((a, b) => a.id - b.id)
+
+  // Satu titik antar = satu pelanggan (atau satu dokumen bila nama pelanggan kosong).
+  const dropKey = (row: { id: number; customer_name: string | null; destination_city: string | null }) =>
+    normalizeRateText(row.customer_name) ? `${normalizeRateText(row.customer_name)}|${normalizeRateText(row.destination_city)}` : `#${row.id}`
+  const drops = new Map<string, typeof rows>()
+  for (const row of rows) drops.set(dropKey(row), [...(drops.get(dropKey(row)) ?? []), row])
+
+  const rateByCity = new Map<string, RateCardMatch | null>()
+  for (const row of rows) {
+    const city = normalizeRateText(row.destination_city)
+    if (!rateByCity.has(city)) rateByCity.set(city, await findRateCard(vendor.id, row.destination_city, input.vehicleType))
+  }
+
+  let main: { row: (typeof rows)[number]; rate: RateCardMatch } | null = null
+  for (const group of drops.values()) {
+    const first = group[0]
+    const rate = rateByCity.get(normalizeRateText(first.destination_city)) ?? null
+    if (rate && (!main || rate.price > main.rate.price)) main = { row: first, rate }
+  }
+  const self = rows.find(row => row.id === input.shipmentId)
+  const mainInfo = {
+    mainDestination: main?.row.destination_city ?? input.destination,
+    mainPss: main?.row.pss_no ?? null,
+    rate: main?.rate ?? null,
+    dropCount: drops.size,
+  }
+  if (!main || !self) return { ...base, ...mainInfo, price: null, role: 'no_rate' }
+
+  const selfGroup = drops.get(dropKey(self))!
+  if (selfGroup[0].id !== self.id) return { ...base, ...mainInfo, price: 0, role: 'same_drop' }
+  if (dropKey(self) === dropKey(main.row)) return { ...base, ...mainInfo, price: main.rate.price, role: 'charter' }
+
+  const sameCity = normalizeRateText(self.destination_city) === normalizeRateText(main.row.destination_city)
+  return {
+    ...base,
+    ...mainInfo,
+    price: sameCity ? base.multidropFeeInCity ?? 0 : base.multidropFeeOutCity ?? 0,
+    role: sameCity ? 'multidrop_in_city' : 'multidrop_out_city',
+  }
 }
 
 export async function getTruckingRate(destination: string | null, vehicleType: string | null, transporterName: string | null) {
   await requireAuthenticatedUser()
-  const normalizedDestination = normalizeRateText(destination)
-  const normalizedVehicleType = normalizeRateText(vehicleType)
-  const normalizedTransporter = normalizeRateText(transporterName)
-  if (!normalizedDestination || !normalizedVehicleType || !normalizedTransporter) return null
-
-  const { data: rates, error: rateError } = await supabaseAdmin
-    .from('transport_rate_card')
-    .select('price, destination, vehicle_type, vendor_id, status')
-  if (rateError) throw new Error(rateError.message)
-
-  const vendorIds = [...new Set((rates ?? []).map(rate => rate.vendor_id).filter(Boolean))]
-  const { data: vendors, error: vendorError } = vendorIds.length
-    ? await supabaseAdmin.from('vendors').select('id, vendor_name').in('id', vendorIds)
-    : { data: [], error: null }
-  if (vendorError) throw new Error(vendorError.message)
-  const transporterIds = new Set((vendors ?? [])
-    .filter(vendor => {
-      const vendorName = normalizeRateText(vendor.vendor_name)
-      return vendorName === normalizedTransporter ||
-        vendorName.includes(normalizedTransporter) ||
-        normalizedTransporter.includes(vendorName)
-    })
-    .map(vendor => Number(vendor.id)))
-
-  const matches = (rates ?? []).filter(rate =>
-    transporterIds.has(Number(rate.vendor_id)) &&
-    normalizeRateText(rate.destination) === normalizedDestination &&
-    normalizeRateText(rate.vehicle_type) === normalizedVehicleType &&
-    ['AKTIF', 'ACTIVE'].includes(normalizeRateText(rate.status)) &&
-    Number.isFinite(Number(rate.price))
-  )
-  if (!matches.length) return null
-  return Number(matches[0].price)
+  const vendor = await findTruckingVendor(transporterName)
+  if (!vendor) return null
+  return (await findRateCard(vendor.id, destination, vehicleType))?.price ?? null
 }
 
 export type UpsertCostPayload = {

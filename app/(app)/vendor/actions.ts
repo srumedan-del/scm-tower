@@ -16,6 +16,8 @@ export type VendorRow = {
   is_active: boolean | null
   /** Tarif trucking sudah termasuk TKBM (all-in). */
   tkbm_included?: boolean | null
+  multidrop_fee_in_city?: number | null
+  multidrop_fee_out_city?: number | null
   created_at?: string | null
 }
 
