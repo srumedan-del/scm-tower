@@ -464,7 +464,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
 
   const modelLabel =
     model === 'Retail'
-      ? 'Indah Logistik (Retail)'
+      ? `${displayVendorName(row.transporter_name) || 'Retail'} (Retail)`
       : model === 'Trucking'
       ? `${displayVendorName(row.transporter_name) || 'Trucking'} (Trucking)`
       : 'Internal SRU'
@@ -831,7 +831,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
             <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
               <div className="border-b border-slate-100 pb-1.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Indah Logistik — Pengiriman Retail
+                  Pengiriman Retail
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">

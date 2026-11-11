@@ -233,7 +233,7 @@ export default function ShipmentPage() {
           }`}
         >
           <MapPinned className="h-4 w-4" />
-          Pengiriman Retail Indah Logistik
+          Pengiriman Retail
           {retailInTransit.length > 0 && (
             <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold leading-none text-orange-700">
               {retailInTransit.length}
