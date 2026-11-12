@@ -13,6 +13,7 @@ import {
   type DriverOption, type RouteOption,
 } from '@/app/(app)/shipment/actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { vehicleOptionLabel } from '@/lib/personal-vehicle'
 import { confirmAction, showSuccess } from '@/lib/feedback'
 
 const STATUS_OPTS: readonly string[] = ['Draft', 'Dispatched', 'In Transit', 'Delivered']
@@ -411,7 +412,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
             {usesMasterFleet && (
               <div className="mt-3 grid grid-cols-3 gap-3">
                 <Field label="Armada">
-                  <SearchableSelect value={form.vehicle_id ?? ''} onChange={value => up('vehicle_id', value ? Number(value) : null)} placeholder="-- Pilih --" options={vehicles.map(v => ({ value: v.id, label: `${v.vehicle_no}${v.vehicle_type ? ` (${v.vehicle_type})` : ''}` }))} />
+                  <SearchableSelect value={form.vehicle_id ?? ''} onChange={value => up('vehicle_id', value ? Number(value) : null)} placeholder="-- Pilih --" options={vehicles.map(v => ({ value: v.id, label: vehicleOptionLabel(v) }))} />
                 </Field>
                 <Field label="Driver">
                   <SearchableSelect value={form.driver_id ?? ''} onChange={value => up('driver_id', value ? Number(value) : null)} placeholder="-- Pilih Driver --" options={drivers.map(d => ({ value: d.id, label: d.driver_name }))} />

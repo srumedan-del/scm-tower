@@ -25,6 +25,8 @@ export type Trip = {
   odometer_start: number | null
   last_odometer?: number | null
   vehicle?: { vehicle_no: string; vehicle_type: string | null } | null
+  /** Kendaraan pribadi driver: tanpa GPS tracking, KM, dan klaim BBM/biaya. */
+  personal_vehicle?: boolean
   stops: Stop[]
 }
 
@@ -81,6 +83,7 @@ export function isLastOpenStop(trip: Trip, stopId: number) {
 }
 
 export function vehicleLabel(trip: Trip) {
+  if (trip.personal_vehicle) return 'Kendaraan pribadi'
   if (!trip.vehicle?.vehicle_no) return null
   return [trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ')
 }

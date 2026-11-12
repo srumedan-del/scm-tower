@@ -24,14 +24,20 @@ export default function FinishScreen() {
   const endKm = parseInt(odometer, 10)
   const distance = startKm != null && Number.isInteger(endKm) && endKm >= startKm ? endKm - startKm : null
 
+  const personal = Boolean(trip.personal_vehicle)
+
   async function close() {
-    enqueue('trip-finish', `Tutup trip ${tripNo}`, { trip_id: tripNo, odometer_end: endKm })
+    enqueue('trip-finish', `Tutup trip ${tripNo}`, { trip_id: tripNo, odometer_end: personal ? null : endKm })
     await stopTracking()
     notifySaved(`${tripNo} ditutup. Terima kasih!`)
     router.dismissAll()
   }
 
   function submit() {
+    if (personal) {
+      Alert.alert('Tutup trip?', `${delivered} terkirim, ${failed} gagal.`, [{ text: 'Batal', style: 'cancel' }, { text: 'Tutup Trip', onPress: () => void close() }])
+      return
+    }
     if (!Number.isInteger(endKm) || endKm < 0) return setError('Isi KM akhir sesuai odometer')
     if (startKm != null && endKm < startKm) return setError(`KM akhir lebih kecil dari KM awal (${startKm.toLocaleString('id-ID')} KM)`)
     setError('')
@@ -57,9 +63,9 @@ export default function FinishScreen() {
         {vehicleLabel(trip) ? <InfoRow icon="car-outline" label="Kendaraan" value={vehicleLabel(trip)!} /> : null}
         {startKm != null ? <InfoRow icon="speedometer-outline" label="KM awal" value={`${startKm.toLocaleString('id-ID')} KM`} /> : null}
       </Card>
-      <Notice>Tutup trip setelah kendaraan tiba di gudang SRU. Isi KM akhir sesuai angka di odometer.</Notice>
+      <Notice>{personal ? 'Tutup trip setelah kembali ke gudang SRU.' : 'Tutup trip setelah kendaraan tiba di gudang SRU. Isi KM akhir sesuai angka di odometer.'}</Notice>
       {failed > 0 ? <Notice tone="warning">{failed} pengiriman gagal. Serahkan barangnya kembali ke gudang.</Notice> : null}
-      <Field label="KM akhir (odometer)" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" placeholder={startKm != null ? `Lebih dari ${startKm.toLocaleString('id-ID')}` : 'Angka di odometer'} />
+      {!personal && <Field label="KM akhir (odometer)" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" placeholder={startKm != null ? `Lebih dari ${startKm.toLocaleString('id-ID')}` : 'Angka di odometer'} />}
       {error ? <ErrorText>{error}</ErrorText> : null}
     </Screen>
   )

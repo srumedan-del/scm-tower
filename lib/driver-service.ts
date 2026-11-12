@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
+import { isPersonalVehicleType } from '@/lib/personal-vehicle'
 import { DEFAULT_DRIVER_PIN, hashPin, isDefaultPin, isHashedPin, isValidNewPin, verifyPin } from '@/lib/driverAuth'
 
 /**
@@ -254,6 +255,7 @@ export async function listDriverTrips(driverId: number) {
       started_at: trip?.started_at ?? null,
       odometer_start: trip?.odometer_start ?? null,
       last_odometer: vehicleId != null ? odometers.get(Number(vehicleId))?.km ?? null : null,
+      personal_vehicle: vehicleId != null && isPersonalVehicleType(vehicleById.get(Number(vehicleId))?.vehicle_type),
       vehicle: vehicleId != null && vehicleById.has(Number(vehicleId))
         ? {
             vehicle_no: String(vehicleById.get(Number(vehicleId)).vehicle_no ?? '').trim().toUpperCase(),
@@ -391,8 +393,19 @@ async function ensureTripRecord(tripNo: string, driverId: number) {
   return trip
 }
 
-export async function startTrip(driverId: number, tripNo: string, odometerStart: number) {
-  if (!Number.isInteger(odometerStart) || odometerStart < 0) throw new DriverInputError('Odometer awal tidak valid')
+/** Trip dengan kendaraan pribadi driver tidak mencatat KM. */
+async function isPersonalVehicleTrip(tripNo: string) {
+  const { data } = await supabaseAdmin.from('shipment_tracking').select('vehicle_id').eq('trip_id', tripNo).not('vehicle_id', 'is', null).limit(1)
+  const vehicleId = data?.[0]?.vehicle_id
+  if (vehicleId == null) return false
+  const { data: vehicle } = await supabaseAdmin.from('transport_fleet').select('vehicle_type').eq('id', vehicleId).maybeSingle()
+  return isPersonalVehicleType(vehicle?.vehicle_type)
+}
+
+export async function startTrip(driverId: number, tripNo: string, odometerStartInput: number | null) {
+  const personal = await isPersonalVehicleTrip(tripNo)
+  const odometerStart = personal ? null : odometerStartInput
+  if (!personal && (!Number.isInteger(odometerStart) || (odometerStart as number) < 0)) throw new DriverInputError('Odometer awal tidak valid')
   await assertTripOwned(tripNo, driverId)
   const trip = await ensureTripRecord(tripNo, driverId)
   if (trip.started_at) return { started_at: trip.started_at }
@@ -416,12 +429,14 @@ export async function startTrip(driverId: number, tripNo: string, odometerStart:
   return { started_at: now }
 }
 
-export async function finishTrip(driverId: number, tripNo: string, odometerEnd: number) {
-  if (!Number.isInteger(odometerEnd) || odometerEnd < 0) throw new DriverInputError('Odometer akhir tidak valid')
+export async function finishTrip(driverId: number, tripNo: string, odometerEndInput: number | null) {
+  const personal = await isPersonalVehicleTrip(tripNo)
+  const odometerEnd = personal ? null : odometerEndInput
+  if (!personal && (!Number.isInteger(odometerEnd) || (odometerEnd as number) < 0)) throw new DriverInputError('Odometer akhir tidak valid')
   await assertTripOwned(tripNo, driverId)
   const trip = await ensureTripRecord(tripNo, driverId)
   if (trip.completed_at) return getTripClosingSummary(driverId, tripNo)
-  if (trip.odometer_start != null && odometerEnd < trip.odometer_start) {
+  if (odometerEnd != null && trip.odometer_start != null && odometerEnd < trip.odometer_start) {
     throw new DriverInputError('Odometer akhir lebih kecil dari odometer awal')
   }
 

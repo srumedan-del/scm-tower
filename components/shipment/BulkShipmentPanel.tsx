@@ -9,6 +9,7 @@ import { getVendors, type VendorRow } from '@/app/(app)/vendor/actions'
 import { Truck, Users, Route } from 'lucide-react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { showSuccess } from '@/lib/feedback'
+import { vehicleOptionLabel } from '@/lib/personal-vehicle'
 
 type Props = {
   selectedPss: UntrackedPssRow[]
@@ -265,7 +266,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
             <Field label="Armada *">
               <select value={form.vehicle_id ?? ''} onChange={e => onInternalVehicleChange(e.target.value)} className="inp">
                 <option value="">— Pilih Armada —</option>
-                {vehicles.map(vehicle => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicle_no} · {vehicle.vehicle_type ?? 'Armada'}</option>)}
+                {vehicles.map(vehicle => <option key={vehicle.id} value={vehicle.id}>{vehicleOptionLabel(vehicle)}</option>)}
               </select>
             </Field>
             <Field label="Driver">

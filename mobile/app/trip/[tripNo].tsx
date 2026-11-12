@@ -51,6 +51,11 @@ export default function TripScreen() {
   if (!trip) return <Screen><Text style={styles.meta}>Trip tidak ditemukan.</Text></Screen>
 
   function start() {
+    if (trip?.personal_vehicle) {
+      enqueue('trip-start', `Mulai trip ${tripNo}`, { trip_id: tripNo, odometer_start: null })
+      notifySaved('Trip dimulai. Hati-hati di jalan.')
+      return
+    }
     const value = parseInt(odometer, 10)
     if (!Number.isInteger(value) || value < 0) return setError('Isi KM awal sesuai odometer kendaraan')
     setError('')
@@ -82,14 +87,17 @@ export default function TripScreen() {
   const vehicle = vehicleLabel(trip)
   const encodedTrip = encodeURIComponent(tripNo)
 
-  const footer = !started ? (
+  const personal = Boolean(trip.personal_vehicle)
+  const footer = !started && personal ? (
+    <Button label="Mulai Trip" onPress={start} />
+  ) : !started ? (
     <>
       <Field label="KM awal (odometer)" value={odometer} onChangeText={setOdometer} keyboardType="number-pad" placeholder={trip.last_odometer != null ? `Minimal ${trip.last_odometer.toLocaleString('id-ID')}` : 'Contoh 125430'} />
       {error ? <ErrorText>{error}</ErrorText> : null}
       <Button label="Mulai Trip" onPress={start} />
     </>
   ) : allDone ? (
-    <Button label="Tutup Trip & Isi KM Akhir" onPress={() => router.push(`/finish/${encodedTrip}`)} />
+    <Button label={personal ? 'Tutup Trip' : 'Tutup Trip & Isi KM Akhir'} onPress={() => router.push(`/finish/${encodedTrip}`)} />
   ) : (
     <Button label={`Ke Tujuan Berikutnya: ${next.customer_name ?? next.reference_no}`} onPress={() => router.push(`/stop/${next.id}`)} />
   )
@@ -111,10 +119,15 @@ export default function TripScreen() {
         {!started && trip.last_odometer != null ? <InfoRow icon="speedometer-outline" label="KM terakhir" value={`${trip.last_odometer.toLocaleString('id-ID')} KM`} /> : null}
       </Card>
 
-      {!started && <Notice>Periksa kendaraan dan muatan, lalu isi KM awal di bawah untuk memulai trip.</Notice>}
-      {started && allDone && <Notice tone="success">Semua tujuan selesai. Isi BBM bila perlu, kembali ke gudang SRU, lalu tutup trip dengan KM akhir.</Notice>}
+      {!started && <Notice>{personal ? 'Pengiriman dengan kendaraan pribadi. Periksa muatan lalu mulai trip.' : 'Periksa kendaraan dan muatan, lalu isi KM awal di bawah untuk memulai trip.'}</Notice>}
+      {started && allDone && <Notice tone="success">{personal ? 'Semua tujuan selesai. Tutup trip setelah kembali ke gudang SRU.' : 'Semua tujuan selesai. Isi BBM bila perlu, kembali ke gudang SRU, lalu tutup trip dengan KM akhir.'}</Notice>}
 
-      {started && (
+      {started && personal && (
+        <View style={styles.actions}>
+          <ActionTile icon="scan-outline" label="Scan SJ" onPress={() => router.push(`/scan?tripNo=${encodedTrip}`)} />
+        </View>
+      )}
+      {started && !personal && (
         <View style={styles.actions}>
           <ActionTile icon="scan-outline" label="Scan SJ" onPress={() => router.push(`/scan?tripNo=${encodedTrip}`)} />
           <ActionTile icon="water-outline" label="Catat BBM" onPress={() => router.push(`/fuel?tripNo=${encodedTrip}`)} />

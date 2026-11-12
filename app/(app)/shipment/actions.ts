@@ -3,6 +3,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
 import { inferDkLk, ensureCustomerMaster } from '@/lib/dklk'
+import { PERSONAL_VEHICLE_TYPE } from '@/lib/personal-vehicle'
 
 export type ShipmentTrackingRow = {
   id: number
@@ -1738,6 +1739,14 @@ export async function getActiveDriverLiveLocations(includeFinished = false): Pro
     .order('id', { ascending: true })
 
   if (error || !shipments) return []
+
+  // Trip dengan kendaraan pribadi driver tidak dilacak.
+  const { data: personalFleet } = await supabaseAdmin.from('transport_fleet').select('id').eq('vehicle_type', PERSONAL_VEHICLE_TYPE)
+  const personalIds = new Set((personalFleet ?? []).map(row => Number(row.id)))
+  const personalTrips = new Set(shipments.filter(row => row.vehicle_id != null && personalIds.has(Number(row.vehicle_id))).map(row => String(row.trip_id)))
+  if (personalTrips.size) {
+    for (let index = shipments.length - 1; index >= 0; index--) if (personalTrips.has(String(shipments[index].trip_id))) shipments.splice(index, 1)
+  }
 
   const vehicleIds = [...new Set(shipments.map(s => s.vehicle_id).filter((id): id is number => id != null))]
   const customerNames = [...new Set(shipments.map(s => s.customer_name).filter(Boolean))] as string[]

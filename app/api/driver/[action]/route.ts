@@ -87,9 +87,9 @@ export async function POST(request: Request, context: Context) {
     }
     switch (action) {
       case 'trip-start':
-        return json(await startTrip(session.id, String(body.trip_id), Number(body.odometer_start)))
+        return json(await startTrip(session.id, String(body.trip_id), body.odometer_start == null ? null : Number(body.odometer_start)))
       case 'trip-finish':
-        return json({ summary: await finishTrip(session.id, String(body.trip_id), Number(body.odometer_end)) })
+        return json({ summary: await finishTrip(session.id, String(body.trip_id), body.odometer_end == null ? null : Number(body.odometer_end)) })
       case 'fuel':
         await recordFuel(session.id, body)
         return json({ ok: true })

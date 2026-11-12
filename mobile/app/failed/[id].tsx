@@ -29,7 +29,7 @@ export default function FailedScreen() {
       failed_at: new Date().toISOString(),
     })
     notifySaved(`${stop.reference_no} dicatat gagal kirim`)
-    if (isLastOpenStop(trip, stop.id)) {
+    if (isLastOpenStop(trip, stop.id) && !trip.personal_vehicle) {
       Alert.alert(
         'Semua pengiriman selesai',
         'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.\n\nSetelah tiba di gudang SRU, tekan Tutup Trip dan isi KM akhir.',
