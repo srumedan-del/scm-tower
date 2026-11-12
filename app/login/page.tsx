@@ -57,7 +57,7 @@ function LoginForm() {
               <path d="M36 24 H384" fill="none" stroke="#D9BE7E" strokeOpacity="0.55" strokeWidth="1.5" className="lux-route-line" />
               {[[36, 'Receiving'], [152, 'Outbound'], [268, 'Shipment'], [384, 'Delivered']].map(([x, label]) => (
                 <g key={label}>
-                  <circle cx={x} cy="24" r="9" fill="#0D1C33" stroke="#D9BE7E" strokeWidth="1.5" />
+                  <circle cx={x} cy="24" r="9" fill="#1F1E1D" stroke="#D9805F" strokeWidth="1.5" />
                   <circle cx={x} cy="24" r="3" fill="#D9BE7E" />
                   <text x={x} y="60" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.72)">{label}</text>
                 </g>

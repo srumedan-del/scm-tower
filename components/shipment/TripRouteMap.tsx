@@ -37,9 +37,9 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
       <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <FitToRoute fitKey={`${tripId}:${path.length > 0}:${destinations.length}`} positions={all} />
 
-      {path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#1F3F6E', weight: 4, opacity: 0.85 }} />}
+      {path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#C96442', weight: 4, opacity: 0.85 }} />}
       {path.slice(0, -1).map((position, index) => (
-        <CircleMarker key={index} center={position} radius={3} pathOptions={{ color: '#1F3F6E', fillColor: '#ffffff', fillOpacity: 1, weight: 1.5 }}>
+        <CircleMarker key={index} center={position} radius={3} pathOptions={{ color: '#C96442', fillColor: '#ffffff', fillOpacity: 1, weight: 1.5 }}>
           <Tooltip>{new Date(points[index].recorded_at).toLocaleTimeString('id-ID')}</Tooltip>
         </CircleMarker>
       ))}
@@ -49,7 +49,7 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
           key={destination.name}
           center={[destination.latitude, destination.longitude]}
           radius={8}
-          pathOptions={{ color: destination.done ? '#1F8A5B' : '#A8863F', fillColor: destination.done ? '#46A171' : '#C5A25D', fillOpacity: 0.9, weight: 2 }}
+          pathOptions={{ color: destination.done ? '#1F8A5B' : '#8C4127', fillColor: destination.done ? '#46A171' : '#D9805F', fillOpacity: 0.9, weight: 2 }}
         >
           <Tooltip>{destination.name}{destination.done ? ' (selesai)' : ''}</Tooltip>
         </CircleMarker>

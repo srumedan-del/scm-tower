@@ -76,8 +76,8 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
     <Link href="/" onClick={onNavigate} title="Kembali ke Task Board" className="flex items-center gap-3 rounded-xl px-2 py-1.5">
       <span className="lux-brand-mark grid h-10 w-10 place-items-center rounded-xl text-xs font-bold tracking-wider">SC</span>
       <span>
-        <span className="lux-display block text-lg font-semibold leading-tight text-white">SCM Tower</span>
-        <span className="block text-[11px] uppercase tracking-[0.16em] text-gold-400">Control Center</span>
+        <span className="lux-display block text-lg font-bold leading-tight text-indigo-900">SCM Tower</span>
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gold-600">Control Center</span>
       </span>
     </Link>
   )
@@ -109,7 +109,7 @@ export function Sidebar() {
         <div className="custom-scrollbar flex-1 overflow-y-auto pr-1">
           <Navigation pathname={pathname} indicatorId="nav-active-desktop" />
         </div>
-        <div className="mt-4 border-t border-white/10 pt-3">{logout}</div>
+        <div className="mt-4 border-t border-black/10 pt-3">{logout}</div>
       </aside>
 
       <button
@@ -128,7 +128,7 @@ export function Sidebar() {
             type="button"
             aria-label="Tutup menu"
             onClick={() => setMobileOpen(false)}
-            className="absolute inset-0 bg-indigo-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           />
           <motion.aside
             initial={{ x: -32, opacity: 0 }}
@@ -142,7 +142,7 @@ export function Sidebar() {
                 type="button"
                 aria-label="Tutup menu"
                 onClick={() => setMobileOpen(false)}
-                className="grid h-11 w-11 place-items-center rounded-lg text-white/80 transition-colors hover:bg-white/10"
+                className="grid h-11 w-11 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-black/5"
               >
                 <X size={20} aria-hidden="true" />
               </button>
@@ -150,7 +150,7 @@ export function Sidebar() {
             <div className="custom-scrollbar flex-1 overflow-y-auto">
               <Navigation pathname={pathname} indicatorId="nav-active-mobile" onNavigate={() => setMobileOpen(false)} />
             </div>
-            <div className="mt-4 border-t border-white/10 pt-3">{logout}</div>
+            <div className="mt-4 border-t border-black/10 pt-3">{logout}</div>
           </motion.aside>
         </div>
       )}

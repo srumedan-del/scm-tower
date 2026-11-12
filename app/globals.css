@@ -5,11 +5,12 @@
 
 @theme {
   /* === ONE FONT FOR THE WHOLE APP: Inter (self-hosted via next/font) === */
-  --font-family-sans: var(--font-inter);
-  --font-display: var(--font-inter);
-  --color-gold-50: #FBF7EC; --color-gold-100: #F5ECD4; --color-gold-200: #EEDFB9;
-  --color-gold-300: #E8D5A3; --color-gold-400: #D9BE7E; --color-gold-500: #C5A25D;
-  --color-gold-600: #A8863F; --color-gold-700: #856828; --color-gold-800: #64501F;
+  --font-family-sans: 'Segoe UI', Calibri, var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-sans: 'Segoe UI', Calibri, var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: 'Segoe UI', Calibri, var(--font-inter), system-ui, -apple-system, sans-serif;
+  --color-gold-50: #FBF1EC; --color-gold-100: #F6DDD2; --color-gold-200: #EFC3B1;
+  --color-gold-300: #E5A288; --color-gold-400: #D9805F; --color-gold-500: #C96442;
+  --color-gold-600: #AE5232; --color-gold-700: #8C4127; --color-gold-800: #6B321E;
   --font-family-mono: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   /* Apple-inspired Design System - UI/UX Pro Max */
   /* Primitive Colors - Apple System Colors */
@@ -25,8 +26,8 @@
 
   /* Semantic Colors - Light Mode */
     --color-background-primary: #FFFFFF;
-    --color-background-secondary: #F7F5F0;
-    --color-background-tertiary: #EFEBE2;
+    --color-background-secondary: #FAF9F5;
+    --color-background-tertiary: #F0EEE6;
     --color-background-elevated: #FFFFFF;
     --color-background-elevated-hover: #FBF9F5;
 
@@ -38,13 +39,13 @@
 
     --color-border-default: #E0DACD;
     --color-border-light: #ECE7DC;
-    --color-border-focus: #C5A25D;
+    --color-border-focus: #C96442;
     --color-border-error: #C8372D;
 
     /* Additional semantic tokens (used by components) */
-    --color-blue: #1F3F6E;
-    --color-blue-hover: #183358;
-    --color-blue-pressed: #122745;
+    --color-blue: #262523;
+    --color-blue-hover: #3A3835;
+    --color-blue-pressed: #0E0E0D;
     --color-blue-muted: #E1E9F5;
 
     --color-red: #C8372D;
@@ -79,11 +80,11 @@
     --color-bg-muted: #FAF8F4;
     --color-bg-table-header: #FAF8F4;
 
-    --color-brand-primary: #1F3F6E;
-    --color-brand-primary-hover: #183358;
-    --color-brand-primary-pressed: #122745;
-    --color-brand-secondary: #C5A25D;
-    --color-brand-accent: #A8863F;
+    --color-brand-primary: #262523;
+    --color-brand-primary-hover: #3A3835;
+    --color-brand-primary-pressed: #0E0E0D;
+    --color-brand-secondary: #C96442;
+    --color-brand-accent: #AE5232;
 
     --color-status-success: #1F8A5B;
     --color-status-warning: #C77D1A;
@@ -139,10 +140,10 @@
     --color-blue-300: #8FB3E0; --color-blue-400: #5F8FCF; --color-blue-500: #3B6FB8;
     --color-blue-600: #2A5CA8; --color-blue-700: #234B8A; --color-blue-800: #1C3B6D;
     --color-blue-900: #162E55; --color-blue-950: #0E1E39;
-    --color-indigo-50: #F1F5FB; --color-indigo-100: #E1E9F5; --color-indigo-200: #C4D3E9;
-    --color-indigo-300: #9AB3D6; --color-indigo-400: #6C8DBE; --color-indigo-500: #43689F;
-    --color-indigo-600: #1F3F6E; --color-indigo-700: #183358; --color-indigo-800: #122745;
-    --color-indigo-900: #0D1C33; --color-indigo-950: #081222;
+    --color-indigo-50: #F5F4F0; --color-indigo-100: #ECEAE3; --color-indigo-200: #D9D6CC;
+    --color-indigo-300: #B8B4A8; --color-indigo-400: #8C887D; --color-indigo-500: #5F5C54;
+    --color-indigo-600: #262523; --color-indigo-700: #3A3835; --color-indigo-800: #1A1918;
+    --color-indigo-900: #1F1E1D; --color-indigo-950: #0E0E0D;
     --color-violet-50: #f5f3ff; --color-violet-100: #ede9fe; --color-violet-200: #ddd6fe;
     --color-violet-300: #c4b5fd; --color-violet-400: #a78bfa; --color-violet-500: #8b5cf6;
     --color-violet-600: #7c3aed; --color-violet-700: #6d28d9; --color-violet-800: #5b21b6;
@@ -206,11 +207,11 @@ html {
 body {
   background: var(--color-background-secondary);
   color: var(--color-foreground-primary);
-  font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Segoe UI', Calibri, var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
 body, button, input, select, textarea {
-  font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Segoe UI', Calibri, var(--font-inter), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -765,21 +766,20 @@ input[type=number] {
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --shadow-card: 0 1px 2px rgba(13, 28, 51, 0.04), 0 8px 24px -16px rgba(13, 28, 51, 0.14);
   --shadow-card-hover: 0 2px 4px rgba(13, 28, 51, 0.05), 0 18px 36px -18px rgba(13, 28, 51, 0.28);
-  --gradient-gold: linear-gradient(135deg, #E8D5A3 0%, #C5A25D 55%, #A8863F 100%);
-  --gradient-midnight: linear-gradient(165deg, #122745 0%, #0D1C33 48%, #081222 100%);
+  --gradient-gold: linear-gradient(135deg, #D9805F 0%, #C96442 60%, #AE5232 100%);
+  --gradient-midnight: linear-gradient(165deg, #2E2C29 0%, #1F1E1D 50%, #151413 100%);
 }
 
 body {
   background:
-    radial-gradient(1000px 520px at 100% -10%, rgba(197, 162, 93, 0.10), transparent 60%),
-    radial-gradient(800px 480px at 0% 110%, rgba(31, 63, 110, 0.07), transparent 60%),
+    radial-gradient(1000px 520px at 100% -10%, rgba(201, 100, 66, 0.05), transparent 60%),
     var(--color-background-secondary);
   background-attachment: fixed;
 }
 
 ::selection {
-  background: rgba(197, 162, 93, 0.32);
-  color: #0D1C33;
+  background: rgba(201, 100, 66, 0.22);
+  color: #1F1E1D;
 }
 
 /* Interaksi dasar */
@@ -832,8 +832,8 @@ button:not(:disabled):active {
 
 /* Tombol utama */
 .bg-indigo-600 {
-  background-image: linear-gradient(135deg, #2A5088 0%, #1F3F6E 55%, #122745 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 6px 14px -8px rgba(13, 28, 51, 0.55);
+  background-image: linear-gradient(135deg, #3A3835 0%, #262523 60%, #1A1918 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 14px -8px rgba(31, 30, 29, 0.45);
   transition: filter 180ms ease, box-shadow 180ms ease, transform 180ms var(--ease-out-soft);
 }
 
@@ -1024,8 +1024,8 @@ a.bg-indigo-600:hover {
 /* Sidebar */
 .lux-sidebar {
   position: relative;
-  background: var(--gradient-midnight);
-  color: #C9CFDA;
+  background: #F0EEE6;
+  color: #3D3B37;
 }
 
 .lux-sidebar::after {
@@ -1035,14 +1035,14 @@ a.bg-indigo-600:hover {
   right: 0;
   bottom: 0;
   width: 1px;
-  background: linear-gradient(180deg, transparent, rgba(197, 162, 93, 0.45) 30%, rgba(197, 162, 93, 0.12) 80%, transparent);
+  background: #E2DFD5;
   pointer-events: none;
 }
 
 .lux-brand-mark {
   background: var(--gradient-gold);
-  color: #0D1C33;
-  box-shadow: 0 6px 16px -6px rgba(197, 162, 93, 0.7);
+  color: #FFFFFF;
+  box-shadow: 0 6px 14px -8px rgba(201, 100, 66, 0.6);
 }
 
 .lux-nav-link {
@@ -1053,50 +1053,50 @@ a.bg-indigo-600:hover {
   min-height: 40px;
   padding: 0.5rem 0.75rem;
   border-radius: 0.625rem;
-  font-size: 0.875rem;
-  color: #C9CFDA;
+  font-size: 0.9375rem;
+  color: #4A4843;
   transition: color 180ms ease, background-color 180ms ease;
 }
 
 .lux-nav-link:hover {
-  color: #FFFFFF;
-  background-color: rgba(255, 255, 255, 0.05);
+  color: #1F1E1D;
+  background-color: rgba(31, 30, 29, 0.05);
 }
 
 .lux-nav-link svg {
-  color: #9AA5B8;
+  color: #7A766C;
   transition: transform 220ms var(--ease-out-soft), color 180ms ease;
 }
 
 .lux-nav-link:hover svg {
-  color: var(--color-gold-300);
+  color: var(--color-gold-500);
   transform: translateX(2px);
 }
 
 .lux-nav-link[aria-current='page'] {
-  color: #FFFFFF;
-  font-weight: 500;
+  color: #1F1E1D;
+  font-weight: 600;
 }
 
 .lux-nav-link[aria-current='page'] svg {
-  color: var(--color-gold-400);
+  color: var(--color-gold-500);
 }
 
 .lux-nav-active {
   position: absolute;
   inset: 0;
   border-radius: 0.625rem;
-  background: linear-gradient(90deg, rgba(197, 162, 93, 0.20), rgba(197, 162, 93, 0.05));
-  box-shadow: inset 2px 0 0 var(--color-gold-400);
+  background: #FFFFFF;
+  box-shadow: inset 3px 0 0 var(--color-gold-500), 0 1px 2px rgba(31, 30, 29, 0.06);
 }
 
 .lux-nav-heading {
   padding: 1rem 0.75rem 0.4rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #94A0B4;
+  color: #8A867B;
 }
 
 /* Halaman login */
@@ -1114,7 +1114,7 @@ a.bg-indigo-600:hover {
   width: 62%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(197, 162, 93, 0.24), transparent 66%);
+  background: radial-gradient(circle, rgba(201, 100, 66, 0.22), transparent 66%);
   pointer-events: none;
 }
 
@@ -1207,7 +1207,7 @@ a.bg-indigo-600:hover {
 /* Scrollbar sidebar menyatu dengan latar gelap */
 .lux-sidebar .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: rgba(31, 30, 29, 0.16) transparent;
 }
 
 .lux-sidebar .custom-scrollbar::-webkit-scrollbar {
@@ -1220,7 +1220,7 @@ a.bg-indigo-600:hover {
 
 .lux-sidebar .custom-scrollbar::-webkit-scrollbar-thumb {
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(31, 30, 29, 0.16);
 }
 
 /* Toast */
@@ -1336,7 +1336,7 @@ button[data-busy='true']::after {
   z-index: 120;
   height: 3px;
   background: linear-gradient(90deg, var(--color-gold-400), var(--color-gold-600));
-  box-shadow: 0 0 10px rgba(197, 162, 93, 0.6);
+  box-shadow: 0 0 8px rgba(201, 100, 66, 0.45);
   transition: width 400ms var(--ease-out-soft), opacity 300ms ease 150ms;
   pointer-events: none;
 }
@@ -1351,3 +1351,22 @@ button[data-busy='true']::after {
 
 /* Ikon statis diganti spinner selama menyimpan */
 button[data-busy='true']:not(:has(.animate-spin)) > svg { display: none; }
+
+/* ===================================================================
+   Ukuran huruf — nyaman dibaca, ideal untuk zoom browser 80%.
+   Layar lebar (termasuk 80% di layar 1366–1920 px) memakai dasar 19px,
+   jadi semua ukuran rem ikut membesar. Ukuran piksel tetap diubah ke rem.
+   =================================================================== */
+@media (min-width: 1536px) {
+  html { font-size: 118.75%; }
+}
+
+.text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 0.75rem !important; }
+.text-\[12px\] { font-size: 0.8125rem !important; }
+.text-\[13px\] { font-size: 0.84375rem !important; }
+.text-\[14px\] { font-size: 0.875rem !important; }
+.text-\[15px\] { font-size: 0.9375rem !important; }
+.text-\[17px\] { font-size: 1.0625rem !important; }
+.text-\[22px\] { font-size: 1.375rem !important; }
+.text-\[26px\] { font-size: 1.625rem !important; }
+.text-xs { font-size: 0.8125rem; line-height: 1.15rem; }

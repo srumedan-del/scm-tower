@@ -181,7 +181,7 @@ function SummaryCards({ customers, latestOrders }: { customers: Customer[]; late
 	}
 	const machines = customers.reduce((sum, customer) => sum + (Number(customer.machine_count) || 0), 0)
 	const cards = [
-		{ label: 'Customer HD', value: customers.length, note: `${machines.toLocaleString('id-ID')} mesin`, color: '#1F3F6E' },
+		{ label: 'Customer HD', value: customers.length, note: `${machines.toLocaleString('id-ID')} mesin`, color: '#262523' },
 		{ label: REORDER_STATES.overdue.label, value: counts.overdue, note: 'perlu reorder sekarang', color: REORDER_STATES.overdue.color },
 		{ label: REORDER_STATES.soon.label, value: counts.soon, note: 'siapkan order', color: REORDER_STATES.soon.color },
 		{ label: 'Stok habis ≤ 7 hari', value: stockoutThisWeek, note: 'perkiraan dari order terakhir', color: '#856828' },

@@ -22,8 +22,8 @@ const NumericFieldAdapter = dynamic(
 
 export default function RootLayout({children}:{children:React.ReactNode}){
   return (
-    <html lang="id" data-scroll-behavior="smooth" className={`${inter.variable} ${inter.className}`}>
-      <body className={inter.className}>
+    <html lang="id" data-scroll-behavior="smooth" className={inter.variable}>
+      <body>
         <NumericFieldAdapter />
         {children}
         <FeedbackHost />
