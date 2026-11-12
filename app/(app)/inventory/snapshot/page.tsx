@@ -80,7 +80,7 @@ export default function InventorySnapshotPage() {
       {/* Header */}
       <header className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">INVENTORY SNAPSHOT</h1>
+          <h1 className="text-3xl font-bold">Inventory Snapshot</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Stok terkini per SKU per gudang — update manual atau bulk upload
           </p>

@@ -12,6 +12,7 @@ import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
 import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
+import { Tabs } from '@/components/ui/Tabs'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ export default function ShipmentPage() {
         {/* ── Header ── */}
         <header className="flex items-center justify-between gap-4 flex-wrap pb-3">
           <div>
-            <h1 className="text-3xl font-bold">SHIPMENT TRACKING</h1>
+            <h1 className="text-3xl font-bold">Shipment Tracking</h1>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {months.length > 0 && (
@@ -198,56 +199,16 @@ export default function ShipmentPage() {
         </header>
 
         {/* ── Main tabs ── */}
-        <nav className="grid grid-cols-1 border-b border-border sm:grid-cols-4" aria-label="Shipment Tracking">
-        <button
-          onClick={() => setMainTab('untracked')}
-          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-            mainTab === 'untracked'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <AlertCircle className="h-4 w-4" />
-          For Transport Planning
-          {untracked.length > 0 && (
-            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold leading-none text-orange-700">
-              {untracked.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setMainTab('tracking')}
-          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-            mainTab === 'tracking'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Truck className="h-4 w-4" />
-          List Outbound Deliveries
-          {rows.length > 0 && (
-            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold leading-none text-indigo-700">
-              {rows.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setMainTab('retail-in-transit')}
-          className={`flex min-h-12 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-            mainTab === 'retail-in-transit'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <MapPinned className="h-4 w-4" />
-          Pengiriman Retail
-          {retailInTransit.length > 0 && (
-            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold leading-none text-orange-700">
-              {retailInTransit.length}
-            </span>
-          )}
-        </button>
-        </nav>
+        <Tabs
+          label="Shipment Tracking"
+          value={mainTab}
+          onChange={value => setMainTab(value)}
+          items={[
+            { value: 'untracked', label: 'For Transport Planning', icon: AlertCircle, count: untracked.length, attention: true },
+            { value: 'tracking', label: 'List Outbound Deliveries', icon: Truck, count: rows.length },
+            { value: 'retail-in-transit', label: 'Pengiriman Retail', icon: MapPinned, count: retailInTransit.length, attention: true },
+          ]}
+        />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════

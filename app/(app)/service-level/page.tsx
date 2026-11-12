@@ -235,7 +235,7 @@ export default function ServiceLevelPage() {
     <div className="space-y-3">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">SERVICE LEVEL</h1>
+          <h1 className="text-2xl font-bold">Service Level</h1>
           <p className="mt-0.5 text-xs text-gray-500">Laporan kualitas pengiriman untuk evaluasi customer dan vendor.</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500"><Clock3 className="h-4 w-4" /> Berdasarkan Document Date</div>

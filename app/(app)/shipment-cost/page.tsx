@@ -26,7 +26,7 @@ export default async function ShipmentCostPage({
     <div className="space-y-4 font-sans">
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">SHIPMENT COST</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Shipment Cost</h1>
           <p className="text-xs text-slate-500 mt-1">
             Realisasi biaya operasional dan sewa pengiriman untuk shipment berstatus <strong>Delivered</strong>
           </p>

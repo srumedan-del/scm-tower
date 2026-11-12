@@ -30,7 +30,7 @@ export default async function PetaStokHdPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">PETA &amp; STOK HD</h1>
+          <h1 className="text-3xl font-bold">Peta &amp; Stok HD</h1>
           <p className="mt-1 text-sm text-slate-500">
             {customerCount} customer aktif · {machineCount.toLocaleString('id-ID')} mesin HD ·{' '}
             {located}/{customerCount} lokasi ({coverage}%)

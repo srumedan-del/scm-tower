@@ -8,7 +8,7 @@ export default async function LiveTrackingPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-3xl font-bold">LIVE TRACKING</h1>
+        <h1 className="text-3xl font-bold">Live Tracking</h1>
       </header>
       <DriverLiveTrackingMap />
     </div>

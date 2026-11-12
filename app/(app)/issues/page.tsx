@@ -32,7 +32,7 @@ export default async function Issues() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-3xl font-bold">ISSUE LOG</h1>
+        <h1 className="text-3xl font-bold">Issue Log</h1>
         <IssueAddButton />
       </div>
 

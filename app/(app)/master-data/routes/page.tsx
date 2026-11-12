@@ -12,7 +12,7 @@ export default async function RoutesPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
-        <h1 className="text-3xl font-bold mb-1">MASTER ROUTES</h1>
+        <h1 className="text-3xl font-bold mb-1">Master Rute</h1>
         <RouteAddButton />
       </header>
 

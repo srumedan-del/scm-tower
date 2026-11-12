@@ -13,7 +13,7 @@ export default async function SkuPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
-        <h1 className="text-3xl font-bold mb-1">MASTER SKU</h1>
+        <h1 className="text-3xl font-bold mb-1">Master SKU</h1>
         <SkuAddButton />
       </header>
 

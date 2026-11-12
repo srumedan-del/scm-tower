@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { MotionConfig, motion } from 'framer-motion'
 import {
   ArrowLeftRight, ChartNoAxesCombined, CheckSquare, Database, DollarSign,
-  LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, Radio, Truck, Warehouse, X,
+  LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getNavBadges, type NavBadges } from '@/app/(app)/nav-badges'
 
 type NavItem = readonly [string, string, typeof LayoutDashboard]
 
@@ -20,6 +21,14 @@ const groups: readonly { label: string; items: readonly NavItem[] }[] = [
   { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database]] },
 ]
 
+const BADGE_HINT: Record<string, string> = {
+  '/shipment': 'PSS belum dibuatkan shipment bulan ini',
+  '/crossdocking': 'PTS belum diputuskan lebih dari 2 hari kerja',
+}
+
+const COLLAPSE_KEY = 'scm-sidebar-collapsed'
+const BADGE_REFRESH_MS = 5 * 60_000
+
 const allHrefs = [dashboard[1], ...groups.flatMap(group => group.items.map(item => item[1]))]
 
 /** Memilih menu paling spesifik agar /shipment-cost tidak ikut mengaktifkan /shipment. */
@@ -29,16 +38,26 @@ function findActiveHref(pathname: string) {
     .sort((first, second) => second.length - first.length)[0]
 }
 
-function NavLink({ item, activeHref, indicatorId, onNavigate }: {
+function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate }: {
   item: NavItem
   activeHref: string | undefined
   indicatorId: string
+  collapsed: boolean
+  badge?: number
   onNavigate?: () => void
 }) {
   const [label, href, Icon] = item
   const active = activeHref === href
+  const hint = badge ? `${label}: ${badge} ${BADGE_HINT[href] ?? 'menunggu'}` : label
   return (
-    <Link href={href} onClick={onNavigate} aria-current={active ? 'page' : undefined} className="lux-nav-link">
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? hint : undefined}
+      title={collapsed || badge ? hint : undefined}
+      className={`lux-nav-link ${collapsed ? 'justify-center px-0' : ''}`}
+    >
       {active && (
         <motion.span
           layoutId={indicatorId}
@@ -46,47 +65,97 @@ function NavLink({ item, activeHref, indicatorId, onNavigate }: {
           transition={{ type: 'spring', stiffness: 420, damping: 36 }}
         />
       )}
-      <Icon size={17} aria-hidden="true" className="relative" />
-      <span className="relative">{label}</span>
+      <span className="relative">
+        <Icon size={18} aria-hidden="true" />
+        {collapsed && badge ? <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-gold-500 ring-2 ring-[#F0EEE6]" /> : null}
+      </span>
+      {!collapsed && <span className="relative flex-1 truncate">{label}</span>}
+      {!collapsed && badge ? (
+        <span className="relative rounded-full bg-gold-500 px-2 py-0.5 text-[11px] font-bold leading-none text-white">{badge}</span>
+      ) : null}
     </Link>
   )
 }
 
-function Navigation({ pathname, indicatorId, onNavigate }: { pathname: string; indicatorId: string; onNavigate?: () => void }) {
+function Navigation({ pathname, indicatorId, collapsed, badges, onNavigate }: {
+  pathname: string
+  indicatorId: string
+  collapsed: boolean
+  badges: NavBadges
+  onNavigate?: () => void
+}) {
   const activeHref = findActiveHref(pathname)
+  const link = (item: NavItem) => (
+    <NavLink key={item[1]} item={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} badge={badges[item[1]]} onNavigate={onNavigate} />
+  )
   return (
     <nav className="space-y-0.5" aria-label="Navigasi utama">
-      <NavLink item={dashboard} activeHref={activeHref} indicatorId={indicatorId} onNavigate={onNavigate} />
+      {link(dashboard)}
       {groups.map(group => (
         <section key={group.label}>
-          <h2 className="lux-nav-heading">{group.label}</h2>
-          <div className="space-y-0.5">
-            {group.items.map(item => (
-              <NavLink key={item[1]} item={item} activeHref={activeHref} indicatorId={indicatorId} onNavigate={onNavigate} />
-            ))}
-          </div>
+          {collapsed
+            ? <div className="mx-auto my-3 h-px w-6 bg-black/10" aria-hidden="true" />
+            : <h2 className="lux-nav-heading">{group.label}</h2>}
+          <div className="space-y-0.5">{group.items.map(link)}</div>
         </section>
       ))}
     </nav>
   )
 }
 
-function Brand({ onNavigate }: { onNavigate?: () => void }) {
+function Brand({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   return (
-    <Link href="/" onClick={onNavigate} title="Kembali ke Task Board" className="flex items-center gap-3 rounded-xl px-2 py-1.5">
-      <span className="lux-brand-mark grid h-10 w-10 place-items-center rounded-xl text-xs font-bold tracking-wider">SC</span>
-      <span>
-        <span className="lux-display block text-lg font-bold leading-tight text-indigo-900">SCM Tower</span>
-        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gold-600">Control Center</span>
-      </span>
+    <Link href="/" onClick={onNavigate} title="Kembali ke Task Board" className={`flex items-center gap-3 rounded-xl py-1.5 ${collapsed ? 'justify-center px-0' : 'px-2'}`}>
+      <span className="lux-brand-mark grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-bold tracking-wider">SC</span>
+      {!collapsed && (
+        <span>
+          <span className="lux-display block text-lg font-bold leading-tight text-indigo-900">SCM Tower</span>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gold-600">Control Center</span>
+        </span>
+      )}
     </Link>
   )
+}
+
+function useNavBadges(pathname: string) {
+  const [badges, setBadges] = useState<NavBadges>({})
+  const lastLoad = useRef(0)
+  const load = useCallback(() => {
+    lastLoad.current = Date.now()
+    return getNavBadges().then(setBadges).catch(() => {})
+  }, [])
+  useEffect(() => {
+    void load()
+    const timer = window.setInterval(load, BADGE_REFRESH_MS)
+    return () => window.clearInterval(timer)
+  }, [load])
+  // Muat ulang setelah pindah halaman (mis. setelah membuat shipment), paling sering sekali per menit.
+  useEffect(() => {
+    if (Date.now() - lastLoad.current < 60_000) return
+    const timer = window.setTimeout(load, 1500)
+    return () => window.clearTimeout(timer)
+  }, [pathname, load])
+  return badges
 }
 
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const badges = useNavBadges(pathname)
+
+  useEffect(() => {
+    try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === '1') } catch {}
+  }, [])
+
+  function toggleCollapsed() {
+    setCollapsed(current => {
+      const next = !current
+      try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0') } catch {}
+      return next
+    })
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -95,21 +164,33 @@ export function Sidebar() {
     router.refresh()
   }
 
-  const logout = (
-    <button type="button" onClick={handleLogout} className="lux-nav-link w-full">
-      <LogOut size={17} aria-hidden="true" />
-      <span>Keluar</span>
+  const logout = (isCollapsed: boolean) => (
+    <button type="button" onClick={handleLogout} title={isCollapsed ? 'Keluar' : undefined} aria-label={isCollapsed ? 'Keluar' : undefined} className={`lux-nav-link w-full ${isCollapsed ? 'justify-center px-0' : ''}`}>
+      <LogOut size={18} aria-hidden="true" />
+      {!isCollapsed && <span>Keluar</span>}
     </button>
   )
 
   return (
     <MotionConfig reducedMotion="user">
-      <aside className="lux-sidebar sticky top-0 hidden h-screen w-64 shrink-0 flex-col p-4 md:flex">
-        <div className="mb-5"><Brand /></div>
-        <div className="custom-scrollbar flex-1 overflow-y-auto pr-1">
-          <Navigation pathname={pathname} indicatorId="nav-active-desktop" />
+      <aside className={`lux-sidebar sticky top-0 hidden h-screen shrink-0 flex-col p-3 transition-[width] duration-300 md:flex ${collapsed ? 'w-[4.75rem]' : 'w-64'}`}>
+        <div className="mb-4"><Brand collapsed={collapsed} /></div>
+        <div className="custom-scrollbar flex-1 overflow-y-auto overflow-x-hidden pr-0.5">
+          <Navigation pathname={pathname} indicatorId="nav-active-desktop" collapsed={collapsed} badges={badges} />
         </div>
-        <div className="mt-4 border-t border-black/10 pt-3">{logout}</div>
+        <div className="mt-3 space-y-0.5 border-t border-black/10 pt-3">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Lebarkan sidebar' : 'Ciutkan sidebar'}
+            title={collapsed ? 'Lebarkan sidebar' : 'Ciutkan sidebar'}
+            className={`lux-nav-link w-full ${collapsed ? 'justify-center px-0' : ''}`}
+          >
+            {collapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+            {!collapsed && <span>Ciutkan</span>}
+          </button>
+          {logout(collapsed)}
+        </div>
       </aside>
 
       <button
@@ -148,9 +229,9 @@ export function Sidebar() {
               </button>
             </div>
             <div className="custom-scrollbar flex-1 overflow-y-auto">
-              <Navigation pathname={pathname} indicatorId="nav-active-mobile" onNavigate={() => setMobileOpen(false)} />
+              <Navigation pathname={pathname} indicatorId="nav-active-mobile" collapsed={false} badges={badges} onNavigate={() => setMobileOpen(false)} />
             </div>
-            <div className="mt-4 border-t border-black/10 pt-3">{logout}</div>
+            <div className="mt-4 border-t border-black/10 pt-3">{logout(false)}</div>
           </motion.aside>
         </div>
       )}

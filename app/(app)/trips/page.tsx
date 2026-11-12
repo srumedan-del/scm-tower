@@ -24,7 +24,7 @@ export default async function TripsPage() {
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">TRIP CONTROL</h1>
+          <h1 className="text-3xl font-bold">Trip Control</h1>
           <p className="mt-1 text-sm text-gray-500">
             Satu trip dapat memiliki beberapa stop; biaya dicatat satu kali pada trip lalu dialokasikan ke setiap stop.
           </p>

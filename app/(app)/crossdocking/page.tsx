@@ -5,7 +5,8 @@ import { getCrossdockings, getCrossdockingAvailableMonths, type CrossdockingHead
 import CrossdockingFilter from '@/components/crossdocking/CrossdockingFilter'
 import CrossdockingPanel from '@/components/crossdocking/CrossdockingPanel'
 import PtsPanel from '@/components/crossdocking/PtsPanel'
-import { Plus } from 'lucide-react'
+import { ArrowLeftRight, FileText, Plus } from 'lucide-react'
+import { Tabs } from '@/components/ui/Tabs'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 const statusBadge = (status: string) => {
@@ -78,7 +79,7 @@ export default function CrossdockingPage() {
       {/* Header */}
       <header className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">CROSSDOCKING</h1>
+          <h1 className="text-3xl font-bold">Crossdocking</h1>
           <p className="text-[14px] text-muted mt-0.5">
             Shipment dari Kantor Pusat via Medan — input manual
           </p>
@@ -101,30 +102,15 @@ export default function CrossdockingPage() {
         </div>
       </header>
 
-      <nav className="flex w-fit rounded-xl border border-slate-200 bg-white p-1 text-[14px]" aria-label="Crossdocking submenu">
-        <button
-          type="button"
-          onClick={() => setActiveView('crossdocking')}
-          className={`rounded-lg px-3.5 py-1.5 text-[14px] font-semibold transition-colors ${
-            activeView === 'crossdocking'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          Crossdocking
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveView('pts')}
-          className={`rounded-lg px-3.5 py-1.5 text-[14px] font-semibold transition-colors ${
-            activeView === 'pts'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          List PTS MDN-PAR to JKT-JP12
-        </button>
-      </nav>
+      <Tabs
+        label="Crossdocking submenu"
+        value={activeView}
+        onChange={setActiveView}
+        items={[
+          { value: 'crossdocking', label: 'Crossdocking', icon: ArrowLeftRight, count: rows.length },
+          { value: 'pts', label: 'List PTS MDN-PAR to JKT-JP12', icon: FileText },
+        ]}
+      />
 
       {activeView === 'pts' ? (
         <PtsPanel selectedMonth={selectedMonth} />

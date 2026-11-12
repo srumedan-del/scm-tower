@@ -8,7 +8,7 @@ export default async function Inventory() {
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between">
-        <h1 className="text-3xl font-bold">INVENTORY</h1>
+        <h1 className="text-3xl font-bold">Inventory</h1>
         <div className="flex items-center gap-2">
           <Link
             href="/inventory/snapshot"

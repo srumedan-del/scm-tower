@@ -1370,3 +1370,45 @@ button[data-busy='true']:not(:has(.animate-spin)) > svg { display: none; }
 .text-\[22px\] { font-size: 1.375rem !important; }
 .text-\[26px\] { font-size: 1.625rem !important; }
 .text-xs { font-size: 0.8125rem; line-height: 1.15rem; }
+
+/* ===================================================================
+   Fase 2 — keseragaman tampilan untuk tema terang hangat
+   =================================================================== */
+:root {
+  --shadow-card: 0 1px 2px rgba(31, 30, 29, 0.04), 0 8px 24px -18px rgba(31, 30, 29, 0.16);
+  --shadow-card-hover: 0 2px 4px rgba(31, 30, 29, 0.05), 0 18px 36px -20px rgba(31, 30, 29, 0.24);
+}
+
+/* Judul halaman: satu ukuran untuk semua halaman */
+.app-main h1 {
+  font-size: 1.75rem !important;
+  line-height: 1.2 !important;
+  color: #1F1E1D !important;
+}
+
+/* Tabel */
+.app-main table thead th {
+  color: #5F5C54;
+  font-weight: 600;
+}
+
+.app-main table tbody tr:hover {
+  background-color: #F5F4F0;
+}
+
+/* Modal dan overlay */
+.fixed.inset-0[class*='bg-black'],
+.fixed.inset-0[class*='bg-slate-9'] {
+  background-color: rgba(20, 19, 18, 0.42);
+}
+
+.fixed.inset-0[class*='bg-black'] > :not(style),
+.fixed.inset-0[class*='bg-slate-9'] > :not(style) {
+  border-top: 0;
+  box-shadow: 0 0 0 1px rgba(31, 30, 29, 0.06), 0 28px 60px -24px rgba(31, 30, 29, 0.45);
+}
+
+/* Input fokus */
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+}

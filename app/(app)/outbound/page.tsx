@@ -203,7 +203,7 @@ export default async function OutboundPage({
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">OUTBOUND</h1>
+        <h1 className="text-3xl font-bold">Outbound</h1>
         <div className="flex items-center gap-3">
           <Suspense>
             <OutboundFilter months={availableMonths} defaultMonth={defaultMonth} />

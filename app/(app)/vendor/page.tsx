@@ -34,7 +34,7 @@ export default async function VendorPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
-        <h1 className="text-3xl font-bold mb-1">VENDOR MANAGEMENT</h1>
+        <h1 className="text-3xl font-bold mb-1">Vendor</h1>
         <VendorAddButton />
       </header>
 
