@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
 import {
   getShipmentTrackings, getUntrackedPss, getRetailInTransitShipments, getShipmentAvailableMonths,
   type ShipmentTrackingRow, type UntrackedPssRow,
@@ -10,7 +10,7 @@ import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
-import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned } from 'lucide-react'
+import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { Tabs } from '@/components/ui/Tabs'
 
@@ -56,6 +56,24 @@ export default function ShipmentPage() {
   const [tmsAvail, setTmsAvail]         = useState<boolean | null>(null)
   const [showAllStatuses, setShowAllStatuses] = useState(false)
   const [retailInTransit, setRetailInTransit] = useState<ShipmentTrackingRow[]>([])
+  const [collapsedTrips, setCollapsedTrips] = useState<Set<string>>(new Set())
+  const toggleTrip = (key: string) => setCollapsedTrips(current => {
+    const next = new Set(current)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
+  // Baris sudah terurut per Trip; kelompokkan berurutan.
+  const tripGroups = useMemo(() => {
+    const groups: { key: string; tripId: string | null; rows: ShipmentTrackingRow[] }[] = []
+    for (const row of rows) {
+      const key = row.trip_id ?? '__tanpa_trip__'
+      const last = groups[groups.length - 1]
+      if (last && last.key === key) last.rows.push(row)
+      else groups.push({ key, tripId: row.trip_id ?? null, rows: [row] })
+    }
+    return groups
+  }, [rows])
   const [loadingRetail, startLoadRetail]      = useTransition()
 
   // Panels
@@ -388,13 +406,37 @@ export default function ShipmentPage() {
                     </td>
                   </tr>
                 )}
-                {rows.map(r => (
+                {tripGroups.map(group => {
+                  const open = !collapsedTrips.has(group.key)
+                  const delivered = group.rows.filter(row => row.status === 'Delivered').length
+                  const cities = [...new Set(group.rows.map(row => row.destination_city).filter(Boolean))]
+                  return (
+                  <Fragment key={group.key}>
+                  <tr className="bg-[#F5F4F0] hover:bg-[#EFEDE6]">
+                    <td colSpan={8} className="px-4 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleTrip(group.key)}
+                        aria-expanded={open}
+                        className="flex w-full items-center gap-3 text-left"
+                      >
+                        <ChevronRight className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
+                        <span className="font-bold text-indigo-900">{group.tripId ?? 'Tanpa Trip'}</span>
+                        <span className="text-sm text-slate-500">{group.rows.length} PSS{cities.length ? ` · ${cities.join(', ')}` : ''}</span>
+                        <span className="ml-auto flex items-center gap-2 text-xs font-semibold">
+                          <span className="text-green-700">{delivered} terkirim</span>
+                          {group.rows.length - delivered > 0 && <span className="text-orange-700">{group.rows.length - delivered} berjalan</span>}
+                        </span>
+                      </button>
+                    </td>
+                  </tr>
+                  {open && group.rows.map(r => (
                   <tr
                     key={r.id}
                     onClick={() => setSelected(r)}
                     className="cursor-pointer transition-colors hover:bg-blue-50"
                   >
-									<td className="px-4 py-3 text-sm font-medium whitespace-nowrap font-medium text-slate-600">{r.trip_id ?? '-'}</td>
+                    <td className="px-4 py-3 pl-11 text-xs whitespace-nowrap text-slate-400">{r.trip_id ?? '-'}</td>
                     <td className="px-4 py-3 text-sm font-medium whitespace-nowrap font-medium text-slate-600">
                       {r.pss_no ?? (r.crossdocking_id != null ? `CD-${r.crossdocking_id}` : '-')}
                     </td>
@@ -434,7 +476,10 @@ export default function ShipmentPage() {
                       </button>}
                     </td>
                   </tr>
-                ))}
+                  ))}
+                  </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

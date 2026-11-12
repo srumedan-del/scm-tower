@@ -7,6 +7,7 @@ import MonthFilter from '@/components/shared/MonthFilter'
 import type { ShipmentCostRow } from './actions'
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
+import { Tabs } from '@/components/ui/Tabs'
 import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3 } from 'lucide-react'
 
 function rp(value: number | null | undefined) {
@@ -79,31 +80,16 @@ export default function ShipmentCostTable({
       )}
 
       {/* ── Toolbar: Submenu Tabs & Month Filter ── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-        <nav className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 w-fit" aria-label="Shipment Cost Submenu">
-          <button
-            type="button"
-            onClick={() => setSubMenu('maintain')}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
-              subMenu === 'maintain'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Wallet className="h-3.5 w-3.5" /> Maintain Biaya
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubMenu('analysis')}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
-              subMenu === 'analysis'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <BarChart3 className="h-3.5 w-3.5" /> Analisa & Laporan
-          </button>
-        </nav>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3">
+        <Tabs
+          label="Shipment Cost Submenu"
+          value={subMenu}
+          onChange={setSubMenu}
+          items={[
+            { value: 'maintain', label: 'Maintain Biaya', icon: Wallet, count: unbudgetedCount, attention: true },
+            { value: 'analysis', label: 'Analisa & Laporan', icon: BarChart3 },
+          ]}
+        />
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Search Box */}
@@ -140,6 +126,25 @@ export default function ShipmentCostTable({
       </div>
 
       {/* ── Submenu 1: Maintain Biaya ── */}
+      <section aria-label="Ringkasan biaya" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {[
+          { label: 'Total biaya', value: summary.totalBiaya, note: `${summary.totalShipment} shipment`, strong: true },
+          ...(['Internal', 'Trucking', 'Retail'] as const).map(model => {
+            const modelRows = filteredRows.filter(row => (row.cost_model ?? 'Internal') === model)
+            return { label: model, value: modelRows.reduce((sum, row) => sum + (row.total_biaya ?? 0), 0), note: `${modelRows.length} shipment`, strong: false }
+          }),
+          { label: 'Belum diisi', value: null, note: unbudgetedCount ? 'perlu input biaya' : 'semua sudah diisi', strong: false, count: unbudgetedCount },
+        ].map(card => (
+          <div key={card.label} className={`rounded-2xl border p-4 ${card.strong ? 'border-indigo-900 bg-indigo-900 text-white' : 'border-slate-200 bg-white'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${card.strong ? 'text-gold-300' : 'text-slate-500'}`}>{card.label}</p>
+            <p className={`mt-1.5 font-mono text-xl font-bold ${card.strong ? 'text-white' : 'count' in card && card.count ? 'text-gold-700' : 'text-slate-900'}`}>
+              {'count' in card ? card.count : rp(card.value)}
+            </p>
+            <p className={`mt-0.5 text-xs ${card.strong ? 'text-slate-300' : 'text-slate-500'}`}>{card.note}</p>
+          </div>
+        ))}
+      </section>
+
       {subMenu === 'maintain' && (
         <section className="space-y-3 font-sans">
 

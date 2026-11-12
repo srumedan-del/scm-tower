@@ -3,6 +3,7 @@ import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
 import { jakartaToday, slaDueAt, slaDueDate, slaWorkingDaysLeft, workingDaysSince, PTS_PENDING_REMINDER_DAYS } from '@/lib/sla'
 import { getPendingPts } from '@/app/(app)/crossdocking/actions'
+import { CountUp } from '@/components/ui/CountUp'
 import { AlertTriangle, ArrowLeftRight, Bell, CheckCircle2, Clock3, Minus, Package, PackageCheck, TrendingDown, TrendingUp, Truck, Warehouse } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -282,7 +283,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <Link href="/shipment" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.overdueShipments.length > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white opacity-50'}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-red-600 flex items-center gap-1"><Truck size={13} /> Shipment Overdue</span>
-                <span className={`text-2xl font-bold ${d.overdueShipments.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>{d.overdueShipments.length}</span>
+                <span className={`text-2xl font-bold ${d.overdueShipments.length > 0 ? 'text-red-600' : 'text-gray-400'}`}><CountUp value={d.overdueShipments.length} /></span>
               </div>
               <p className="text-xs text-gray-500">Lewat SLA (DK 1, LK 5 hari kerja dari tanggal dokumen), belum Delivered</p>
               {d.overdueShipments.slice(0, 2).map(s => {
@@ -301,7 +302,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <Link href="/shipment" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.counts.untrackedPss > 0 ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white opacity-50'}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-orange-600 flex items-center gap-1"><Package size={13} /> PSS Belum Dikirim</span>
-                <span className={`text-2xl font-bold ${d.counts.untrackedPss > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{d.counts.untrackedPss}</span>
+                <span className={`text-2xl font-bold ${d.counts.untrackedPss > 0 ? 'text-orange-600' : 'text-gray-400'}`}><CountUp value={d.counts.untrackedPss} /></span>
               </div>
               <p className="text-xs text-gray-500">PSS {monthLabel(period)} belum dibuat shipment</p>
               <p className="mt-2 text-xs text-orange-500 font-medium">Buka tab "For Transport Planning" →</p>
@@ -310,7 +311,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <Link href="/crossdocking" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.crossdockingDeadline.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white opacity-50'}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-amber-700 flex items-center gap-1"><ArrowLeftRight size={13} /> Crossdocking Deadline</span>
-                <span className={`text-2xl font-bold ${d.crossdockingDeadline.length > 0 ? 'text-amber-700' : 'text-gray-400'}`}>{d.crossdockingDeadline.length}</span>
+                <span className={`text-2xl font-bold ${d.crossdockingDeadline.length > 0 ? 'text-amber-700' : 'text-gray-400'}`}><CountUp value={d.crossdockingDeadline.length} /></span>
               </div>
               <p className="text-xs text-gray-500">Promised date ≤ 3 hari, belum Delivered</p>
               {d.crossdockingDeadline.slice(0, 2).map(c => (
@@ -323,20 +324,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {d.crossdockingDeadline.length > 2 && <p className="mt-1 text-xs text-amber-500">+{d.crossdockingDeadline.length - 2} lainnya →</p>}
             </Link>
 
-            <Link href="/crossdocking" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.pendingPts.length > 0 ? 'border-violet-200 bg-violet-50' : 'border-gray-200 bg-white opacity-50'}`}>
+            <Link href="/crossdocking" className={`rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${d.pendingPts.length > 0 ? 'border-gold-200 bg-gold-50' : 'border-gray-200 bg-white opacity-50'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-violet-700 flex items-center gap-1"><Package size={13} /> PTS Belum Diputuskan</span>
-                <span className={`text-2xl font-bold ${d.pendingPts.length > 0 ? 'text-violet-700' : 'text-gray-400'}`}>{d.pendingPts.length}</span>
+                <span className="text-xs font-semibold text-gold-700 flex items-center gap-1"><Package size={13} /> PTS Belum Diputuskan</span>
+                <span className={`text-2xl font-bold ${d.pendingPts.length > 0 ? 'text-gold-700' : 'text-gray-400'}`}><CountUp value={d.pendingPts.length} /></span>
               </div>
               <p className="text-xs text-gray-500">Lebih dari {PTS_PENDING_REMINDER_DAYS} hari kerja, belum Crossdocking atau Realokasi</p>
               {d.pendingPts.slice(0, 2).map(p => (
-                <div key={p.id} className="mt-1.5 flex items-center gap-1.5 text-xs text-violet-700">
+                <div key={p.id} className="mt-1.5 flex items-center gap-1.5 text-xs text-gold-700">
                   <Clock3 size={10} />
                   <span className="truncate font-medium">{p.pts_no}</span>
-                  <span className="shrink-0 text-violet-500">{p.days}h kerja</span>
+                  <span className="shrink-0 text-gold-500">{p.days}h kerja</span>
                 </div>
               ))}
-              {d.pendingPts.length > 2 && <p className="mt-1 text-xs text-violet-500">+{d.pendingPts.length - 2} lainnya →</p>}
+              {d.pendingPts.length > 2 && <p className="mt-1 text-xs text-gold-500">+{d.pendingPts.length - 2} lainnya →</p>}
             </Link>
 
           </div>
@@ -358,7 +359,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <span className="rounded-md p-1 bg-indigo-50"><Package size={15} /></span>
                 Total PSS
               </div>
-              <div className="text-3xl font-bold text-indigo-600">{d.counts.outboundMonth}</div>
+              <div className="text-3xl font-bold text-indigo-900"><CountUp value={d.counts.outboundMonth} /></div>
               <div className="text-xs text-gray-400 mt-0.5">dokumen keluar</div>
             </Link>
             <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-blue-300">
@@ -366,15 +367,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <span className="rounded-md p-1 bg-blue-50"><Package size={15} /></span>
                 Dalam Kota (DK)
               </div>
-              <div className="text-3xl font-bold text-blue-600">{d.counts.outboundDK}</div>
+              <div className="text-3xl font-bold text-indigo-900"><CountUp value={d.counts.outboundDK} /></div>
               <div className="text-xs text-gray-400 mt-0.5">SLA 1 hari kerja</div>
             </Link>
-            <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300">
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 mb-2">
-                <span className="rounded-md p-1 bg-violet-50"><Package size={15} /></span>
+            <Link href="/outbound" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-gold-300">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-600 mb-2">
+                <span className="rounded-md p-1 bg-gold-50"><Package size={15} /></span>
                 Luar Kota (LK)
               </div>
-              <div className="text-3xl font-bold text-violet-600">{d.counts.outboundLK}</div>
+              <div className="text-3xl font-bold text-indigo-900"><CountUp value={d.counts.outboundLK} /></div>
               <div className="text-xs text-gray-400 mt-0.5">SLA 5 hari kerja</div>
             </Link>
           </div>
@@ -389,7 +390,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <span className="rounded-md p-1 bg-emerald-50"><Warehouse size={15} /></span>
                 Receiving PTR
               </div>
-              <div className="text-3xl font-bold text-emerald-600">{d.counts.receivingMonth}</div>
+              <div className="text-3xl font-bold text-indigo-900"><CountUp value={d.counts.receivingMonth} /></div>
               <div className="text-xs text-gray-400 mt-0.5">dokumen masuk</div>
             </Link>
             <Link href="/crossdocking" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-amber-300">
@@ -397,7 +398,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <span className="rounded-md p-1 bg-amber-50"><ArrowLeftRight size={15} /></span>
                 Crossdocking Aktif
               </div>
-              <div className="text-3xl font-bold text-amber-600">{d.counts.crossdockingActive}</div>
+              <div className="text-3xl font-bold text-indigo-900"><CountUp value={d.counts.crossdockingActive} /></div>
               <div className="text-xs text-gray-400 mt-0.5">belum Delivered</div>
             </Link>
             <Link href="/shipment" className="rounded-xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-green-300">
@@ -405,7 +406,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <span className="rounded-md p-1 bg-green-50"><PackageCheck size={15} /></span>
                 Delivered Hari Ini
               </div>
-              <div className="text-3xl font-bold text-green-600">{d.counts.deliveredToday}</div>
+              <div className="text-3xl font-bold text-indigo-900"><CountUp value={d.counts.deliveredToday} /></div>
               <div className="text-xs text-gray-400 mt-0.5">selesai hari ini</div>
             </Link>
           </div>
@@ -580,7 +581,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             { href: '/outbound',                label: 'Outbound',         icon: <Package size={16} />,        color: 'text-indigo-600 bg-indigo-50' },
             { href: '/crossdocking',            label: 'Crossdocking',     icon: <ArrowLeftRight size={16} />, color: 'text-amber-600 bg-amber-50' },
             { href: '/shipment',                label: 'Shipment',         icon: <Truck size={16} />,          color: 'text-blue-600 bg-blue-50' },
-            { href: '/shipment-cost',           label: 'Shipment Cost',    icon: <TrendingUp size={16} />,     color: 'text-violet-600 bg-violet-50' },
+            { href: '/shipment-cost',           label: 'Shipment Cost',    icon: <TrendingUp size={16} />,     color: 'text-gold-600 bg-gold-50' },
             { href: '/service-level',           label: 'Service Level',    icon: <CheckCircle2 size={16} />,   color: 'text-teal-600 bg-teal-50' },
             { href: '/inventory',               label: 'Inventory',        icon: <Warehouse size={16} />,      color: 'text-orange-600 bg-orange-50' },
             { href: '/issues',                  label: 'Issue Log',        icon: <AlertTriangle size={16} />,  color: 'text-red-600 bg-red-50' },

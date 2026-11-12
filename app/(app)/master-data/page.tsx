@@ -1,74 +1,99 @@
+import Link from 'next/link'
+import {
+  Building2, ChevronRight, Hospital, Package, Receipt, Route, Truck, UserRound, Warehouse, type LucideIcon,
+} from 'lucide-react'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
-async function getCounts() {
-  const [v, r, w, s, c, dr, tr] = await Promise.all([
-    supabase.from('vendors').select('*', { count: 'exact', head: true }),
-    supabase.from('routes').select('*', { count: 'exact', head: true }),
-    supabase.from('warehouses').select('*', { count: 'exact', head: true }),
-    supabase.from('master_sku').select('*', { count: 'exact', head: true }),
-    supabase.from('customers').select('*', { count: 'exact', head: true }),
-    supabase.from('master_driver').select('*', { count: 'exact', head: true }),
-    supabase.from('master_transporter').select('*', { count: 'exact', head: true }),
-  ])
-  return {
-    vendors: v.count ?? 0, routes: r.count ?? 0, warehouses: w.count ?? 0,
-    skus: s.count ?? 0, customers: c.count ?? 0, drivers: dr.count ?? 0, transporters: tr.count ?? 0,
-  }
+type CountKey = 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters'
+
+const TABLES: Record<CountKey, string> = {
+  vendors: 'vendors',
+  customers: 'customers',
+  rates: 'transport_rate_card',
+  fleet: 'transport_fleet',
+  drivers: 'master_driver',
+  routes: 'routes',
+  warehouses: 'warehouses',
+  skus: 'master_sku',
+  transporters: 'master_transporter',
 }
 
-const items = [
-  { name: 'Transporter', path: '/master-data/transporters', desc: 'Master transporter untuk assignment shipment', icon: 'TR' },
-  { name: 'Vendors',    path: '/vendor',               desc: 'Master vendor transport dengan PIC, SLA, coverage', icon: '🏢' },
-  { name: 'Customers',  path: '/master-data/customers', desc: 'Klinik & RS — DK/LK, kota, alamat',                icon: '🏥' },
-  { name: 'Rate Card',  path: '/master-data/rate-card', desc: 'Tarif transport per vendor & rute',                icon: '💰' },
-  { name: 'Armada',     path: '/master-data/vehicles',  desc: 'Armada internal — nopol, jenis, kapasitas',        icon: '🚛' },
-  { name: 'Driver',     path: '/master-data/drivers',   desc: 'Driver internal SRU — SIM, no. HP',                icon: '👤' },
-  { name: 'Routes',     path: '/master-data/routes',    desc: 'Master rute pengiriman + lead time',               icon: '🛣️' },
-  { name: 'Warehouses', path: '/master-data/warehouses',desc: 'Daftar gudang aktif',                              icon: '🏭' },
-  { name: 'SKU',        path: '/master-data/sku',       desc: 'Master SKU + safety stock',                        icon: '📦' },
+async function getCounts() {
+  const entries = await Promise.all(
+    (Object.entries(TABLES) as [CountKey, string][]).map(async ([key, table]) => {
+      const { count } = await supabase.from(table).select('*', { count: 'exact', head: true })
+      return [key, count ?? 0] as const
+    }),
+  )
+  return Object.fromEntries(entries) as Record<CountKey, number>
+}
+
+const groups: { title: string; items: { name: string; path: string; desc: string; icon: LucideIcon; count: CountKey }[] }[] = [
+  {
+    title: 'Mitra dan pelanggan',
+    items: [
+      { name: 'Vendor', path: '/vendor', desc: 'Vendor transport, PIC, SLA, all-in TKBM, multidrop', icon: Building2, count: 'vendors' },
+      { name: 'Customer', path: '/master-data/customers', desc: 'Klinik dan rumah sakit, DK/LK, kota, alamat', icon: Hospital, count: 'customers' },
+      { name: 'Rate Card', path: '/master-data/rate-card', desc: 'Tarif transport per vendor, tujuan, dan jenis unit', icon: Receipt, count: 'rates' },
+    ],
+  },
+  {
+    title: 'Armada dan rute',
+    items: [
+      { name: 'Armada', path: '/master-data/vehicles', desc: 'Kendaraan internal, nopol, jenis, kapasitas', icon: Truck, count: 'fleet' },
+      { name: 'Driver', path: '/master-data/drivers', desc: 'Driver dan helper internal SRU', icon: UserRound, count: 'drivers' },
+      { name: 'Rute', path: '/master-data/routes', desc: 'Rute pengiriman dan lead time', icon: Route, count: 'routes' },
+      { name: 'Transporter', path: '/master-data/transporters', desc: 'Transporter untuk assignment shipment', icon: Truck, count: 'transporters' },
+    ],
+  },
+  {
+    title: 'Gudang dan barang',
+    items: [
+      { name: 'Gudang', path: '/master-data/warehouses', desc: 'Daftar gudang aktif', icon: Warehouse, count: 'warehouses' },
+      { name: 'SKU', path: '/master-data/sku', desc: 'Master SKU dan safety stock', icon: Package, count: 'skus' },
+    ],
+  },
 ]
 
 export default async function MasterDataPage() {
   const counts = await getCounts()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <header>
         <h1 className="text-3xl font-bold mb-1">Master Data</h1>
-        <p className="text-muted">Pusat data referensi SCM: vendor, rute, gudang, SKU, driver, dan armada.</p>
+        <p className="text-sm text-slate-500">Data referensi SCM: vendor, pelanggan, tarif, armada, rute, gudang, dan SKU.</p>
       </header>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {items.map(item => (
-          <a key={item.path} href={item.path} className="bg-white border border-border rounded-xl p-5 hover:shadow-md transition-shadow">
-            <div className="text-3xl mb-2">{item.icon}</div>
-            <div className="font-semibold text-lg">{item.name}</div>
-            <div className="text-sm text-gray-600 mt-1">{item.desc}</div>
-          </a>
-        ))}
-      </section>
-
-      <section className="bg-white border border-border rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-3">Statistik Master Data</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 text-sm">
-          <Mini label="Vendors"    value={counts.vendors}/>
-          <Mini label="Customers"  value={counts.customers}/>
-          <Mini label="Routes"     value={counts.routes}/>
-          <Mini label="Warehouses" value={counts.warehouses}/>
-          <Mini label="SKUs"       value={counts.skus}/>
-          <Mini label="Driver"     value={counts.drivers}/>
-          <Mini label="Transporter" value={counts.transporters}/>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function Mini({label, value}:{label:string;value:number}) {
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-xl font-bold">{value}</div>
+      {groups.map(group => (
+        <section key={group.title} aria-labelledby={`md-${group.title}`} className="space-y-3">
+          <h2 id={`md-${group.title}`} className="text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">{group.title}</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {group.items.map(item => {
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-gold-300"
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gold-50 text-gold-700">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold text-indigo-900">{item.name}</span>
+                      <span className="font-mono text-lg font-bold text-slate-900">{counts[item.count].toLocaleString('id-ID')}</span>
+                    </span>
+                    <span className="mt-0.5 block text-sm leading-snug text-slate-500">{item.desc}</span>
+                  </span>
+                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gold-600" aria-hidden="true" />
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }
