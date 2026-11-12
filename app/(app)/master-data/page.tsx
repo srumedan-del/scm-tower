@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import {
-  Building2, ChevronRight, Hospital, Package, Receipt, Route, Truck, UserRound, Warehouse, type LucideIcon,
+  Building2, ChevronRight, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, type LucideIcon,
 } from 'lucide-react'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { countAppUsers } from './users/actions'
 
-type CountKey = 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters'
+type CountKey = 'users' | 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters'
 
-const TABLES: Record<CountKey, string> = {
+const TABLES: Record<Exclude<CountKey, 'users'>, string> = {
   vendors: 'vendors',
   customers: 'customers',
   rates: 'transport_rate_card',
@@ -20,12 +21,12 @@ const TABLES: Record<CountKey, string> = {
 
 async function getCounts() {
   const entries = await Promise.all(
-    (Object.entries(TABLES) as [CountKey, string][]).map(async ([key, table]) => {
+    (Object.entries(TABLES) as [Exclude<CountKey, 'users'>, string][]).map(async ([key, table]) => {
       const { count } = await supabase.from(table).select('*', { count: 'exact', head: true })
       return [key, count ?? 0] as const
     }),
   )
-  return Object.fromEntries(entries) as Record<CountKey, number>
+  return { ...Object.fromEntries(entries), users: await countAppUsers() } as Record<CountKey, number>
 }
 
 const groups: { title: string; items: { name: string; path: string; desc: string; icon: LucideIcon; count: CountKey }[] }[] = [
@@ -51,6 +52,12 @@ const groups: { title: string; items: { name: string; path: string; desc: string
     items: [
       { name: 'Gudang', path: '/master-data/warehouses', desc: 'Daftar gudang aktif', icon: Warehouse, count: 'warehouses' },
       { name: 'SKU', path: '/master-data/sku', desc: 'Master SKU dan safety stock', icon: Package, count: 'skus' },
+    ],
+  },
+  {
+    title: 'Sistem',
+    items: [
+      { name: 'Pengguna', path: '/master-data/users', desc: 'Akun login web: tambah, reset password, nonaktifkan', icon: Users, count: 'users' },
     ],
   },
 ]
