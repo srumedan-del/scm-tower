@@ -1,7 +1,7 @@
 import { decodeDriverSession, encodeDriverSession, type DriverSession } from '@/lib/driverAuth'
 import {
   DriverAccessError, DriverInputError, authenticateDriver, changeDefaultPin, changeDriverPin, finishTrip,
-  getTripClosingSummary, isDriverActive, listDriverTripHistory, listDriverTrips, pinLockedMessage, recordExpense, recordFuel, saveLocations,
+  getTripClosingSummary, getTripCostDetails, isDriverActive, listDriverTripHistory, listDriverTrips, pinLockedMessage, recordExpense, recordFuel, saveLocations,
   startTrip, storeDriverImage, submitFailedDelivery, submitPod, updateDeliverySequence,
 } from '@/lib/driver-service'
 
@@ -36,6 +36,10 @@ export async function GET(request: Request, context: Context) {
     if (action === 'summary') {
       const tripNo = new URL(request.url).searchParams.get('trip_id') ?? ''
       return json({ summary: await getTripClosingSummary(session.id, tripNo) })
+    }
+    if (action === 'costs') {
+      const tripNo = new URL(request.url).searchParams.get('trip_id') ?? ''
+      return json(await getTripCostDetails(session.id, tripNo))
     }
     return json({ error: 'Tidak ditemukan' }, 404)
   } catch (error) {

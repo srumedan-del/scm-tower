@@ -497,25 +497,73 @@ async function syncFuelCost(tripNo: string) {
   if (updateError) throw updateError
 }
 
+/** Jenis biaya driver, sama dengan komponen form Shipment Cost. */
+export const DRIVER_EXPENSE_TYPES = ['TKBM / SPSI', 'Hotel', 'Tol', 'Makan Driver', 'Makan Helper', 'Parkir', 'Lainnya'] as const
+const TRIP_COST_FIELD: Record<string, string> = {
+  Hotel: 'hotel_cost',
+  Tol: 'toll_cost',
+  'Makan Driver': 'uang_makan_driver',
+  'Makan Helper': 'uang_makan_helper',
+  Parkir: 'parkir_cost',
+}
+
 async function syncExpenseCost(tripNo: string) {
-  const { data, error } = await supabaseAdmin.from('trip_adhoc_expenses').select('expense_type, amount_rupiah').eq('trip_id', tripNo)
+  const { data, error } = await supabaseAdmin.from('trip_adhoc_expenses').select('*').eq('trip_id', tripNo)
   if (error) throw error
+  const rows = data ?? []
+  const amountOf = (row: any) => Number(row.amount_rupiah) || 0
+
+  // TKBM / SPSI ditulis ke PSS masing-masing.
+  const tkbmByShipment = new Map<number, number>()
+  for (const row of rows) {
+    if (row.expense_type !== 'TKBM / SPSI' || !row.shipment_id) continue
+    tkbmByShipment.set(Number(row.shipment_id), (tkbmByShipment.get(Number(row.shipment_id)) ?? 0) + amountOf(row))
+  }
+  for (const [shipmentId, amount] of tkbmByShipment) {
+    const { error: tkbmError } = await supabaseAdmin.from('shipment_tracking').update({ bongkar_muat_cost: amount }).eq('id', shipmentId).eq('trip_id', tripNo)
+    if (tkbmError) throw tkbmError
+  }
+
+  // Biaya lain berlaku untuk satu trip, ditulis ke shipment pertama trip.
   const shipment = await firstShipmentOfTrip(tripNo)
   if (!shipment) return
-  const sumOf = (match: (type: string) => boolean) => (data ?? [])
-    .filter(row => match(String(row.expense_type)))
-    .reduce((sum, row) => sum + (Number(row.amount_rupiah) || 0), 0)
-  // Hanya jenis yang punya catatan driver yang ditulis, agar input admin lain tetap utuh.
-  const costs = {
-    toll_cost: sumOf(type => type === 'Tol'),
-    parkir_cost: sumOf(type => type === 'Parkir'),
-    misc_cost: sumOf(type => type !== 'Tol' && type !== 'Parkir'),
+  const costs: Record<string, number> = {}
+  for (const row of rows) {
+    if (row.expense_type === 'TKBM / SPSI' && row.shipment_id) continue
+    const field = TRIP_COST_FIELD[String(row.expense_type)] ?? 'misc_cost'
+    costs[field] = (costs[field] ?? 0) + amountOf(row)
   }
-  const { error: updateError } = await supabaseAdmin
-    .from('shipment_tracking')
-    .update(Object.fromEntries(Object.entries(costs).filter(([, amount]) => amount > 0)))
-    .eq('id', shipment.id)
+  // Hanya jenis yang punya catatan driver yang ditulis, agar input admin lain tetap utuh.
+  const update = Object.fromEntries(Object.entries(costs).filter(([, amount]) => amount > 0))
+  if (!Object.keys(update).length) return
+  const { error: updateError } = await supabaseAdmin.from('shipment_tracking').update(update).eq('id', shipment.id)
   if (updateError) throw updateError
+}
+
+/** Rincian BBM dan biaya satu trip untuk ditampilkan dan dicetak di aplikasi driver. */
+export async function getTripCostDetails(driverId: number, tripNo: string) {
+  await assertTripOwned(tripNo, driverId)
+  const [fuel, expenses, shipments, trip] = await Promise.all([
+    supabaseAdmin.from('trip_fuel_logs').select('id, spbu_name_location, fuel_type, liters, amount_rupiah, odometer_after, logged_at').eq('trip_id', tripNo).order('logged_at'),
+    supabaseAdmin.from('trip_adhoc_expenses').select('*').eq('trip_id', tripNo).order('recorded_at'),
+    supabaseAdmin.from('shipment_tracking').select('id, pss_no, customer_name, destination_city').eq('trip_id', tripNo).order('id'),
+    supabaseAdmin.from('trip').select('trip_no, odometer_start, odometer_end, started_at, completed_at').eq('trip_no', tripNo).maybeSingle(),
+  ])
+  for (const result of [fuel, expenses, shipments]) if (result.error) throw result.error
+  const pssById = new Map((shipments.data ?? []).map(row => [Number(row.id), row.pss_no as string | null]))
+  return {
+    trip: trip.data ?? null,
+    shipments: shipments.data ?? [],
+    fuel: (fuel.data ?? []).map(row => ({ ...row, liters: Number(row.liters), amount_rupiah: Number(row.amount_rupiah) })),
+    expenses: (expenses.data ?? []).map((row: any) => ({
+      id: row.id,
+      expense_type: row.expense_type,
+      amount_rupiah: Number(row.amount_rupiah),
+      notes: row.notes ?? '',
+      recorded_at: row.recorded_at,
+      pss_no: row.shipment_id ? pssById.get(Number(row.shipment_id)) ?? null : null,
+    })),
+  }
 }
 
 async function clientRefExists(table: string, clientRef: string | undefined) {
@@ -580,12 +628,18 @@ export type ExpenseInput = {
   lng?: number
   recorded_at?: string
   client_ref?: string
+  shipment_id?: number
 }
 
 export async function recordExpense(driverId: number, input: ExpenseInput) {
   const amount = Number(input.amount_rupiah)
   if (!input.expense_type || !(amount > 0)) throw new DriverInputError('Jenis dan nominal biaya wajib diisi')
+  if (input.expense_type === 'Lainnya' && !String(input.notes ?? '').trim()) throw new DriverInputError('Tulis keterangan untuk biaya lainnya')
   await assertTripOwned(input.trip_id, driverId)
+  if (input.shipment_id) {
+    const { data: shipment } = await supabaseAdmin.from('shipment_tracking').select('id').eq('id', input.shipment_id).eq('trip_id', input.trip_id).maybeSingle()
+    if (!shipment) throw new DriverInputError('PSS tidak ada di trip ini')
+  }
   if (await clientRefExists('trip_adhoc_expenses', input.client_ref)) return
 
   const { error } = await supabaseAdmin.from('trip_adhoc_expenses').insert({
@@ -599,6 +653,7 @@ export async function recordExpense(driverId: number, input: ExpenseInput) {
     longitude: input.lng,
     recorded_at: input.recorded_at ?? new Date().toISOString(),
     client_ref: input.client_ref ?? null,
+    ...(input.shipment_id ? { shipment_id: input.shipment_id } : {}),
   })
   if (error) throw error
   await syncExpenseCost(input.trip_id)
