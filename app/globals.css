@@ -6,7 +6,7 @@
 @theme {
   /* === ONE FONT FOR THE WHOLE APP: Inter (self-hosted via next/font) === */
   --font-family-sans: var(--font-inter);
-  --font-display: var(--font-playfair);
+  --font-display: var(--font-inter);
   --color-gold-50: #FBF7EC; --color-gold-100: #F5ECD4; --color-gold-200: #EEDFB9;
   --color-gold-300: #E8D5A3; --color-gold-400: #D9BE7E; --color-gold-500: #C5A25D;
   --color-gold-600: #A8863F; --color-gold-700: #856828; --color-gold-800: #64501F;
@@ -811,9 +811,9 @@ button:not(:disabled):active {
   position: relative;
   width: fit-content;
   padding-bottom: 0.45rem;
-  font-family: var(--font-display), Georgia, 'Times New Roman', serif;
-  font-weight: 600;
-  letter-spacing: 0.015em;
+  font-family: var(--font-display), 'Segoe UI', Calibri, Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--color-indigo-900);
 }
 
@@ -1124,7 +1124,8 @@ a.bg-indigo-600:hover {
 }
 
 .lux-display {
-  font-family: var(--font-display), Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display), 'Segoe UI', Calibri, Arial, sans-serif;
+  letter-spacing: -0.015em;
 }
 
 /* Skeleton */

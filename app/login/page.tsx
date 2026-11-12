@@ -50,7 +50,7 @@ function LoginForm() {
           </div>
 
           <div className="relative">
-            <p className="lux-display max-w-md text-4xl font-medium leading-tight xl:text-5xl">
+            <p className="lux-display max-w-md text-4xl font-bold leading-tight xl:text-5xl">
               Satu ruang kendali untuk setiap pergerakan barang.
             </p>
             <svg viewBox="0 0 420 72" className="mt-10 w-full max-w-md" aria-hidden="true">
@@ -80,7 +80,7 @@ function LoginForm() {
               <span className="lux-display text-lg font-semibold text-indigo-900">SCM Control Tower</span>
             </div>
 
-            <h1 className="lux-display text-3xl font-semibold text-indigo-900">Selamat datang kembali</h1>
+            <h1 className="lux-display text-3xl font-bold text-indigo-900">Selamat datang kembali</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">Masuk untuk melanjutkan ke ruang kendali operasional.</p>
 
             <form onSubmit={signIn} className="mt-8 space-y-5">
