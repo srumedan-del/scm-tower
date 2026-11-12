@@ -11,6 +11,7 @@ import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
 import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -300,7 +301,7 @@ export default function ShipmentPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loadingUT && (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
+                  <SkeletonRows cols={8} />
                 )}
                 {!loadingUT && untracked.length === 0 && (
                   <tr>
@@ -417,7 +418,7 @@ export default function ShipmentPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading && (
-                  <tr><td className="px-4 py-3 text-sm font-medium text-slate-600">Memuat...</td></tr>
+                  <SkeletonRows cols={8} />
                 )}
                 {!loading && rows.length === 0 && tmsAvail !== false && (
                   <tr>
@@ -528,11 +529,7 @@ export default function ShipmentPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loadingRetail && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-[14px] font-medium text-slate-400">
-                      Memuat...
-                    </td>
-                  </tr>
+                  <SkeletonRows cols={9} />
                 )}
                 {!loadingRetail && retailInTransit.length === 0 && (
                   <tr>

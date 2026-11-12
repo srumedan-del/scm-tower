@@ -410,7 +410,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving}
-              className={dialogPrimaryClass}>
+              className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan Pengajuan'}
             </button>
           </div>

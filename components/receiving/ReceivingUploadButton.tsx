@@ -6,6 +6,7 @@ import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
 import { ReactNode } from 'react'
 import Swal from 'sweetalert2'
+import { uploadProgress, uploadResult } from '@/lib/upload-progress'
 import {
   getExistingReceivingHeaderPtrs,
   insertReceivingHeaderRows,
@@ -234,11 +235,13 @@ export function PtrHeaderUploadButton() {
     if (!file) return
 
     setLoading(true)
+    uploadProgress.start(file.name)
 
     try {
       await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
+      uploadProgress.stage('validate')
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows = parseNavExcel(firstSheet)
 
@@ -290,17 +293,18 @@ export function PtrHeaderUploadButton() {
 
       if (!toInsert.length) throw new Error(`${ptrs.length} PTR sudah ada di database atau duplikat.`)
 
+      uploadProgress.stage('save')
       await insertReceivingHeaderRows(toInsert)
       router.refresh()
       const skipped = cleanRows.length - toInsert.length
-      await Swal.fire({
+      await uploadResult({
         icon: 'success',
         title: 'Upload Berhasil',
         text: `${toInsert.length} PTR berhasil ditambahkan${skipped ? `, ${skipped} dilewati` : ''}.`,
         confirmButtonColor: '#1F3F6E',
       })
     } catch (error: any) {
-      await Swal.fire({
+      await uploadResult({
         icon: 'error',
         title: 'Upload Gagal',
         text: formatError(error),
@@ -308,6 +312,7 @@ export function PtrHeaderUploadButton() {
       })
     } finally {
       setLoading(false)
+      uploadProgress.ensureClosed()
       if (inputRef.current) inputRef.current.value = ''
     }
   }
@@ -415,11 +420,13 @@ export function PtrDetailUploadButton() {
     if (!file) return
 
     setLoading(true)
+    uploadProgress.start(file.name)
 
     try {
       await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
+      uploadProgress.stage('validate')
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows = parseNavExcel(firstSheet)
 
@@ -498,7 +505,7 @@ export function PtrDetailUploadButton() {
       const detailSkippedCount = rowsWithHeaderId.length - toInsertDetails.length
 
       if (!toInsertDetails.length) {
-        await Swal.fire({
+        await uploadResult({
           icon: 'info',
           title: 'Tidak Ada Data Baru',
           text: `${rowsWithHeaderId.length} baris detail sudah ada di database.`,
@@ -507,16 +514,17 @@ export function PtrDetailUploadButton() {
         return
       }
 
+      uploadProgress.stage('save')
       await insertReceivingDetailRows(toInsertDetails)
       router.refresh()
-      await Swal.fire({
+      await uploadResult({
         icon: 'success',
         title: 'Upload Berhasil',
         text: `${detailInsertedCount} baris detail berhasil ditambahkan${detailSkippedCount ? `, ${detailSkippedCount} dilewati (sudah ada)` : ''}.`,
         confirmButtonColor: '#1F3F6E',
       })
     } catch (error: any) {
-      await Swal.fire({
+      await uploadResult({
         icon: 'error',
         title: 'Upload Gagal',
         text: formatError(error),
@@ -524,6 +532,7 @@ export function PtrDetailUploadButton() {
       })
     } finally {
       setLoading(false)
+      uploadProgress.ensureClosed()
       if (inputRef.current) inputRef.current.value = ''
     }
   }

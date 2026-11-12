@@ -109,3 +109,22 @@ export function SkeletonTable({ rows = 5, cols = 5 }: { rows?: number; cols?: nu
     </div>
   )
 }
+
+/** Baris tabel tiruan selama data dimuat. Lebar acak-tetap agar terlihat alami. */
+export function SkeletonRows({ cols, rows = 5 }: { cols: number; rows?: number }) {
+  const widths = ['w-24', 'w-32', 'w-40', 'w-20', 'w-28', 'w-36']
+  return (
+    <>
+      {Array.from({ length: rows }, (_, row) => (
+        <tr key={row} aria-hidden="true">
+          {Array.from({ length: cols }, (_, col) => (
+            <td key={col} className="px-4 py-3.5">
+              <div className={`lux-skeleton h-3.5 ${widths[(row + col * 2) % widths.length]} max-w-full`} />
+            </td>
+          ))}
+        </tr>
+      ))}
+      <tr className="sr-only"><td>Memuat data…</td></tr>
+    </>
+  )
+}

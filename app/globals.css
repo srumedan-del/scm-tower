@@ -1232,3 +1232,121 @@ a.bg-indigo-600:hover {
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
 }
+
+/* ===================================================================
+   Fase 1 — animasi simpan, upload, dan navigasi
+   =================================================================== */
+
+/* Tombol yang sedang menyimpan: <button data-busy={saving}> */
+button[data-busy='true'] {
+  position: relative;
+  overflow: hidden;
+  cursor: progress;
+}
+
+button[data-busy='true']:not(:has(.animate-spin))::before {
+  content: '';
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #FFFFFF;
+  animation: lux-spin 700ms linear infinite;
+}
+
+button[data-busy='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.22) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: lux-sweep 1.3s var(--ease-out-soft) infinite;
+  pointer-events: none;
+}
+
+@keyframes lux-spin { to { transform: rotate(360deg); } }
+@keyframes lux-sweep { to { transform: translateX(100%); } }
+
+/* Centang yang tergambar */
+.lux-check-path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: lux-check-draw 420ms var(--ease-out-soft) 260ms forwards;
+}
+
+@keyframes lux-check-draw { to { stroke-dashoffset: 0; } }
+
+/* Cincin lembut di sekeliling tanda sukses */
+.lux-success-mark { position: relative; }
+.lux-success-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 0 rgba(31, 138, 91, 0.35);
+  animation: lux-ring 900ms var(--ease-out-soft) 380ms backwards;
+}
+
+@keyframes lux-ring {
+  from { box-shadow: 0 0 0 0 rgba(31, 138, 91, 0.35); }
+  to { box-shadow: 0 0 0 14px rgba(31, 138, 91, 0); }
+}
+
+/* Panel upload */
+.lux-fade-in { animation: lux-fade 200ms ease backwards; }
+.lux-modal-in { animation: lux-modal 300ms var(--ease-out-soft) backwards; }
+.lux-rise-in { animation: lux-rise 320ms var(--ease-out-soft) backwards; }
+
+.lux-upload-bar {
+  position: relative;
+  overflow: hidden;
+  transition: width 600ms var(--ease-out-soft), background-color 300ms ease;
+}
+
+.lux-upload-bar-active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-100%);
+  animation: lux-sweep 1.1s ease-in-out infinite;
+}
+
+/* Sisa waktu toast */
+.lux-toast-timer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  transform-origin: left;
+  animation: lux-toast-timer linear forwards;
+}
+
+
+@keyframes lux-toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* Garis progres navigasi di atas layar */
+.lux-route-progress {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 120;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-gold-400), var(--color-gold-600));
+  box-shadow: 0 0 10px rgba(197, 162, 93, 0.6);
+  transition: width 400ms var(--ease-out-soft), opacity 300ms ease 150ms;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button[data-busy='true']::after,
+  .lux-upload-bar-active::after,
+  .lux-success-mark::after { animation: none; }
+  .lux-check-path { animation: none; stroke-dashoffset: 0; }
+  .lux-fade-in, .lux-modal-in, .lux-rise-in { animation: none; }
+}
+
+/* Ikon statis diganti spinner selama menyimpan */
+button[data-busy='true']:not(:has(.animate-spin)) > svg { display: none; }

@@ -293,7 +293,7 @@ export default function DriverEditPanel({
             <button
               onClick={save}
               disabled={saving || generatingCode}
-              className={dialogPrimaryClass}
+              className={dialogPrimaryClass} data-busy={saving}
             >
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>

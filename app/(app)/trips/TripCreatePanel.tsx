@@ -11,6 +11,7 @@ import {
 } from './actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { showSuccess } from '@/lib/feedback'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 type Props = { onClose: () => void }
 
@@ -88,7 +89,7 @@ export function TripCreatePanel({ onClose }: Props) {
                 <tr><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Pilih</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Referensi</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Customer</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Kota</th><th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Janji Kirim</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>}
+                {loading && <SkeletonRows cols={5} />}
                 {!loading && shipments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada shipment yang tersedia.</td></tr>}
                 {shipments.map((shipment) => (
                   <tr key={shipment.id} className="group border-t border-gray-100 hover:bg-indigo-50">
@@ -106,7 +107,7 @@ export function TripCreatePanel({ onClose }: Props) {
 
         <footer className="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
           <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
-          <button disabled={saving || !vendorId || selected.size === 0} onClick={submit} className={dialogPrimaryClass}>
+          <button disabled={saving || !vendorId || selected.size === 0} onClick={submit} className={dialogPrimaryClass} data-busy={saving}>
             {saving ? 'Membuat...' : `Buat Trip (${selected.size})`}
           </button>
         </footer>

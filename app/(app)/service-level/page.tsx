@@ -8,6 +8,7 @@ import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
 import { slaDueAt as workingDayDueAt } from '@/lib/sla'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 type GroupRow = {
   name: string
@@ -305,7 +306,7 @@ export default function ServiceLevelPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                {loading ? <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400">Memuat daftar PSS...</td></tr> : listRows.length === 0 ? <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400">Tidak ada PSS pada filter ini.</td></tr> : listRows.map(row => {
+                {loading ? <SkeletonRows cols={10} /> : listRows.length === 0 ? <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400">Tidak ada PSS pada filter ini.</td></tr> : listRows.map(row => {
                   const isUntracked = 'untracked' in row
                   const displayStatus = isUntracked ? 'Belum Dibuat' : row.status
                   const displayVendor = isUntracked ? 'Belum ditentukan' : vendorName(row)
@@ -391,7 +392,7 @@ export default function ServiceLevelPage() {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50"><tr><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">PSS</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Customer</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Vendor</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Batas SLA</th><th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Status</th></tr></thead>
             <tbody className="divide-y">
-              {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Memuat laporan...</td></tr> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-3 text-xs font-medium font-medium text-slate-600">{row.pss_no ?? '-'}</td><td className="px-4 py-3 text-xs font-medium text-slate-600">{row.customer_name ?? '-'}</td><td className="px-4 py-3 text-xs font-medium text-slate-600">{vendorName(row)}</td><td className="px-4 py-3 text-xs font-medium text-slate-600"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-3 text-xs font-medium text-center text-slate-600"><StatusBadge status={row.status} /></td></tr>)}
+              {loading ? <SkeletonRows cols={5} /> : attentionRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-green-700">Tidak ada shipment yang melampaui SLA.</td></tr> : attentionRows.map(row => <tr key={row.id}><td className="px-4 py-3 text-xs font-medium font-medium text-slate-600">{row.pss_no ?? '-'}</td><td className="px-4 py-3 text-xs font-medium text-slate-600">{row.customer_name ?? '-'}</td><td className="px-4 py-3 text-xs font-medium text-slate-600">{vendorName(row)}</td><td className="px-4 py-3 text-xs font-medium text-slate-600"><div>{formatDateTime(slaDueAt(row))}</div><div className="text-xs text-gray-500">{row.dk_lk === 'DK' ? 'DK · 24 jam' : 'LK · 72 jam'}</div></td><td className="px-4 py-3 text-xs font-medium text-center text-slate-600"><StatusBadge status={row.status} /></td></tr>)}
             </tbody>
           </table>
         </div>

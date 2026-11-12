@@ -32,7 +32,7 @@ export type SuccessRequest = SuccessOptions & { resolve: () => void }
 
 type State = { toasts: ToastItem[]; confirm: ConfirmRequest | null; success: SuccessRequest | null }
 
-const TOAST_DURATION: Record<ToastTone, number> = { success: 4000, info: 5000, error: 8000 }
+export const TOAST_DURATION: Record<ToastTone, number> = { success: 4000, info: 5000, error: 8000 }
 
 let state: State = { toasts: [], confirm: null, success: null }
 let nextToastId = 1

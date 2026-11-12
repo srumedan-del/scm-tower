@@ -186,7 +186,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
             <button
               onClick={save}
               disabled={saving || generating || !form.dk_lk || !form.destination.trim()}
-              className={dialogPrimaryClass}>
+              className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>

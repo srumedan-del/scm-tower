@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { getTransporters, type TransporterRow } from './actions'
 import TransporterEditPanel from '@/components/transporter/TransporterEditPanel'
 import { Plus } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 const typeColor = (type: string) =>
   type === 'Internal'
@@ -68,7 +69,7 @@ export default function TransportersPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
-              <tr><td className="px-4 py-3 text-sm font-medium text-slate-600">Memuat...</td></tr>
+              <SkeletonRows cols={6} />
             )}
             {!loading && rows.length === 0 && (
               <tr><td className="px-4 py-3 text-sm font-medium text-slate-600">

@@ -10,6 +10,7 @@ import {
   type PtsRecord,
 } from '@/app/(app)/crossdocking/actions'
 import { notify, confirmAction } from '@/lib/feedback'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { jakartaToday, workingDaysSince, PTS_PENDING_REMINDER_DAYS } from '@/lib/sla'
 
 function formatDateTime(value: string) {
@@ -104,16 +105,7 @@ export default function PtsPanel({ selectedMonth }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
-            {loading && (
-              <tr>
-                <td colSpan={7} className="px-4 py-12 text-center">
-                  <div className="flex items-center justify-center gap-2 text-slate-400 text-[14px]">
-                    <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
-                    <span>Memuat data PTS...</span>
-                  </div>
-                </td>
-              </tr>
-            )}
+            {loading && <SkeletonRows cols={7} />}
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-[14px] text-slate-400">

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { getCurrentInventory, type InventorySnapshotRow } from './actions'
 import SnapshotPanel from '@/components/inventory/SnapshotPanel'
 import { Plus, RefreshCw, AlertTriangle, CheckCircle2, TrendingDown } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> = {
@@ -179,7 +180,7 @@ export default function InventorySnapshotPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400 text-sm">Memuat...</td></tr>
+              <SkeletonRows cols={11} />
             )}
             {!loading && sorted.length === 0 && avail !== false && (
               <tr>

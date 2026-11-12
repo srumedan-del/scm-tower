@@ -156,7 +156,7 @@ export default function ReceivingVerifyButton() {
                 type="button"
                 onClick={handleVerify}
                 disabled={loading}
-                className={dialogPrimaryClass}
+                className={dialogPrimaryClass} data-busy={loading}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Verifikasi Ulang

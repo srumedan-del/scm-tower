@@ -266,7 +266,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
           <div>{shipment && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting?'Menghapus…':'Hapus'}</button>}</div>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
-            <button onClick={save} disabled={saving} className={dialogPrimaryClass}>{saving?'Menyimpan…':'Simpan'}</button>
+            <button onClick={save} disabled={saving} className={dialogPrimaryClass} data-busy={saving}>{saving?'Menyimpan…':'Simpan'}</button>
           </div>
         </div>
     </DialogShell>

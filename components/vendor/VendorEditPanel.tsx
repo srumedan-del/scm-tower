@@ -183,6 +183,7 @@ export default function VendorEditPanel({
             <button
               type="submit"
               disabled={busy}
+              data-busy={saving}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

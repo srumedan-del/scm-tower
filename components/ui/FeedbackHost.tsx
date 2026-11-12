@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useSyncExternalStore } from 'react'
-import { AlertCircle, AlertTriangle, Check, CheckCircle2, Info, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
 import {
-  dismissToast, feedbackStore, settleConfirm, settleSuccess,
+  dismissToast, feedbackStore, settleConfirm, settleSuccess, TOAST_DURATION,
   type ConfirmRequest, type SuccessRequest, type ToastTone,
 } from '@/lib/feedback'
+import { AnimatedCheck } from '@/components/ui/UploadProgressHost'
 
 const toastStyle: Record<ToastTone, { icon: typeof Info; bar: string; iconColor: string }> = {
   success: { icon: CheckCircle2, bar: 'bg-green', iconColor: 'text-green' },
@@ -125,7 +126,7 @@ function SuccessModal({ request }: { request: SuccessRequest }) {
       >
         <div className="px-6 pb-5 pt-8">
           <span className="lux-success-mark mx-auto grid h-16 w-16 place-items-center rounded-full bg-green-100 text-green-700">
-            <Check className="h-8 w-8" strokeWidth={2.5} aria-hidden="true" />
+            <AnimatedCheck className="h-8 w-8" />
           </span>
           <h2 id="success-title" className="lux-display mt-5 text-2xl font-semibold text-indigo-900">{request.title}</h2>
           {request.message && (
@@ -178,6 +179,7 @@ export function FeedbackHost() {
               className="lux-toast pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-xl border border-gray-200 bg-white py-3 pl-5 pr-2"
             >
               <span className={`absolute inset-y-0 left-0 w-1 ${bar}`} aria-hidden="true" />
+              <span className={`lux-toast-timer ${bar} opacity-40`} style={{ animationDuration: `${TOAST_DURATION[toast.tone]}ms` }} aria-hidden="true" />
               <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${iconColor}`} aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">{toast.title}</p>

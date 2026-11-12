@@ -130,7 +130,7 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || !form.vehicle_no}
-              className={dialogPrimaryClass}>
+              className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { getDrivers, type DriverRow } from './actions'
 import DriverEditPanel from '@/components/driver/DriverEditPanel'
 import { Plus, UserCheck, UserX, Truck, Users, KeyRound, Smartphone } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 const roleBadge = (role: string) =>
   role === 'Driver'
@@ -82,7 +83,7 @@ export default function DriversPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
-              <tr><td colSpan={8} className="px-4 py-3 text-sm font-medium text-slate-600">Memuat...</td></tr>
+              <SkeletonRows cols={8} />
             )}
             {!loading && filtered.length === 0 && (
               <tr><td colSpan={8} className="px-4 py-3 text-sm font-medium text-slate-600">

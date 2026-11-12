@@ -150,7 +150,7 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || !form.sku_code || !form.item_name}
-              className={dialogPrimaryClass}>
+              className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>

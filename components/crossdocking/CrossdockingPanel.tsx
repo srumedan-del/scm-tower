@@ -597,7 +597,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
               type="button"
               onClick={save}
               disabled={saving}
-              className={dialogPrimaryClass}
+              className={dialogPrimaryClass} data-busy={saving}
             >
               {saving ? (
                 <>

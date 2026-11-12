@@ -941,7 +941,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
               type="button"
               onClick={save}
               disabled={saving}
-              className={dialogPrimaryClass}
+              className={dialogPrimaryClass} data-busy={saving}
             >
               {saving ? 'Menyimpan…' : 'Simpan Biaya'}
             </button>

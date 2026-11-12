@@ -232,7 +232,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
           <button
             onClick={save}
             disabled={saving || optLoading}
-            className={dialogPrimaryClass}
+            className={dialogPrimaryClass} data-busy={saving}
           >
             <Truck className="h-4 w-4" />
             {saving

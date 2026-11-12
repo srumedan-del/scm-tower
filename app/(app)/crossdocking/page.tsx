@@ -6,6 +6,7 @@ import CrossdockingFilter from '@/components/crossdocking/CrossdockingFilter'
 import CrossdockingPanel from '@/components/crossdocking/CrossdockingPanel'
 import PtsPanel from '@/components/crossdocking/PtsPanel'
 import { Plus } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 const statusBadge = (status: string) => {
   const map: Record<string, string> = {
@@ -154,11 +155,7 @@ export default function CrossdockingPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {loading && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400 text-[14px]">
-                      Memuat data crossdocking...
-                    </td>
-                  </tr>
+                  <SkeletonRows cols={7} />
                 )}
                 {!loading && rows.length === 0 && tmsAvail !== false && (
                   <tr>

@@ -7,6 +7,7 @@ import {
 } from './actions'
 import BudgetRequestPanel from '@/components/budget-request/BudgetRequestPanel'
 import { Plus, FileText, TrendingUp, Banknote } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 function fmtRp(v: number | null | undefined) {
   if (v == null) return '—'
@@ -120,7 +121,7 @@ export default function BudgetRequestPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
-              <tr><td className="px-4 py-3 text-xs font-medium text-slate-600">Memuat...</td></tr>
+              <SkeletonRows cols={6} />
             )}
             {!loading && rows.length === 0 && avail !== false && (
               <tr>

@@ -1,10 +1,12 @@
 'use client'
 
 import './globals.css'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Inter, Playfair_Display } from 'next/font/google'
 import dynamic from 'next/dynamic'
 import { FeedbackHost } from '@/components/ui/FeedbackHost'
+import { UploadProgressHost } from '@/components/ui/UploadProgressHost'
+import { RouteProgress } from '@/components/ui/RouteProgress'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,6 +33,8 @@ export default function RootLayout({children}:{children:React.ReactNode}){
         <NumericFieldAdapter />
         {children}
         <FeedbackHost />
+        <UploadProgressHost />
+        <Suspense fallback={null}><RouteProgress /></Suspense>
       </body>
     </html>
   )

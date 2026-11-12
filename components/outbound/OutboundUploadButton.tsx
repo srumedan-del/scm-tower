@@ -6,6 +6,8 @@ import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
 import { ReactNode } from 'react'
 import Swal from 'sweetalert2'
+import { uploadProgress, uploadResult } from '@/lib/upload-progress'
+import { notify } from '@/lib/feedback'
 import {
   getExistingOutboundHeaderPssNos,
   insertOutboundHeaderRows,
@@ -404,11 +406,13 @@ export function OutboundHeaderUploadButton() {
     if (!file) return
 
     setLoading(true)
+    uploadProgress.start(file.name)
 
     try {
       await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
+      uploadProgress.stage('validate')
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null }) as Record<string, any>[]
 
@@ -443,10 +447,11 @@ export function OutboundHeaderUploadButton() {
       if (!toInsert.length)
         throw new Error(`Semua ${shipmentNos.length} PSS No. sudah ada di database atau duplikat dalam file.`)
 
+      uploadProgress.stage('save')
       const result = await insertOutboundHeaderRows(toInsert)
       const dbSkipped = (result as any).skipped ?? 0
       const totalSkipped = skipped + dbSkipped
-      await Swal.fire({
+      await uploadResult({
         icon: 'success',
         title: 'Upload Berhasil',
         text: `${toInsert.length - dbSkipped} PSS Header berhasil ditambahkan${totalSkipped ? `, ${totalSkipped} dilewati (sudah ada)` : ''}.`,
@@ -454,7 +459,7 @@ export function OutboundHeaderUploadButton() {
       })
       router.refresh()
     } catch (error: any) {
-      await Swal.fire({
+      await uploadResult({
         icon: 'error',
         title: 'Upload Gagal',
         text: formatError(error),
@@ -462,6 +467,7 @@ export function OutboundHeaderUploadButton() {
       })
     } finally {
       setLoading(false)
+      uploadProgress.ensureClosed()
       if (inputRef.current) inputRef.current.value = ''
     }
   }
@@ -559,11 +565,13 @@ export function OutboundDetailUploadButton() {
     if (!file) return
 
     setLoading(true)
+    uploadProgress.start(file.name)
 
     try {
       await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
+      uploadProgress.stage('validate')
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null }) as Record<string, any>[]
 
@@ -621,12 +629,7 @@ export function OutboundDetailUploadButton() {
       // Peringatan jika ada PAO yang tidak bisa di-remap
       if (unmappedPaos.length > 0) {
         console.warn('PAO tidak bisa di-remap (tidak ada PSS dalam konteks yang sama):', unmappedPaos)
-        await Swal.fire({
-          icon: 'info',
-          title: 'Peringatan Normalisasi',
-          text: `PAO yang tidak dapat dipetakan: ${unmappedPaos.join(', ')}`,
-          confirmButtonColor: '#1F3F6E',
-        })
+        notify.info('Peringatan normalisasi', `PAO yang tidak dapat dipetakan: ${unmappedPaos.join(', ')}`)
       }
 
       // Step 3: Cari PSS yang unik untuk link ke outbound_header
@@ -663,6 +666,7 @@ export function OutboundDetailUploadButton() {
         throw new Error(`Upload dibatalkan. PSS tidak memiliki header yang cocok di database: ${unmatchedHeaderPss.join(', ')}`)
       }
 
+      uploadProgress.stage('save')
       let documentLinksUpdated = 0
       let timestampsBackfilled = 0
       let headersUpdated = 0
@@ -709,7 +713,7 @@ export function OutboundDetailUploadButton() {
       totalSkipped = rowsWithHeaderId.length - totalInserted
 
       if (totalInserted === 0) {
-              await Swal.fire({
+              await uploadResult({
                 icon: 'info',
                 title: 'Tidak Ada Data Baru',
                 text: `${rowsWithHeaderId.length} baris sudah ada di database.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`,
@@ -736,14 +740,14 @@ export function OutboundDetailUploadButton() {
 
       const remapNote = remappedCount > 0 ? ` (${remappedCount} nomor PAO diremap ke PSS)` : ''
 
-      await Swal.fire({
+      await uploadResult({
         icon: 'success',
         title: 'Upload Berhasil',
         text: `${totalInserted} baris berhasil ditambahkan${totalSkipped ? `, ${totalSkipped} dilewati` : ''}.${documentLinksUpdated ? ` ${documentLinksUpdated} relasi detail PSS diperbaiki.` : ''}${timestampsBackfilled ? ` ${timestampsBackfilled} timestamp detail lama dilengkapi.` : ''}${headersUpdated ? ` ${headersUpdated} header diperbarui.` : ''}${remapNote}${maintenanceWarnings.length ? `\n\nPeringatan:\n${maintenanceWarnings.join('\n')}` : ''}`,
         confirmButtonColor: '#1F3F6E',
       })
     } catch (error: any) {
-      await Swal.fire({
+      await uploadResult({
         icon: 'error',
         title: 'Upload Gagal',
         text: formatError(error),
@@ -751,6 +755,7 @@ export function OutboundDetailUploadButton() {
       })
     } finally {
       setLoading(false)
+      uploadProgress.ensureClosed()
       if (inputRef.current) inputRef.current.value = ''
     }
   }

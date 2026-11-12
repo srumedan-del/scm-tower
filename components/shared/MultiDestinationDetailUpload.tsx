@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import { uploadProgress, uploadResult } from '@/lib/upload-progress';
 import { 
   getReceivingHeadersByPtrs,
   getExistingReceivingDetailKeys,
@@ -285,10 +286,12 @@ export default function MultiDestinationDetailUpload() {
     if (!file) return;
 
     setLoading(true);
+    uploadProgress.start(file.name);
 
     try {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
+      uploadProgress.stage('validate');
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null }) as Record<string, any>[];
 
@@ -353,6 +356,7 @@ export default function MultiDestinationDetailUpload() {
       } = {};
 
       // 1. Process Receiving (Transfer Receipt)
+      uploadProgress.stage('save');
       if (receivingRows.length > 0) {
         try {
           const ptrNos = [...new Set(receivingRows.map(r => String(r.document_no ?? '').trim()))].filter(Boolean);
@@ -536,14 +540,14 @@ export default function MultiDestinationDetailUpload() {
       ].filter(Boolean);
 
       if (successCount === 0 && totalSkipped === 0) {
-        await Swal.fire({
+        await uploadResult({
           icon: 'info',
           title: 'Tidak Ada Data Terproses',
           text: 'Tidak ada baris dengan Document Type yang sesuai (Transfer Receipt, Posted Assembly, Sales Shipment, atau Transfer Shipment).',
           confirmButtonColor: '#1F3F6E',
         });
       } else if (successCount === 0) {
-        await Swal.fire({
+        await uploadResult({
           icon: errorMessages.length > 0 ? 'error' : 'info',
           title: errorMessages.length > 0 ? 'Upload Gagal' : 'Tidak Ada Data Baru',
           text: errorMessages.length > 0
@@ -571,7 +575,7 @@ export default function MultiDestinationDetailUpload() {
           messageText += `\n\nCatatan:\n${errorMessages.join('\n')}`;
         }
 
-        await Swal.fire({
+        await uploadResult({
           icon: 'success',
           title: 'Upload Berhasil',
           text: messageText,
@@ -581,7 +585,7 @@ export default function MultiDestinationDetailUpload() {
       }
 
     } catch (error: any) {
-      await Swal.fire({
+      await uploadResult({
         icon: 'error',
         title: 'Upload Gagal',
         text: formatError(error),
@@ -589,6 +593,7 @@ export default function MultiDestinationDetailUpload() {
       });
     } finally {
       setLoading(false);
+      uploadProgress.ensureClosed();
       if (inputRef.current) inputRef.current.value = '';
     }
   };

@@ -257,7 +257,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
             <button
               onClick={save}
               disabled={saving || podLoading}
-              className={dialogPrimaryClass}
+              className={dialogPrimaryClass} data-busy={saving}
             >
               <CheckCircle2 className="h-4 w-4" />
               {saving ? 'Menyimpan…' : pod ? 'Update POD' : 'Konfirmasi Terima'}

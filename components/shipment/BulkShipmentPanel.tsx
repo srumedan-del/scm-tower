@@ -327,7 +327,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
             <button
               onClick={save}
               disabled={saving}
-              className={dialogPrimaryClass}
+              className={dialogPrimaryClass} data-busy={saving}
             >
               {saving
                 ? `Membuat ${selectedPss.length} Shipment…`

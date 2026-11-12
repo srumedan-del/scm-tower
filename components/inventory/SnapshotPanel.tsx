@@ -208,7 +208,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
             <button onClick={save} disabled={saving || optLoading}
-              className={dialogPrimaryClass}>
+              className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan Snapshot'}
             </button>
           </div>
