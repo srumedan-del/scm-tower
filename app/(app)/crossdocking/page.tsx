@@ -8,17 +8,9 @@ import PtsPanel from '@/components/crossdocking/PtsPanel'
 import { ArrowLeftRight, FileText, Plus } from 'lucide-react'
 import { Tabs } from '@/components/ui/Tabs'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
+import { statusClass } from '@/lib/status-style'
 
-const statusBadge = (status: string) => {
-  const map: Record<string, string> = {
-    'Draft':      'bg-gray-100 text-gray-600',
-    'Ready':      'bg-blue-100 text-blue-700',
-    'Dispatched': 'bg-orange-100 text-orange-700',
-    'In Transit': 'bg-sky-100 text-sky-700',
-    'Delivered':  'bg-green-100 text-green-700',
-  }
-  return map[status] ?? 'bg-gray-100 text-gray-500'
-}
+const statusBadge = statusClass
 
 function daysDiff(from: string, to: string) {
   const diff = Math.ceil(

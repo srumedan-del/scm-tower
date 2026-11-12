@@ -204,7 +204,8 @@ export default function DriverLiveTrackingMap() {
       </div>
 
       {selectedTrip ? (
-        <>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0 space-y-3">
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <TripRouteMap
               className="h-[calc(100dvh-15rem)] min-h-[26rem]"
@@ -216,17 +217,18 @@ export default function DriverLiveTrackingMap() {
           </div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <p className="text-xs text-slate-500">
-              Titik merah: posisi terakhir driver. Garis biru: jalur yang sudah dilalui
+              Titik merah: posisi terakhir driver. Garis terakota: jalur yang sudah dilalui
               {showRaw ? ` (${routePoints.length} titik asli GPS)` : ` (dihaluskan dari ${routePoints.length} titik GPS)`}.
-              Titik emas: tujuan yang punya koordinat, hijau jika sudah selesai.
+              Titik cokelat: tujuan yang punya koordinat, hijau jika sudah selesai.
             </p>
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
               <input type="checkbox" checked={showRaw} onChange={event => setShowRaw(event.target.checked)} className="h-4 w-4 accent-indigo-600" />
               Tampilkan titik asli GPS
             </label>
           </div>
+          </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid content-start gap-4 lg:grid-cols-3 xl:grid-cols-1">
             <section className="rounded-2xl border border-slate-200 bg-white p-4">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">Posisi terakhir</h3>
               {selectedTrip.last_location ? (
@@ -276,7 +278,7 @@ export default function DriverLiveTrackingMap() {
               )}
             </section>
           </div>
-        </>
+        </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">
           {loading ? 'Memuat trip...' : 'Tidak ada trip driver internal yang sedang berjalan.'}

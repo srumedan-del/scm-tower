@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getTrips } from './actions'
 import { displayVendorName } from '@/lib/vendor-display'
 import { TripCreateButton } from './TripCreateButton'
+import { statusClass } from '@/lib/status-style'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,13 +10,6 @@ function rupiah(value: number) {
   return value ? `Rp ${value.toLocaleString('id-ID')}` : '-'
 }
 
-const statusStyle: Record<string, string> = {
-  Assigned: 'bg-slate-100 text-slate-700',
-  Dispatched: 'bg-blue-100 text-blue-700',
-  'In Transit': 'bg-amber-100 text-amber-700',
-  Completed: 'bg-green-100 text-green-700',
-  Cancelled: 'bg-red-100 text-red-700',
-}
 
 export default async function TripsPage() {
   const trips = await getTrips()
@@ -67,7 +61,7 @@ export default async function TripsPage() {
                 <td className="px-4 py-3 text-xs font-medium text-slate-600">{trip.stop_count}</td>
                 <td className="px-4 py-3 text-xs font-medium text-slate-600">{rupiah(trip.total_expense)}</td>
                 <td className="px-4 py-3 text-xs font-medium text-center text-slate-600">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[trip.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(trip.status)}`}>
                     {trip.status}
                   </span>
                 </td>

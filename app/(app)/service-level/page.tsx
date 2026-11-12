@@ -9,6 +9,7 @@ import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
 import { slaDueAt as workingDayDueAt } from '@/lib/sla'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
+import { statusClass } from '@/lib/status-style'
 
 type GroupRow = {
   name: string
@@ -111,14 +112,7 @@ function pct(value: number, total: number) {
 }
 
 function StatusBadge({ status, compact = false }: { status: string; compact?: boolean }) {
-  const colors: Record<string, string> = {
-    Draft: 'bg-gray-100 text-gray-600',
-    Dispatched: 'bg-blue-100 text-blue-700',
-    'In Transit': 'bg-amber-100 text-amber-700',
-    Delivered: 'bg-green-100 text-green-700',
-    Closed: 'bg-slate-100 text-slate-500',
-  }
-  return <span className={`rounded-full font-medium ${compact ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs'} ${colors[status] ?? 'bg-gray-100 text-gray-600'}`}>{status}</span>
+  return <span className={`rounded-full font-medium ${compact ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs'} ${statusClass(status)}`}>{status}</span>
 }
 
 function PerformanceTable({ title, rows }: { title: string; rows: GroupRow[] }) {

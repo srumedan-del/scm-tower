@@ -13,20 +13,11 @@ import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton
 import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { Tabs } from '@/components/ui/Tabs'
+import { statusClass } from '@/lib/status-style'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-const statusBadge = (status: string) => {
-  const map: Record<string, string> = {
-    'Draft':      'bg-gray-100 text-gray-600',
-    'Dispatched': 'bg-blue-100 text-blue-700',
-    'In Transit': 'bg-orange-100 text-orange-700',
-    'Delivered':  'bg-green-100 text-green-700',
-    'Failed Delivery': 'bg-red-100 text-red-700',
-    'Closed':     'bg-slate-100 text-slate-500',
-  }
-  return map[status] ?? 'bg-gray-100 text-gray-500'
-}
+const statusBadge = statusClass
 
 const otdBadge = (isOnTime: boolean | null) => {
   if (isOnTime === null) return null

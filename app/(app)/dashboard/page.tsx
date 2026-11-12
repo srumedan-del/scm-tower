@@ -5,6 +5,7 @@ import { jakartaToday, slaDueAt, slaDueDate, slaWorkingDaysLeft, workingDaysSinc
 import { getPendingPts } from '@/app/(app)/crossdocking/actions'
 import { CountUp } from '@/components/ui/CountUp'
 import { AlertTriangle, ArrowLeftRight, Bell, CheckCircle2, Clock3, Minus, Package, PackageCheck, TrendingDown, TrendingUp, Truck, Warehouse } from 'lucide-react'
+import { statusClass } from '@/lib/status-style'
 
 export const dynamic = 'force-dynamic'
 
@@ -218,11 +219,7 @@ async function getDashboardData(period: string) {
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    Draft: 'bg-gray-100 text-gray-600', Dispatched: 'bg-blue-100 text-blue-700',
-    'In Transit': 'bg-orange-100 text-orange-700', Delivered: 'bg-green-100 text-green-700',
-  }
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${map[status] ?? 'bg-gray-100 text-gray-500'}`}>{status}</span>
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusClass(status)}`}>{status}</span>
 }
 
 function SlaStatus({ documentDate, dkLk, today }: { documentDate: string | null; dkLk: string | null; today: string }) {

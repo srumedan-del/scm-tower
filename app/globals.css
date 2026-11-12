@@ -93,11 +93,11 @@
 
     /* Standard Tailwind Color Palette (generated) — replaces hardcoded #hex usage */
     --color-slate-50: #FAF8F4; --color-slate-100: #F3F0E9; --color-slate-200: #E7E2D7;
-    --color-slate-300: #CFCCC4; --color-slate-400: #98989A; --color-slate-500: #6A6E76;
+    --color-slate-300: #CFCCC4; --color-slate-400: #75736D; --color-slate-500: #6A6E76;
     --color-slate-600: #4C5361; --color-slate-700: #353D4C; --color-slate-800: #1F2736;
     --color-slate-900: #111827; --color-slate-950: #0A0F1A;
     --color-gray-50: #FAF8F4; --color-gray-100: #F3F0E9; --color-gray-200: #E7E2D7;
-    --color-gray-300: #D3CDBF; --color-gray-400: #A39C8E; --color-gray-500: #736D62;
+    --color-gray-300: #D3CDBF; --color-gray-400: #7B7568; --color-gray-500: #736D62;
     --color-gray-600: #57524A; --color-gray-700: #403C36; --color-gray-800: #2A2825;
     --color-gray-900: #1A1917; --color-gray-950: #0F0E0D;
     --color-red-50: #fef2f2; --color-red-100: #fee2e2; --color-red-200: #fecaca;
