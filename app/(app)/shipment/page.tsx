@@ -88,7 +88,14 @@ export default function ShipmentPage() {
     startLoad(async () => {
       try {
         const data = await getShipmentTrackings({ status: inc ? 'all' : 'In Transit', month: m })
-        setRows(data)
+        // Trip terbaru di atas; di dalam satu Trip, PSS berurutan naik. Tanpa Trip di bawah.
+        setRows([...data].sort((a, b) => {
+          const tripA = a.trip_id ?? ''
+          const tripB = b.trip_id ?? ''
+          if (!tripA !== !tripB) return tripA ? -1 : 1
+          if (tripA !== tripB) return tripB.localeCompare(tripA)
+          return String(a.pss_no ?? '').localeCompare(String(b.pss_no ?? ''))
+        }))
         setTmsAvail(true)
       } catch (e: any) {
         if (e.message?.includes('schema cache')) setTmsAvail(false)
