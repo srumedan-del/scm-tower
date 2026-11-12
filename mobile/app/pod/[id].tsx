@@ -44,7 +44,7 @@ export default function PodScreen() {
       received_at: new Date().toISOString(),
     })
     notifySaved(`POD ${stop.reference_no} tersimpan`)
-    if (isLastOpenStop(trip, stop.id) && !trip.personal_vehicle) {
+    if (isLastOpenStop(trip, stop.id)) {
       Alert.alert(
         'Semua pengiriman selesai',
         'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.\n\nSetelah tiba di gudang SRU, tekan Tutup Trip dan isi KM akhir.',

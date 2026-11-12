@@ -48,15 +48,6 @@ export default function MoneyScreen() {
     )
   }
 
-  if (trip.personal_vehicle) {
-    return (
-      <View style={styles.empty}>
-        <Ionicons name="car-outline" size={40} color={colors.border} />
-        <Text style={styles.emptyText}>{trip.trip_no} memakai kendaraan pribadi. BBM dan biaya tidak dicatat.</Text>
-      </View>
-    )
-  }
-
   const encodedTrip = encodeURIComponent(trip.trip_no)
   const pendingCosts = queue.filter(item => item.kind === 'fuel' || item.kind === 'expense').length
   const totals = costs ? costTotals(costs) : null
