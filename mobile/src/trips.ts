@@ -70,6 +70,11 @@ export function taskSummary(trips: Trip[]) {
   return `${blocks.join('\n\n')}\n\nUtamakan keselamatan di jalan.`
 }
 
+/** Tujuan pertama yang belum selesai, sesuai urutan pengiriman. */
+export function nextStop(trip: Trip) {
+  return trip.stops.find(stop => !isStopDone(stop)) ?? null
+}
+
 /** True jika stop ini adalah tujuan terakhir yang belum selesai di trip-nya. */
 export function isLastOpenStop(trip: Trip, stopId: number) {
   return trip.stops.every(stop => stop.id === stopId || isStopDone(stop))

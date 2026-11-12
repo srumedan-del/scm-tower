@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { enqueue } from '../../src/queue'
 import { currentPosition, distanceMeters } from '../../src/tracker'
 import { findStop, isLastOpenStop } from '../../src/trips'
-import { Button, ChoiceRow, ErrorText, Field, PhotoField, Screen } from '../../src/ui'
+import { Button, Card, ChoiceRow, ErrorText, Field, Notice, PhotoField, Screen, notifySaved } from '../../src/ui'
 import { colors } from '../../src/theme'
 
 const RECEIVER_TYPES = ['Gudang Farmasi', 'Bagian Logistik', 'Perawat', 'Satpam', 'Lainnya']
@@ -30,8 +30,8 @@ export default function PodScreen() {
   const distance = position && target ? distanceMeters(position, target) : null
 
   function submit() {
+    if (!photo) return setError('Ambil foto bukti terima (Surat Jalan yang sudah ditandatangani)')
     if (!name.trim()) return setError('Nama penerima wajib diisi')
-    if (!photo) return setError('Foto bukti terima wajib diambil')
     enqueue('pod', `POD ${stop.reference_no}`, {
       shipment_id: stop.id,
       recipient_name: name.trim(),
@@ -43,6 +43,7 @@ export default function PodScreen() {
       lng: position?.lng,
       received_at: new Date().toISOString(),
     })
+    notifySaved(`POD ${stop.reference_no} tersimpan`)
     if (isLastOpenStop(trip, stop.id)) {
       Alert.alert(
         'Semua pengiriman selesai',
@@ -58,18 +59,19 @@ export default function PodScreen() {
   }
 
   return (
-    <Screen>
-      <Text style={styles.title}>{stop.customer_name}</Text>
-      <Text style={styles.meta}>{stop.reference_no}</Text>
+    <Screen footer={<><Text style={styles.step}>{photo && name.trim() ? 'Siap disimpan' : `Lengkapi: ${[!photo && 'foto', !name.trim() && 'nama penerima'].filter(Boolean).join(' dan ')}`}</Text><Button label="Simpan Bukti Terima" onPress={submit} /></>}>
+      <Card>
+        <Text style={styles.title}>{stop.customer_name}</Text>
+        <Text style={styles.meta}>{stop.reference_no}</Text>
+      </Card>
       {distance != null && distance > FAR_FROM_CUSTOMER_METERS && (
-        <Text style={styles.warning}>Posisi Anda sekitar {distance.toLocaleString('id-ID')} m dari lokasi customer. Pastikan tujuan sudah benar.</Text>
+        <Notice tone="warning">Posisi Anda sekitar {distance.toLocaleString('id-ID')} m dari lokasi customer. Pastikan tujuan sudah benar.</Notice>
       )}
-      <Field label="Nama penerima" value={name} onChangeText={setName} autoCapitalize="words" />
-      <ChoiceRow label="Tipe penerima" options={RECEIVER_TYPES} value={receiverType} onChange={setReceiverType} />
-      <PhotoField label="Foto bukti terima" value={photo} onChange={setPhoto} />
-      <Field label="Catatan (opsional)" value={notes} onChangeText={setNotes} multiline />
+      <PhotoField label="1. Foto Surat Jalan yang sudah ditandatangani" value={photo} onChange={setPhoto} />
+      <Field label="2. Nama penerima" value={name} onChangeText={setName} autoCapitalize="words" placeholder="Nama sesuai tanda tangan" />
+      <ChoiceRow label="3. Bagian penerima" options={RECEIVER_TYPES} value={receiverType} onChange={setReceiverType} />
+      <Field label="Catatan (opsional)" value={notes} onChangeText={setNotes} multiline placeholder="Mis. kemasan penyok, diterima sebagian" />
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button label="Simpan POD" onPress={submit} />
     </Screen>
   )
 }
@@ -77,5 +79,5 @@ export default function PodScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', color: colors.text },
   meta: { fontSize: 14, color: colors.textSoft },
-  warning: { fontSize: 14, color: colors.warning, backgroundColor: colors.warningSoft, padding: 12, borderRadius: 10 },
+  step: { fontSize: 13, color: colors.textSoft, textAlign: 'center' },
 })

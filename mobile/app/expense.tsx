@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { enqueue } from '../src/queue'
 import { currentPosition } from '../src/tracker'
-import { Button, ChoiceRow, ErrorText, Field, PhotoField, Screen } from '../src/ui'
+import { Button, ChoiceRow, ErrorText, Field, PhotoField, Screen, notifySaved } from '../src/ui'
 
 const TYPES = ['Tol', 'Parkir', 'Tambal Ban', 'Retribusi', 'Lainnya']
 
@@ -33,17 +33,17 @@ export default function ExpenseScreen() {
       lng: position?.lng,
       recorded_at: new Date().toISOString(),
     })
+    notifySaved('Biaya tersimpan')
     router.back()
   }
 
   return (
-    <Screen>
+    <Screen footer={<Button label="Simpan Biaya" busy={busy} onPress={submit} />}>
       <ChoiceRow label="Jenis biaya" options={TYPES} value={expenseType} onChange={setExpenseType} />
       <Field label="Nominal (Rp)" value={amount} onChangeText={setAmount} keyboardType="number-pad" />
       <PhotoField label="Foto bukti (opsional)" value={photo} onChange={setPhoto} />
       <Field label="Keterangan" value={notes} onChangeText={setNotes} multiline />
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button label="Simpan Biaya" busy={busy} onPress={submit} />
     </Screen>
   )
 }

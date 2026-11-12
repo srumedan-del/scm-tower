@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Alert, Text } from 'react-native'
+import { Alert, StyleSheet, Text } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { enqueue } from '../../src/queue'
 import { findStop, isLastOpenStop } from '../../src/trips'
-import { Button, ChoiceRow, ErrorText, Field, PhotoField, Screen } from '../../src/ui'
+import { Button, Card, ChoiceRow, ErrorText, Field, Notice, PhotoField, Screen, notifySaved } from '../../src/ui'
+import { colors } from '../../src/theme'
 
 const REASONS = ['Salah barang', 'Customer tutup', 'Alamat tidak ditemukan', 'Ditolak penerima', 'Lainnya']
 
@@ -19,8 +20,7 @@ export default function FailedScreen() {
   if (!found) return <Screen><Text>Pengiriman tidak ditemukan.</Text></Screen>
   const { stop, trip } = found
 
-  function submit() {
-    if (!photo) return setError('Foto bukti wajib diambil')
+  function save() {
     enqueue('failed', `Gagal kirim ${stop.reference_no}`, {
       shipment_id: stop.id,
       failure_reason: reason,
@@ -28,6 +28,7 @@ export default function FailedScreen() {
       photo_url: photo,
       failed_at: new Date().toISOString(),
     })
+    notifySaved(`${stop.reference_no} dicatat gagal kirim`)
     if (isLastOpenStop(trip, stop.id)) {
       Alert.alert(
         'Semua pengiriman selesai',
@@ -42,13 +43,31 @@ export default function FailedScreen() {
     router.back()
   }
 
+  function submit() {
+    if (!photo) return setError('Foto bukti wajib diambil')
+    if (reason === 'Lainnya' && !notes.trim()) return setError('Tulis alasan gagal kirim di catatan')
+    Alert.alert('Catat gagal kirim?', `${stop.customer_name ?? stop.reference_no}\nAlasan: ${reason}\n\nBarang dibawa kembali ke gudang.`, [
+      { text: 'Batal', style: 'cancel' },
+      { text: 'Ya, catat', style: 'destructive', onPress: save },
+    ])
+  }
+
   return (
-    <Screen>
+    <Screen footer={<Button label="Simpan Gagal Kirim" tone="danger" onPress={submit} />}>
+      <Card>
+        <Text style={styles.title}>{stop.customer_name}</Text>
+        <Text style={styles.meta}>{stop.reference_no}</Text>
+      </Card>
+      <Notice tone="warning">Hubungi admin sebelum mencatat gagal kirim, bila memungkinkan.</Notice>
       <ChoiceRow label="Alasan" options={REASONS} value={reason} onChange={setReason} />
-      <PhotoField label="Foto bukti" value={photo} onChange={setPhoto} />
-      <Field label="Catatan (opsional)" value={notes} onChangeText={setNotes} multiline />
+      <PhotoField label="Foto bukti (lokasi, toko tutup, atau barang)" value={photo} onChange={setPhoto} />
+      <Field label={reason === 'Lainnya' ? 'Catatan (wajib)' : 'Catatan (opsional)'} value={notes} onChangeText={setNotes} multiline />
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button label="Simpan Gagal Kirim" tone="danger" onPress={submit} />
     </Screen>
   )
 }
+
+const styles = StyleSheet.create({
+  title: { fontSize: 17, fontWeight: '700', color: colors.text },
+  meta: { fontSize: 14, color: colors.textSoft },
+})

@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useTrips } from '../../src/hooks'
 import { currentPosition, distanceMeters } from '../../src/tracker'
 import { isStopDone, mapsUrl } from '../../src/trips'
-import { Button, Card, Screen, StatusPill } from '../../src/ui'
+import { Button, Card, Notice, Screen, SectionTitle, StatusPill } from '../../src/ui'
 import { colors } from '../../src/theme'
 
 const NEAR_DESTINATION_METERS = 500
@@ -56,9 +56,19 @@ export default function StopScreen() {
     )
   }
 
+  const order = trip.stops.findIndex(row => row.id === stop.id) + 1
+  const totalQty = stop.items.reduce((sum, item) => sum + item.quantity, 0)
+  const footer = trip.started_at && !done ? (
+    <View style={styles.footerRow}>
+      <View style={styles.footerSecondary}><Button label="Gagal Kirim" tone="outline" onPress={() => router.push(`/failed/${stop.id}`)} /></View>
+      <View style={styles.footerPrimary}><Button label="Sudah Sampai, Isi POD" onPress={confirmArrival} /></View>
+    </View>
+  ) : undefined
+
   return (
-    <Screen>
+    <Screen footer={footer}>
       <Card>
+        <Text style={styles.order}>Tujuan {order} dari {trip.stops.length}</Text>
         <Text style={styles.title}>{stop.customer_name ?? '-'}</Text>
         <Text style={styles.meta}>{stop.reference_no}{stop.dk_lk ? ` · ${stop.dk_lk}` : ''}</Text>
         <Text style={styles.meta}>{address || '-'}</Text>
@@ -68,19 +78,26 @@ export default function StopScreen() {
 
       {!done && (
         <Card>
-          <Text style={styles.label}>Jarak ke lokasi tujuan</Text>
-          <Text style={styles.distance}>
-            {distance != null ? formatDistance(distance) : hasTarget ? 'Menghitung...' : 'Koordinat customer belum tersedia'}
-          </Text>
-          <Button label="Navigasi ke Tujuan" tone="outline" onPress={openMaps} disabled={!hasTarget && !address} />
+          <View style={styles.distanceRow}>
+            <View style={styles.flex}>
+              <Text style={styles.label}>Jarak ke lokasi tujuan</Text>
+              <Text style={styles.distance}>
+                {distance != null ? formatDistance(distance) : hasTarget ? 'Menghitung...' : 'Koordinat belum tersedia'}
+              </Text>
+            </View>
+            {distance != null && distance <= NEAR_DESTINATION_METERS ? <Text style={styles.near}>Sudah dekat</Text> : null}
+          </View>
+          <Button label="Buka Navigasi Google Maps" onPress={openMaps} disabled={!hasTarget && !address} />
         </Card>
       )}
 
-      <Text style={styles.heading}>Barang ({stop.items.length})</Text>
+      {!trip.started_at && <Notice tone="warning">Mulai trip terlebih dahulu untuk menyelesaikan pengiriman ini.</Notice>}
+
+      <SectionTitle hint={`${stop.items.length} baris · ${totalQty.toLocaleString('id-ID')} unit`}>Barang</SectionTitle>
       <Card>
         {stop.items.length === 0 ? <Text style={styles.meta}>Detail barang belum tersedia.</Text> : null}
         {stop.items.map((item, index) => (
-          <View key={`${item.item_no}-${item.lot_no}-${index}`} style={styles.item}>
+          <View key={`${item.item_no}-${item.lot_no}-${index}`} style={[styles.item, index === stop.items.length - 1 && styles.itemLast]}>
             <View style={styles.itemText}>
               <Text style={styles.itemName}>{item.description}</Text>
               <Text style={styles.meta}>{item.item_no}{item.lot_no ? ` · Lot ${item.lot_no}` : ''}</Text>
@@ -89,20 +106,19 @@ export default function StopScreen() {
           </View>
         ))}
       </Card>
-
-      {!trip.started_at && <Text style={styles.meta}>Mulai trip terlebih dahulu untuk menyelesaikan pengiriman.</Text>}
-      {trip.started_at && !done && (
-        <>
-          <Button label="Terkirim, isi POD" onPress={confirmArrival} />
-          <Button label="Gagal kirim" tone="danger" onPress={() => router.push(`/failed/${stop.id}`)} />
-        </>
-      )}
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 16, fontWeight: '700', color: colors.midnight },
+  order: { fontSize: 12, fontWeight: '800', color: colors.goldDark, textTransform: 'uppercase' },
+  flex: { flex: 1 },
+  distanceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  near: { fontSize: 12, fontWeight: '700', color: colors.success, backgroundColor: colors.successSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  itemLast: { borderBottomWidth: 0 },
+  footerRow: { flexDirection: 'row', gap: 10 },
+  footerSecondary: { flex: 2 },
+  footerPrimary: { flex: 3 },
   title: { fontSize: 17, fontWeight: '700', color: colors.text },
   meta: { fontSize: 14, color: colors.textSoft },
   label: { fontSize: 13, fontWeight: '600', color: colors.textSoft },

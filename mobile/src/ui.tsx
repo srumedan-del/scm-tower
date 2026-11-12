@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native'
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View, type KeyboardTypeOptions } from 'react-native'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
@@ -8,14 +9,74 @@ import { Directory, File, Paths } from 'expo-file-system'
 import * as Network from 'expo-network'
 import { colors, radius } from './theme'
 
-export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+/** footer: tombol aksi utama yang selalu terlihat di bawah layar. */
+export function Screen({ children, scroll = true, footer }: { children: ReactNode; scroll?: boolean; footer?: ReactNode }) {
   return (
     <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
       {scroll
-        ? <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+        ? <ScrollView style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
         : <View style={[styles.content, styles.fill]}>{children}</View>}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </SafeAreaView>
   )
+}
+
+export function ProgressBar({ done, total, light }: { done: number; total: number; light?: boolean }) {
+  const ratio = total > 0 ? Math.min(1, done / total) : 0
+  return (
+    <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: done }} style={[styles.progressTrack, light && styles.progressTrackLight]}>
+      <View style={[styles.progressFill, { width: `${Math.round(ratio * 100)}%` }]} />
+    </View>
+  )
+}
+
+export function SectionTitle({ children, hint }: { children: ReactNode; hint?: string }) {
+  return (
+    <View style={styles.sectionTitle}>
+      <Text style={styles.sectionText}>{children}</Text>
+      {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
+    </View>
+  )
+}
+
+export type IconName = keyof typeof Ionicons.glyphMap
+
+export function ActionTile({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.cardPressed]}>
+      <Ionicons name={icon} size={24} color={colors.navy} />
+      <Text style={styles.tileText}>{label}</Text>
+    </Pressable>
+  )
+}
+
+export function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Ionicons name={icon} size={18} color={colors.goldDark} />
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue} numberOfLines={2}>{value}</Text>
+    </View>
+  )
+}
+
+export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warning' | 'success'; children: ReactNode }) {
+  const palette = tone === 'warning'
+    ? { bg: colors.warningSoft, fg: colors.warning, icon: 'alert-circle-outline' as const }
+    : tone === 'success'
+      ? { bg: colors.successSoft, fg: colors.success, icon: 'checkmark-circle-outline' as const }
+      : { bg: '#E8EEF7', fg: colors.navy, icon: 'information-circle-outline' as const }
+  return (
+    <View style={[styles.notice, { backgroundColor: palette.bg }]}>
+      <Ionicons name={palette.icon} size={18} color={palette.fg} />
+      <Text style={[styles.noticeText, { color: palette.fg }]}>{children}</Text>
+    </View>
+  )
+}
+
+/** Konfirmasi singkat setelah data disimpan ke antrean. */
+export function notifySaved(message: string) {
+  if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT)
 }
 
 export function Card({ children, onPress }: { children: ReactNode; onPress?: () => void }) {
@@ -206,7 +267,21 @@ const buttonTone = StyleSheet.create({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ivory },
-  content: { padding: 16, gap: 12 },
+  content: { padding: 16, gap: 12, paddingBottom: 24 },
+  footer: { paddingVertical: 12, paddingHorizontal: 16, gap: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  progressTrack: { height: 8, borderRadius: 999, backgroundColor: '#ECE7DB', overflow: 'hidden' },
+  progressTrackLight: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  progressFill: { height: '100%', borderRadius: 999, backgroundColor: colors.gold },
+  sectionTitle: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 },
+  sectionText: { fontSize: 16, fontWeight: '700', color: colors.midnight },
+  sectionHint: { fontSize: 13, color: colors.textSoft },
+  tile: { flex: 1, minHeight: 76, alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  tileText: { fontSize: 13, fontWeight: '700', color: colors.navy },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 },
+  infoLabel: { fontSize: 13, color: colors.textSoft, width: 92 },
+  infoValue: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text },
+  notice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: 12, borderRadius: radius.sm },
+  noticeText: { flex: 1, fontSize: 14, lineHeight: 20 },
   fill: { flex: 1 },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 6 },
   cardPressed: { borderColor: colors.gold, transform: [{ scale: 0.99 }] },
