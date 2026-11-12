@@ -2,11 +2,12 @@
 
 import { DialogShell, DialogHeader, dialogCancelClass } from '@/components/ui/FormDialog'
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import { Loader2, Package, Undo2, Shuffle } from 'lucide-react'
+import { Loader2, Package, Undo2, Shuffle, Truck } from 'lucide-react'
 import {
   getPtsDetailsForCrossdocking,
   getPtsRecords,
   setPtsRealokasi,
+  setPtsRealokasiShipped,
   type PtsRecord,
 } from '@/app/(app)/crossdocking/actions'
 import { notify, confirmAction } from '@/lib/feedback'
@@ -58,6 +59,26 @@ export default function PtsPanel({ selectedMonth }: Props) {
         ? { ...item, ...audit, status: toRealokasi ? 'Realokasi' : 'Menunggu Crossdocking' }
         : item))
       notify.success(toRealokasi ? 'Ditandai Realokasi' : 'Realokasi dibatalkan', row.pts_no)
+    } catch (error: any) {
+      notify.error('Tidak dapat mengubah status', error.message)
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function toggleShipped(row: PtsRecord) {
+    const shipped = !row.realokasi_shipped_at
+    if (shipped && !(await confirmAction({
+      title: `${row.pts_no} sudah dikirim?`,
+      message: 'Tandai PTS ini sudah dikirim ke JKT-JP12.',
+      confirmLabel: 'Tandai Dikirim',
+      tone: 'info',
+    }))) return
+    setSavingId(row.id)
+    try {
+      const audit = await setPtsRealokasiShipped(row.id, shipped)
+      setRows(current => current.map(item => item.id === row.id ? { ...item, ...audit } : item))
+      notify.success(shipped ? 'Ditandai dikirim ke JKT-JP12' : 'Tanda kirim dibatalkan', row.pts_no)
     } catch (error: any) {
       notify.error('Tidak dapat mengubah status', error.message)
     } finally {
@@ -149,17 +170,23 @@ export default function PtsPanel({ selectedMonth }: Props) {
                   <span className={`inline-flex rounded-lg px-2.5 py-1 text-[13px] font-bold ${
                     row.status === 'Terhubung Crossdocking'
                       ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                      : row.status === 'Realokasi' && row.realokasi_shipped_at
+                        ? 'bg-green-50 text-green-700 border border-green-200/60'
                       : row.status === 'Realokasi'
-                        ? 'bg-violet-50 text-violet-700 border border-violet-200/60'
+                        ? 'bg-gold-50 text-gold-800 border border-gold-200/60'
                         : 'bg-amber-50 text-amber-700 border border-amber-200/60'
                   }`} title={row.status === 'Realokasi' ? 'Realokasi MDN-PAR ke JKT-JP12, tanpa biaya' : undefined}>
-                    {row.status === 'Realokasi' ? 'Realokasi ke JKT-JP12' : row.status}
+                    {row.status === 'Realokasi' ? (row.realokasi_shipped_at ? 'Dikirim ke JKT-JP12' : 'Realokasi ke JKT-JP12') : row.status}
                   </span>
-                  {row.status === 'Realokasi' && (row.realokasi_by || row.realokasi_at) && (
+                  {row.status === 'Realokasi' && row.realokasi_shipped_at ? (
+                    <span className="mt-1 block text-xs font-normal text-slate-500">
+                      Dikirim {[formatDateTime(row.realokasi_shipped_at), row.realokasi_shipped_by].filter(Boolean).join(' · ')}
+                    </span>
+                  ) : row.status === 'Realokasi' && (row.realokasi_by || row.realokasi_at) ? (
                     <span className="mt-1 block text-xs font-normal text-slate-500">
                       {[row.realokasi_by, row.realokasi_at && formatDateTime(row.realokasi_at)].filter(Boolean).join(' · ')}
                     </span>
-                  )}
+                  ) : null}
                   {waitingDays(row) > PTS_PENDING_REMINDER_DAYS && (
                     <span className="mt-1 block text-xs font-semibold text-red-600">
                       {waitingDays(row)} hari kerja belum diputuskan
@@ -181,21 +208,43 @@ export default function PtsPanel({ selectedMonth }: Props) {
                 <td className="px-4 py-3 text-center whitespace-nowrap">
                   {row.status === 'Terhubung Crossdocking' ? (
                     <span className="text-slate-300">—</span>
+                  ) : row.status === 'Realokasi' ? (
+                    <div className="flex justify-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={savingId === row.id}
+                        onClick={() => toggleShipped(row)}
+                        className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-all disabled:opacity-50 ${
+                          row.realokasi_shipped_at
+                            ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                            : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                        }`}
+                      >
+                        {savingId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : row.realokasi_shipped_at ? <Undo2 className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
+                        {row.realokasi_shipped_at ? 'Batal kirim' : 'Tandai Dikirim'}
+                      </button>
+                      {!row.realokasi_shipped_at && (
+                        <button
+                          type="button"
+                          disabled={savingId === row.id}
+                          onClick={() => toggleRealokasi(row)}
+                          title="Batalkan Realokasi"
+                          aria-label="Batalkan Realokasi"
+                          className="inline-flex min-h-9 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <button
                       type="button"
                       disabled={savingId === row.id}
                       onClick={() => toggleRealokasi(row)}
-                      className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-all disabled:opacity-50 ${
-                        row.status === 'Realokasi'
-                          ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                          : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
-                      }`}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gold-200 bg-gold-50 px-3 py-1.5 text-[13px] font-semibold text-gold-800 transition-all hover:bg-gold-100 disabled:opacity-50"
                     >
-                      {savingId === row.id
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : row.status === 'Realokasi' ? <Undo2 className="h-4 w-4" /> : <Shuffle className="h-4 w-4" />}
-                      {row.status === 'Realokasi' ? 'Batalkan' : 'Realokasi'}
+                      {savingId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />}
+                      Realokasi
                     </button>
                   )}
                 </td>

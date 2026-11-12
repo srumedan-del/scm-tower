@@ -58,6 +58,8 @@ export type PtsRecord = {
   status: 'Menunggu Crossdocking' | 'Terhubung Crossdocking' | 'Realokasi'
   realokasi_by?: string | null
   realokasi_at?: string | null
+  realokasi_shipped_at?: string | null
+  realokasi_shipped_by?: string | null
   crossdocking_id: number | null
   source_file_name: string | null
   uploaded_at: string | null
@@ -549,6 +551,23 @@ export async function getCrossdockingOptions(referenceMonth?: string) {
 }
 
 /** Tandai PTS sebagai Realokasi MDN-PAR ke JKT-JP12 (tanpa crossdocking, tanpa biaya), atau batalkan. */
+/** Tandai PTS Realokasi sudah dikirim ke JKT-JP12, atau batalkan tanda kirim. */
+export async function setPtsRealokasiShipped(id: number, shipped: boolean) {
+  const user = await requireAuthenticatedUser()
+  const by = String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'unknown')
+  const now = new Date().toISOString()
+  const { error } = await supabaseAdmin
+    .from('crossdocking_pts')
+    .update({ realokasi_shipped_at: shipped ? now : null, realokasi_shipped_by: shipped ? by : null, updated_at: now })
+    .eq('id', id)
+    .eq('status', 'Realokasi')
+  if (error) {
+    if (error.message.includes('realokasi_shipped')) throw new Error('Jalankan dulu supabase/migration_v48_pts_realokasi_shipped.sql di Supabase.')
+    throw new Error(error.message)
+  }
+  return { realokasi_shipped_at: shipped ? now : null, realokasi_shipped_by: shipped ? by : null }
+}
+
 export async function setPtsRealokasi(id: number, realokasi: boolean) {
   const user = await requireAuthenticatedUser()
   const by = String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'unknown')
