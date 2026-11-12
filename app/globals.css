@@ -1412,3 +1412,6 @@ button[data-busy='true']:not(:has(.animate-spin)) > svg { display: none; }
 input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: none;
 }
+
+/* Deskripsi di bawah judul halaman tidak ditampilkan — judul sudah cukup jelas */
+.app-main h1 + p { display: none; }

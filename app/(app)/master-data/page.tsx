@@ -62,7 +62,6 @@ export default async function MasterDataPage() {
     <div className="space-y-7">
       <header>
         <h1 className="text-3xl font-bold mb-1">Master Data</h1>
-        <p className="text-sm text-slate-500">Data referensi SCM: vendor, pelanggan, tarif, armada, rute, gudang, dan SKU.</p>
       </header>
 
       {groups.map(group => (
