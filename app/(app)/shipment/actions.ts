@@ -1690,6 +1690,27 @@ export async function getActiveDriverLiveLocations(includeFinished = false): Pro
     .limit(500)
   if (openError) return []
   const openTripIds = [...new Set((openRows ?? []).map(row => String(row.trip_id)))]
+
+  // Semua tujuan sudah selesai tapi trip belum ditutup: driver sedang kembali ke gudang.
+  // Tetap tampil selama HP masih mengirim lokasi dalam 6 jam terakhir.
+  const { data: unclosedTrips } = await supabaseAdmin
+    .from('trip')
+    .select('trip_no')
+    .not('started_at', 'is', null)
+    .is('completed_at', null)
+    .not('driver_id', 'is', null)
+    .limit(200)
+  const unclosedIds = (unclosedTrips ?? []).map(row => String(row.trip_no)).filter(id => !openTripIds.includes(id))
+  if (unclosedIds.length) {
+    const recentSince = new Date(Date.now() - 6 * 3_600_000).toISOString()
+    const { data: recentPings } = await supabaseAdmin
+      .from('driver_location_logs')
+      .select('trip_id')
+      .in('trip_id', unclosedIds)
+      .gte('recorded_at', recentSince)
+      .limit(1000)
+    for (const tripId of new Set((recentPings ?? []).map(row => String(row.trip_id)))) openTripIds.push(tripId)
+  }
   let tripIds = openTripIds
   if (includeFinished) {
     // Trip driver internal yang berangkat dalam 7 hari terakhir, untuk melihat riwayat perjalanan.

@@ -144,7 +144,10 @@ export default function DriverLiveTrackingMap() {
   const trackedCount = trips.filter(t => t.last_location).length
   const routePoints = route && route.tripId === selectedTripId ? route.points : []
   const speedKmh = estimateSpeedKmh(selectedTrip?.last_location?.speed_kmh, routePoints)
-  const movement = selectedTrip?.finished ? { tone: 'moving' as const, label: 'Trip selesai' } : movementStatus(routePoints)
+  const baseMovement = selectedTrip?.finished ? { tone: 'moving' as const, label: 'Trip selesai' } : movementStatus(routePoints)
+  // Semua tujuan selesai tapi trip belum ditutup: driver sedang kembali ke SRU Medan.
+  const returning = Boolean(selectedTrip && !selectedTrip.finished && selectedTrip.total_deliveries > 0 && selectedTrip.delivered_count >= selectedTrip.total_deliveries)
+  const movement = returning && baseMovement ? { ...baseMovement, label: `Kembali ke gudang · ${baseMovement.label}` } : baseMovement
   const [showRaw, setShowRaw] = useState(false)
   const displayPoints = showRaw ? routePoints : smoothRoute(routePoints)
 
