@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect, useRouter } from 'expo-router'
 import * as Network from 'expo-network'
 import { ApiError, clearSession } from './api'
@@ -57,7 +57,27 @@ export function useTrips() {
   }, [router])
 
   useFocusEffect(useCallback(() => { void refresh() }, [refresh]))
-  useEffect(() => subscribeQueue(() => setTrips(getCachedTrips())), [])
+
+  // Saat antrean berubah: tampilkan perubahan lokal, lalu begitu ada item yang
+  // terkirim ambil ulang dari server. Tanpa ini, item yang sudah terkirim hilang
+  // dari antrean sementara cache trip masih versi lama (mis. "Belum dimulai").
+  const queueSize = useRef(getQueue().length)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const unsubscribe = subscribeQueue(() => {
+      const size = getQueue().length
+      const sent = size < queueSize.current
+      queueSize.current = size
+      if (!sent) {
+        setTrips(getCachedTrips())
+        return
+      }
+      // Pertahankan tampilan sekarang sampai data server yang baru tiba.
+      clearTimeout(timer)
+      timer = setTimeout(() => { void refresh() }, 500)
+    })
+    return () => { clearTimeout(timer); unsubscribe() }
+  }, [refresh])
 
   return { trips, refreshing, error, refresh }
 }
