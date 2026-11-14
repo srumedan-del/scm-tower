@@ -182,8 +182,8 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     const go = await confirmAction({
       tone: 'info',
       title: 'Entry belum selesai',
-      message: `${uncounted} dari ${lines.length} lot belum diisi Qty Fisik. Lengkapi semua lot sebelum ${action}.`,
-      confirmLabel: 'Ke lot yang belum diisi',
+      message: `${uncounted} dari ${lines.length} lines belum diisi Qty Fisik. Lengkapi semua lines sebelum ${action}.`,
+      confirmLabel: 'Ke lines yang belum diisi',
     })
     if (go) focusFirstEmpty()
     return false
@@ -216,7 +216,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   const confirmLeave = useCallback(() => confirmAction({
     tone: 'danger',
     title: 'Proses entry belum selesai',
-    message: `${guard.current.uncounted} dari ${guard.current.total} lot belum diisi Qty Fisik. Isian yang sudah diketik tetap tersimpan. Tetap keluar dari halaman ini?`,
+    message: `${guard.current.uncounted} dari ${guard.current.total} lines belum diisi Qty Fisik. Isian yang sudah diketik tetap tersimpan. Tetap keluar dari halaman ini?`,
     confirmLabel: 'Tetap keluar',
   }), [])
   useEffect(() => {
@@ -249,10 +249,10 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
               <div className="h-2 w-40 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin={0} aria-valuemax={lines.length} aria-valuenow={summary.counted}>
                 <div className={`h-full rounded-full ${complete ? 'bg-green-600' : 'bg-amber-500'}`} style={{ width: `${Math.round((summary.counted / lines.length) * 100)}%` }} />
               </div>
-              <span className="font-semibold text-slate-800">{summary.counted} dari {lines.length} lot terisi</span>
+              <span className="font-semibold text-slate-800">{summary.counted} dari {lines.length} lines terisi</span>
               {complete
-                ? <span className="font-semibold text-green-700">Semua lot sudah diisi</span>
-                : <button type="button" onClick={focusFirstEmpty} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{uncounted} lot belum diisi</button>}
+                ? <span className="font-semibold text-green-700">Semua lines sudah diisi</span>
+                : <button type="button" onClick={focusFirstEmpty} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{uncounted} lines belum diisi</button>}
               {session && <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{session.status}</span>}
             </div>
           ) : <span />}
@@ -274,7 +274,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
               onClick={() => (dirtyIds.length ? void flush() : void finish())}
               disabled={saveState === 'saving'}
               data-busy={saveState === 'saving'}
-              title={saveState === 'error' && dirtyIds.length ? 'Belum terkirim (koneksi?). Isian tersimpan di perangkat ini dan dicoba lagi otomatis.' : dirtyIds.length ? 'Isian disimpan otomatis' : complete ? 'Semua lot terisi. Selesai.' : `${uncounted} lot belum diisi`}
+              title={saveState === 'error' && dirtyIds.length ? 'Belum terkirim (koneksi?). Isian tersimpan di perangkat ini dan dicoba lagi otomatis.' : dirtyIds.length ? 'Isian disimpan otomatis' : complete ? 'Semua lines terisi. Selesai.' : `${uncounted} lines belum diisi`}
               className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white ${saveState === 'error' && dirtyIds.length ? 'bg-red-600' : dirtyIds.length ? 'bg-indigo-600' : complete ? 'bg-green-700' : 'bg-slate-500'}`}
             >
               {dirtyIds.length || saveState === 'saving' ? <Save className="h-4 w-4" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
@@ -381,7 +381,7 @@ function TotalRow({ label, systemQty, physicalQty, counted, lineCount, diffQty, 
   return (
     <tr className={strong ? 'bg-slate-100 font-bold' : 'bg-slate-50 font-semibold'}>
       <td />
-      <td colSpan={4} className="px-3 py-2 text-slate-800">{label}{!complete && <span className="ml-2 text-xs font-normal text-slate-500">{counted}/{lineCount} lot dihitung</span>}</td>
+      <td colSpan={4} className="px-3 py-2 text-slate-800">{label}{!complete && <span className="ml-2 text-xs font-normal text-slate-500">{counted}/{lineCount} lines dihitung</span>}</td>
       <td className="px-3 py-2 text-right font-mono">{num(systemQty)}</td>
       <td className="px-3 py-2 text-right font-mono">{counted ? num(physicalQty) : '—'}</td>
       <td className={`px-3 py-2 text-right font-mono ${!counted ? 'text-slate-300' : diffQty === 0 ? 'text-green-700' : diffQty < 0 ? 'text-red-700' : 'text-amber-700'}`}>

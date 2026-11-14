@@ -61,7 +61,7 @@ export function OpnameList({ period }: { period: OpnamePeriod }) {
             <tr>
               <th className="px-4 py-3 font-semibold uppercase tracking-wider">Tanggal opname</th>
               <th className="px-4 py-3 font-semibold uppercase tracking-wider">Sumber</th>
-              <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Lot</th>
+              <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Lines</th>
               <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Sudah dihitung</th>
               <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Selisih</th>
               <th className="px-4 py-3 text-center font-semibold uppercase tracking-wider">Status</th>
@@ -150,7 +150,7 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
         void showSuccess({
           title: `Sesi opname ${period.toLowerCase()} dibuat`,
           message: 'Cetak lembar hitung untuk dibawa ke gudang, lalu isi Qty Fisik di halaman sesi.',
-          details: [{ label: 'Tanggal', value: opnameDateParts(date).long }, { label: 'Lot opname', value: String(result.lineCount) }, { label: 'Baris SIRUP', value: String(result.totalRows) }],
+          details: [{ label: 'Tanggal', value: opnameDateParts(date).long }, { label: 'Lines opname', value: String(result.lineCount) }, { label: 'Baris SIRUP', value: String(result.totalRows) }],
           actionLabel: 'Buka sesi',
         }).then(() => { onCreated(); window.location.href = `/inventory/opname/${result.id}` })
       } catch (e: any) {
@@ -182,7 +182,7 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
           <div className="grid gap-2">
             {option('snapshot', 'Snapshot SIRUP terbaru',
               snapshot === undefined ? 'Memeriksa snapshot…'
-                : snapshot ? `Diambil ${snapshotLabel}, ${snapshot.line_count} lot${snapshotOld ? '. Bukan snapshot hari ini.' : ''}`
+                : snapshot ? `Diambil ${snapshotLabel}, ${snapshot.line_count} lines${snapshotOld ? '. Bukan snapshot hari ini.' : ''}`
                 : 'Belum ada snapshot. Snapshot diambil otomatis pukul 07.00 di hari kerja.',
               !snapshot)}
             {option('upload', 'Upload file Export Excel', 'Dari SIRUP Stok Gudang: CAB01-MDN, MDN-PAR, Kategori All, Filter, lalu Export to Excel.')}
