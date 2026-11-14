@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
-import { extractOpnameLines, LINE_STATUSES, OPNAME_PERIODS, SESSION_STATUSES, type OpnamePeriod } from '@/lib/stock-opname'
+import { extractOpnameLines, LINE_STATUSES, OPNAME_PERIODS, SESSION_STATUSES, statusFromProgress, type OpnamePeriod } from '@/lib/stock-opname'
 
 export type OpnameSession = {
   id: number
@@ -151,7 +151,8 @@ async function insertSession(input: { period: OpnamePeriod; opname_date: string;
 
 export type OpnameLineUpdate = Pick<OpnameLine, 'id' | 'qty_physical' | 'penyebab' | 'action_plan' | 'line_status'>
 
-export async function saveOpnameLines(sessionId: number, updates: OpnameLineUpdate[]) {
+/** Simpan hasil hitung, lalu sesuaikan status sesi dengan progres pengisian. Mengembalikan status terbaru. */
+export async function saveOpnameLines(sessionId: number, updates: OpnameLineUpdate[]): Promise<OpnameSession['status'] | null> {
   await requireAuthenticatedUser()
   const now = new Date().toISOString()
   for (const update of updates) {
@@ -171,6 +172,23 @@ export async function saveOpnameLines(sessionId: number, updates: OpnameLineUpda
     if (error) throw new Error(explain(error))
   }
   await supabaseAdmin.from('stock_opname_session').update({ updated_at: now }).eq('id', sessionId)
+
+  // Status mengikuti progres; sesi yang sudah Diverifikasi tidak diubah. Gagal di sini tidak membatalkan simpanan.
+  try {
+    const [{ data: session }, { data: lines }] = await Promise.all([
+      supabaseAdmin.from('stock_opname_session').select('status').eq('id', sessionId).maybeSingle(),
+      supabaseAdmin.from('stock_opname_line').select('qty_physical').eq('session_id', sessionId),
+    ])
+    if (!session || session.status === 'Diverifikasi') return (session?.status as OpnameSession['status']) ?? null
+    const status = statusFromProgress((lines ?? []).filter(line => line.qty_physical != null).length, (lines ?? []).length)
+    if (status !== session.status) {
+      const { error } = await supabaseAdmin.from('stock_opname_session').update({ status }).eq('id', sessionId)
+      if (error) return session.status as OpnameSession['status']
+    }
+    return status
+  } catch {
+    return null
+  }
 }
 
 export async function updateOpnameSession(id: number, patch: { status?: OpnameSession['status']; pic?: string | null; opname_date?: string; notes?: string | null }) {

@@ -125,7 +125,8 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     inFlight.current = true
     setSaveState('saving')
     try {
-      await saveOpnameLines(sessionId, updates)
+      const status = await saveOpnameLines(sessionId, updates)
+      if (status) setSession(current => (current ? { ...current, status } : current))
       const byId = new Map(updates.map(update => [update.id, update]))
       setLines(previous => previous.map(line => {
         const update = byId.get(line.id)
@@ -157,7 +158,10 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     const onHide = () => { if (document.visibilityState === 'hidden') void flush() }
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       const { lines: current, drafts: currentDrafts } = latest.current
-      if (current.some(line => !isSaved(line, currentDrafts[line.id]))) { void flush(); event.preventDefault() }
+      const unsaved = current.some(line => !isSaved(line, currentDrafts[line.id]))
+      const incomplete = current.some(line => parseInput(currentDrafts[line.id]?.qty_physical ?? '') == null)
+      if (unsaved) void flush()
+      if (unsaved || incomplete) event.preventDefault()
     }
     document.addEventListener('visibilitychange', onHide)
     window.addEventListener('beforeunload', onBeforeUnload)
@@ -169,16 +173,66 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   }, [flush])
 
   /** Semua isian tersimpan: tandai sesi selesai dihitung lalu kembali ke daftar sesi. */
-  async function finish() {
-    if (!session) return
-    const uncounted = lines.length - summary.counted
-    if (uncounted > 0 && !(await confirmAction({ title: 'Selesaikan opname?', message: `${uncounted} lot belum diisi Qty Fisik. Tetap tandai sesi ini selesai?` }))) return
-    try {
-      if (session.status === 'Draft') await updateOpnameSession(session.id, { status: 'Selesai dihitung' })
-      notify.success('Stock opname selesai')
-      router.push(periodHref(session.period))
-    } catch (e: any) { notify.error('Gagal menyelesaikan', e.message) }
+  const uncounted = lines.length - summary.counted
+  const complete = lines.length > 0 && uncounted === 0
+
+  /** Pop-up bila masih ada lot yang belum diisi; true bila semua lot sudah terisi. */
+  async function requireComplete(action: string) {
+    if (complete) return true
+    const go = await confirmAction({
+      tone: 'info',
+      title: 'Entry belum selesai',
+      message: `${uncounted} dari ${lines.length} lot belum diisi Qty Fisik. Lengkapi semua lot sebelum ${action}.`,
+      confirmLabel: 'Ke lot yang belum diisi',
+    })
+    if (go) focusFirstEmpty()
+    return false
   }
+
+  function focusFirstEmpty() {
+    const first = lines.find(line => parseInput(drafts[line.id]?.qty_physical ?? '') == null)
+    const input = first ? document.getElementById(`qty-${first.id}`) as HTMLInputElement | null : null
+    input?.scrollIntoView({ block: 'center' }); input?.focus()
+  }
+
+  /** Semua lot terisi dan tersimpan: status sudah Selesai, kembali ke daftar sesi. */
+  async function finish() {
+    if (!session || !(await requireComplete('menyelesaikan opname'))) return
+    notify.success('Stock opname selesai')
+    leaving.current = true
+    router.push(periodHref(session.period))
+  }
+
+  async function openBerita(kind: 'excel' | 'pdf') {
+    if (!session || !(await requireComplete('membuat berita acara'))) return
+    if (kind === 'excel') window.location.href = `/api/stock-opname/${session.id}/excel?doc=berita`
+    else window.open(`/print/opname/${session.id}?doc=berita`, '_blank')
+  }
+
+  // Keluar halaman (link kembali, sidebar, menu) saat entry belum lengkap: minta konfirmasi dulu.
+  const leaving = useRef(false)
+  const guard = useRef({ incomplete: false, uncounted: 0, total: 0 })
+  guard.current = { incomplete: lines.length > 0 && !complete, uncounted, total: lines.length }
+  const confirmLeave = useCallback(() => confirmAction({
+    tone: 'danger',
+    title: 'Proses entry belum selesai',
+    message: `${guard.current.uncounted} dari ${guard.current.total} lot belum diisi Qty Fisik. Isian yang sudah diketik tetap tersimpan. Tetap keluar dari halaman ini?`,
+    confirmLabel: 'Tetap keluar',
+  }), [])
+  useEffect(() => {
+    const onClick = async (event: MouseEvent) => {
+      if (leaving.current || !guard.current.incomplete || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return
+      const anchor = (event.target as HTMLElement | null)?.closest('a')
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
+      const url = new URL(anchor.href, window.location.href)
+      if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (await confirmLeave()) { leaving.current = true; router.push(url.pathname + url.search) }
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [confirmLeave, router])
 
   if (error) return <div className="space-y-4"><BackLink /><p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p></div>
   const date = session ? opnameDateParts(session.opname_date) : null
@@ -189,18 +243,30 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold">Opname {session?.period ?? ''} {date ? `${date.day}, ${date.long}` : ''}</h1>
+          {lines.length > 0 && (
+            <div className="flex w-full items-center gap-3 text-sm" aria-label="Progres pengisian">
+              <div className="h-2 w-48 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin={0} aria-valuemax={lines.length} aria-valuenow={summary.counted}>
+                <div className={`h-full rounded-full ${complete ? 'bg-green-600' : 'bg-amber-500'}`} style={{ width: `${Math.round((summary.counted / lines.length) * 100)}%` }} />
+              </div>
+              <span className="font-semibold text-slate-800">{summary.counted} dari {lines.length} lot terisi</span>
+              {complete
+                ? <span className="font-semibold text-green-700">Semua lot sudah diisi</span>
+                : <button type="button" onClick={focusFirstEmpty} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{uncounted} lot belum diisi</button>}
+              {session && <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{session.status}</span>}
+            </div>
+          )}
         </div>
         {session && (
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/print/opname/${session.id}?doc=lembar`} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               <Printer className="h-4 w-4" aria-hidden="true" /> Lembar Kerja
             </Link>
-            <a href={`/api/stock-opname/${session.id}/excel?doc=berita`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <button type="button" onClick={() => void openBerita('excel')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               <Download className="h-4 w-4" aria-hidden="true" /> Berita Acara (Excel)
-            </a>
-            <Link href={`/print/opname/${session.id}?doc=berita`} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            </button>
+            <button type="button" onClick={() => void openBerita('pdf')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               <Printer className="h-4 w-4" aria-hidden="true" /> Berita Acara (PDF)
-            </Link>
+            </button>
             {/* Simpan otomatis tetap berjalan. Selama ada isian belum terkirim tombol ini menyimpan;
                 setelah semua tersimpan tombol menjadi Selesai untuk menutup sesi. */}
             <button
@@ -208,8 +274,8 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
               onClick={() => (dirtyIds.length ? void flush() : void finish())}
               disabled={saveState === 'saving'}
               data-busy={saveState === 'saving'}
-              title={saveState === 'error' && dirtyIds.length ? 'Belum terkirim (koneksi?). Isian tersimpan di perangkat ini dan dicoba lagi otomatis.' : dirtyIds.length ? 'Isian disimpan otomatis' : 'Semua isian tersimpan. Tandai opname selesai.'}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white ${saveState === 'error' && dirtyIds.length ? 'bg-red-600' : dirtyIds.length ? 'bg-indigo-600' : 'bg-green-700'}`}
+              title={saveState === 'error' && dirtyIds.length ? 'Belum terkirim (koneksi?). Isian tersimpan di perangkat ini dan dicoba lagi otomatis.' : dirtyIds.length ? 'Isian disimpan otomatis' : complete ? 'Semua lot terisi. Selesai.' : `${uncounted} lot belum diisi`}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white ${saveState === 'error' && dirtyIds.length ? 'bg-red-600' : dirtyIds.length ? 'bg-indigo-600' : complete ? 'bg-green-700' : 'bg-slate-500'}`}
             >
               {dirtyIds.length || saveState === 'saving' ? <Save className="h-4 w-4" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
               <span role="status" aria-live="polite">
@@ -253,7 +319,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                       <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
                       <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
                       <td className="px-3 py-2">
-                        <input inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: formatQtyInput(e.target.value) })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
+                        <input id={`qty-${line.id}`} inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: formatQtyInput(e.target.value) })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
                       </td>
                       <td className={`px-3 py-2 text-right font-mono font-semibold ${diff == null ? 'text-slate-300' : diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-amber-700'}`}>
                         {diff == null ? '—' : diff === 0 ? 'Sesuai' : (diff > 0 ? '+' : '') + num(diff)}

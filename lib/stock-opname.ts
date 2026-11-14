@@ -10,7 +10,10 @@
 export const OPNAME_CATEGORIES = ['HOLOW FIBER / DIALYZER', 'BLOOD TUBING SET'] as const
 export const OPNAME_BINCODE = 'MDN-PAR-CON'
 export const LINE_STATUSES = ['Open', 'Proses', 'Closed'] as const
-export const SESSION_STATUSES = ['Draft', 'Selesai dihitung', 'Diverifikasi'] as const
+/** Draft → Sedang dihitung → Selesai mengikuti progres pengisian Qty Fisik (lihat statusFromProgress). */
+export const SESSION_STATUSES = ['Draft', 'Sedang dihitung', 'Selesai', 'Diverifikasi'] as const
+export const statusFromProgress = (counted: number, total: number) =>
+  counted === 0 ? 'Draft' : counted < total ? 'Sedang dihitung' : 'Selesai'
 
 export const OPNAME_PERIODS = ['Harian', 'Mingguan', 'Bulanan'] as const
 export type OpnamePeriod = typeof OPNAME_PERIODS[number]

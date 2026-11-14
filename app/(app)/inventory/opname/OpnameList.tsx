@@ -17,8 +17,9 @@ import {
 
 const STATUS_STYLE: Record<string, string> = {
   Draft: 'bg-slate-100 text-slate-600',
-  'Selesai dihitung': 'bg-amber-100 text-amber-800',
-  Diverifikasi: 'bg-green-100 text-green-700',
+  'Sedang dihitung': 'bg-amber-100 text-amber-800',
+  Selesai: 'bg-green-100 text-green-700',
+  Diverifikasi: 'bg-indigo-100 text-indigo-700',
 }
 
 export function OpnameList({ period }: { period: OpnamePeriod }) {
