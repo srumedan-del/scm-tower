@@ -182,7 +182,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                   return (
                     <tr key={line.id} className={hasDiff ? 'bg-red-50/40' : undefined}>
                       <td className="px-3 py-2 text-slate-500">{index + 1}</td>
-                      <td className="px-3 py-2"><div className="font-semibold text-slate-900">{line.no_item}</div><div className="max-w-[260px] truncate text-xs text-slate-500" title={line.nama_item ?? ''}>{line.nama_item}</div></td>
+                      <td className="max-w-[420px] truncate whitespace-nowrap px-3 py-2" title={`${line.no_item} - ${line.nama_item ?? ''}`}><b className="font-semibold text-slate-900">{line.no_item}</b><span className="text-slate-500"> - {line.nama_item}</span></td>
                       <td className="px-3 py-2 font-mono text-xs">{line.lot_no ?? '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
                       <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
