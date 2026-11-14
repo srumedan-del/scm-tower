@@ -61,7 +61,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
           </table>
           <table className="sheet one-page">
             <thead><tr>
-              <th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '12%' }}>Expiration Date</th><th style={{ width: '14%' }}>Quantity Fisik</th>
+              <th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '9%' }}>ED</th><th style={{ width: '17%' }}>Quantity Fisik</th>
             </tr></thead>
             <tbody>
               {lines.map((line, i) => (
