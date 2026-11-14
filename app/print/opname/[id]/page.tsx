@@ -23,6 +23,9 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
   const lines = (rawLines ?? []).map(line => ({ ...line, qty_system: Number(line.qty_system), qty_physical: line.qty_physical == null ? null : Number(line.qty_physical) }))
   const signers = (settings?.signers as { name: string; title: string }[] | undefined) ?? []
   const date = opnameDateParts(session.opname_date)
+  // A4 landscape: tinggi 190 mm setelah margin; ±140 mm tersedia untuk baris lot (sisanya judul, header, tanda tangan).
+  const rowMm = Math.min(7, 140 / Math.max(lines.length, 1))
+  const sheetFont = rowMm >= 5 ? '10pt' : rowMm >= 4 ? '8.5pt' : '7pt'
 
   return (
     <div className="opname-print">
@@ -35,6 +38,12 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         .opname-print .sheet th { background: #D9D9D9; font-weight: 700; text-align: center; }
         .opname-print .r { text-align: right; } .opname-print .c { text-align: center; }
         .opname-print .head td { border: 1px solid #000; padding: 4px 6px; }
+        .opname-print .title td { padding: 0 2px 6px; }
+        .opname-print .one-page { font-size: ${sheetFont}; }
+        .opname-print .one-page th, .opname-print .one-page td { padding: 0 5px; white-space: nowrap; }
+        .opname-print .one-page th { height: 7mm; }
+        .opname-print .one-page tbody td { height: ${rowMm.toFixed(2)}mm; }
+        @media print { .opname-print .lembar { break-inside: avoid; } }
         .opname-print .sign td { text-align: center; padding: 4px; vertical-align: bottom; }
         .opname-print .toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
         .opname-print .toolbar button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid #999; background: #fff; cursor: pointer; }
@@ -43,14 +52,14 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
       <PrintOnLoad />
 
       {doc === 'lembar' ? (
-        <>
-          <table className="head" style={{ marginBottom: 10 }}>
+        <div className="lembar">
+          <table className="title">
             <tbody><tr>
               <td style={{ fontWeight: 700, fontSize: '12pt' }}>FORM STOCK OPNAME {String(session.period ?? 'Mingguan').toUpperCase()} BLOOD LINE &amp; ELISIO</td>
-              <td style={{ width: '32%' }}>TANGGAL : {date.long}</td>
+              <td style={{ width: '32%', textAlign: 'right' }}>TANGGAL : {date.long}</td>
             </tr></tbody>
           </table>
-          <table className="sheet">
+          <table className="sheet one-page">
             <thead><tr>
               <th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '12%' }}>Expiration Date</th><th style={{ width: '14%' }}>Quantity Fisik</th>
             </tr></thead>
@@ -58,18 +67,18 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
               {lines.map((line, i) => (
                 <tr key={line.id}>
                   <td className="c">{i + 1}</td><td>{line.no_item}</td><td>{line.nama_item}</td>
-                  <td>{line.lot_no}</td><td className="c">{fmtDate(line.expiration_date)}</td><td style={{ height: 26 }} />
+                  <td>{line.lot_no}</td><td className="c">{fmtDate(line.expiration_date)}</td><td />
                 </tr>
               ))}
             </tbody>
           </table>
-          <table className="sign" style={{ marginTop: 28, width: '60%' }}>
+          <table className="sign" style={{ marginTop: '4mm', width: '60%' }}>
             <tbody>
               <tr><td>Penghitung</td><td>Pencatat</td></tr>
-              <tr><td style={{ height: 60 }}>(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</td><td>(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</td></tr>
+              <tr><td style={{ height: '15mm' }}>(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</td><td>(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</td></tr>
             </tbody>
           </table>
-        </>
+        </div>
       ) : (
         <>
           <table className="head" style={{ marginBottom: 10 }}>
