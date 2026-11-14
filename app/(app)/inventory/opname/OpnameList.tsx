@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { CalendarOff, ClipboardList, FileUp, Settings2, Trash2 } from 'lucide-react'
+import { ClipboardList, FileUp, Settings2, Trash2 } from 'lucide-react'
 import {
   DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, formControlClass, FormField,
 } from '@/components/ui/FormDialog'
@@ -11,8 +11,8 @@ import { confirmAction, notify, showSuccess } from '@/lib/feedback'
 import { jakartaToday } from '@/lib/sla'
 import { opnameDateParts, type OpnamePeriod } from '@/lib/stock-opname'
 import {
-  addHoliday, createOpnameFromRows, deleteHoliday, deleteOpnameSession, getOpnameSettings, listHolidays, listOpnameSessions, saveOpnameSettings,
-  type Holiday, type OpnameSession, type OpnameSettings,
+  createOpnameFromRows, deleteOpnameSession, getOpnameSettings, listOpnameSessions, saveOpnameSettings,
+  type OpnameSession, type OpnameSettings,
 } from './actions'
 
 const STATUS_STYLE: Record<string, string> = {
@@ -27,7 +27,6 @@ export function OpnameList({ period }: { period: OpnamePeriod }) {
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
   const [editingSettings, setEditingSettings] = useState(false)
-  const [editingHolidays, setEditingHolidays] = useState(false)
 
   const load = () => startLoading(async () => {
     try { setSessions(await listOpnameSessions(period)); setError('') } catch (e: any) { setError(e.message) }
@@ -44,9 +43,6 @@ export function OpnameList({ period }: { period: OpnamePeriod }) {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">Stock Opname {period}</h1>
         <div className="flex gap-2">
-          <button type="button" onClick={() => setEditingHolidays(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <CalendarOff className="h-4 w-4" aria-hidden="true" /> Hari Libur
-          </button>
           <button type="button" onClick={() => setEditingSettings(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             <Settings2 className="h-4 w-4" aria-hidden="true" /> Penandatangan
           </button>
@@ -110,7 +106,6 @@ export function OpnameList({ period }: { period: OpnamePeriod }) {
 
       {creating && <CreateOpnameDialog period={period} onClose={() => setCreating(false)} onCreated={load} />}
       {editingSettings && <SettingsDialog onClose={() => setEditingSettings(false)} />}
-      {editingHolidays && <HolidaysDialog onClose={() => setEditingHolidays(false)} />}
     </div>
   )
 }
@@ -237,61 +232,3 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-function HolidaysDialog({ onClose }: { onClose: () => void }) {
-  const [holidays, setHolidays] = useState<Holiday[] | null>(null)
-  const [date, setDate] = useState('')
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-  const [saving, startSaving] = useTransition()
-
-  const load = () => listHolidays().then(setHolidays).catch(e => setError(e.message))
-  useEffect(() => { void load() }, [])
-
-  function add() {
-    setError('')
-    if (!date || !name.trim()) { setError('Isi tanggal dan keterangan.'); return }
-    startSaving(async () => {
-      try { await addHoliday({ holiday_date: date, name }); setDate(''); setName(''); await load() } catch (e: any) { setError(e.message) }
-    })
-  }
-
-  function remove(holiday: Holiday) {
-    startSaving(async () => {
-      try { await deleteHoliday(holiday.holiday_date); await load() } catch (e: any) { setError(e.message) }
-    })
-  }
-
-  return (
-    <DialogShell onClose={onClose} size="lg">
-      <DialogHeader title="Hari Libur" subtitle="Pengambilan stok SIRUP pukul 07.00 tidak berjalan pada tanggal ini" icon={CalendarOff} />
-      <div className={dialogBodyClass}>
-        <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Sabtu dan Minggu sudah otomatis dilewati. Catat libur nasional dan cuti bersama di sini.</p>
-        <div className="grid gap-3 sm:grid-cols-[11rem_1fr_auto] sm:items-end">
-          <FormField label="Tanggal"><input type="date" value={date} onChange={e => setDate(e.target.value)} className={formControlClass} /></FormField>
-          <FormField label="Keterangan"><input value={name} onChange={e => setName(e.target.value)} className={formControlClass} placeholder="Cuti bersama Natal" /></FormField>
-          <button type="button" onClick={add} disabled={saving} data-busy={saving} className={dialogPrimaryClass}>Tambah</button>
-        </div>
-        {error && <p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-          {!holidays && !error && <li className="px-4 py-3 text-sm text-slate-500">Memuat…</li>}
-          {holidays && !holidays.length && <li className="px-4 py-3 text-sm text-slate-500">Belum ada hari libur tercatat.</li>}
-          {holidays?.map(holiday => {
-            const d = opnameDateParts(holiday.holiday_date)
-            return (
-              <li key={holiday.holiday_date} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                <span><b className="text-slate-800">{d.day}, {d.long}</b> <span className="text-slate-600">· {holiday.name}</span></span>
-                <button type="button" onClick={() => remove(holiday)} disabled={saving} aria-label={`Hapus ${holiday.name}`} className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700">
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-      <div className={dialogFooterClass}>
-        <span />
-        <button type="button" onClick={onClose} className={dialogCancelClass}>Tutup</button>
-      </div>
-    </DialogShell>
-  )
-}

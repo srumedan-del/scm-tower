@@ -168,29 +168,3 @@ export async function saveOpnameSettings(settings: OpnameSettings) {
   if (error) throw new Error(explain(error))
 }
 
-// ── Hari libur: dilewati oleh pengambilan stok SIRUP otomatis ──────────────
-export type Holiday = { holiday_date: string; name: string }
-const HOLIDAY_HINT = 'Jalankan dulu supabase/migration_v52_holidays.sql di Supabase.'
-const explainHoliday = (error: { message: string }) => (/holidays/.test(error.message) && /does not exist|schema cache/.test(error.message) ? HOLIDAY_HINT : error.message)
-
-export async function listHolidays(): Promise<Holiday[]> {
-  await requireAuthenticatedUser()
-  const since = new Date(Date.now() - 31 * 86_400_000).toISOString().slice(0, 10)
-  const { data, error } = await supabaseAdmin.from('holidays').select('holiday_date, name').gte('holiday_date', since).order('holiday_date')
-  if (error) throw new Error(explainHoliday(error))
-  return (data ?? []) as Holiday[]
-}
-
-export async function addHoliday(input: Holiday) {
-  const createdBy = await userLabel()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.holiday_date)) throw new Error('Tanggal tidak valid')
-  if (!input.name.trim()) throw new Error('Isi keterangan hari libur')
-  const { error } = await supabaseAdmin.from('holidays').upsert({ holiday_date: input.holiday_date, name: input.name.trim(), created_by: createdBy })
-  if (error) throw new Error(explainHoliday(error))
-}
-
-export async function deleteHoliday(date: string) {
-  await requireAuthenticatedUser()
-  const { error } = await supabaseAdmin.from('holidays').delete().eq('holiday_date', date)
-  if (error) throw new Error(explainHoliday(error))
-}

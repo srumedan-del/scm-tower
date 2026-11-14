@@ -5,9 +5,9 @@
  *   node fetch-sirup.cjs                    -> jadwal harian: sesi Harian tiap hari kerja, ditambah sesi Mingguan hari Jumat
  *   node fetch-sirup.cjs --period=Bulanan   -> buat sesi periode tertentu saja (Harian, Mingguan, Bulanan), kapan pun
  *   node fetch-sirup.cjs --dry-run          -> hanya tampilkan hasil saringan, tidak menyimpan
- *   node fetch-sirup.cjs --force            -> tetap jalan walau hari libur atau sesi hari ini sudah ada
+ *   node fetch-sirup.cjs --force            -> tetap jalan walau akhir pekan atau sesi hari ini sudah ada
  *
- * Sabtu, Minggu, dan tanggal di tabel holidays (menu Stock Opname → Hari Libur) dilewati.
+ * Sabtu dan Minggu dilewati.
  *
  * Kredensial SIRUP ada di scripts/sirup-opname/.env (lihat .env.example), diisi sendiri
  * oleh pemilik akun. Koneksi Supabase dibaca dari .env.local di root proyek.
@@ -134,7 +134,6 @@ async function main() {
   if (!DRY_RUN && (!SUPABASE_URL || !SERVICE_KEY)) throw new Error('Koneksi Supabase (.env.local) tidak ditemukan')
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
   const weekday = new Date(`${today}T00:00:00Z`).getUTCDay()
-  const canQuery = Boolean(SUPABASE_URL && SERVICE_KEY)
 
   let periods
   if (PERIOD_ARG) {
@@ -143,14 +142,6 @@ async function main() {
     periods = [period]
   } else {
     if (!FORCE && (weekday === 0 || weekday === 6)) { log(`${today} akhir pekan, tidak mengambil stok.`); return }
-    if (!FORCE && canQuery) {
-      try {
-        const holiday = await supabase(`holidays?select=name&holiday_date=eq.${today}`)
-        if (holiday.length) { log(`${today} hari libur (${holiday[0].name}), tidak mengambil stok.`); return }
-      } catch (error) {
-        log(`Peringatan: daftar hari libur tidak bisa dibaca (${error.message.slice(0, 120)}). Lanjut sebagai hari kerja.`)
-      }
-    }
     periods = weekday === WEEKLY_DAY ? ['Harian', 'Mingguan'] : ['Harian']
   }
 
