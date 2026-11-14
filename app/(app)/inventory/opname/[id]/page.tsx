@@ -19,6 +19,8 @@ const toDraft = (line: OpnameLine): Draft => ({
 
 const fmtDate = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '-')
 const num = (n: number) => n.toLocaleString('id-ID')
+/** Qty Fisik yang diketik: titik = pemisah ribuan, koma = desimal. */
+const parseInput = (text: string) => (text.trim() === '' ? null : Number(text.replace(/\./g, '').replace(',', '.')))
 
 export default function OpnameSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -47,13 +49,34 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     for (const line of lines) {
       systemQty += line.qty_system
       const draft = drafts[line.id]
-      if (!draft || draft.qty_physical === '') continue
+      if (!draft || parseInput(draft.qty_physical) == null) continue
       counted++
-      const diff = Number(draft.qty_physical) - line.qty_system
+      const diff = (parseInput(draft.qty_physical) ?? 0) - line.qty_system
       if (diff !== 0) { diffLines++; diffQty += diff }
     }
     return { counted, diffLines, diffQty, systemQty }
   }, [lines, drafts])
+
+  const [onlyDiff, setOnlyDiff] = useState(false)
+
+  /** Baris dikelompokkan per item (No Item) dengan subtotal, agar terlihat item mana yang punya lot selisih. */
+  const groups = useMemo(() => {
+    const byItem = new Map<string, { key: string; no_item: string; nama_item: string; systemQty: number; physicalQty: number; counted: number; diffLots: number; diffQty: number; lines: { line: OpnameLine; index: number; draft: Draft; diff: number | null }[] }>()
+    lines.forEach((line, index) => {
+      const key = line.no_item ?? '-'
+      const group = byItem.get(key) ?? { key, no_item: key, nama_item: line.nama_item ?? '', systemQty: 0, physicalQty: 0, counted: 0, diffLots: 0, diffQty: 0, lines: [] }
+      const draft = drafts[line.id] ?? toDraft(line)
+      const physical = parseInput(draft.qty_physical)
+      const diff = lineDifference({ qty_system: line.qty_system, qty_physical: physical })
+      group.systemQty += line.qty_system
+      if (physical != null && !Number.isNaN(physical)) { group.counted++; group.physicalQty += physical }
+      if (diff != null && diff !== 0) { group.diffLots++; group.diffQty += diff }
+      group.lines.push({ line, index, draft, diff })
+      byItem.set(key, group)
+    })
+    return [...byItem.values()]
+  }, [lines, drafts])
+  const showReason = groups.some(group => group.diffLots > 0)
 
   const setDraft = (lineId: number, patch: Partial<Draft>) => setDrafts(current => ({ ...current, [lineId]: { ...current[lineId], ...patch } }))
 
@@ -62,7 +85,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
       const draft = drafts[line.id]
       return {
         id: line.id,
-        qty_physical: draft.qty_physical === '' ? null : Number(draft.qty_physical.replace(/\./g, '').replace(',', '.')),
+        qty_physical: parseInput(draft.qty_physical),
         penyebab: draft.penyebab, action_plan: draft.action_plan,
         line_status: (draft.line_status || null) as OpnameLine['line_status'],
       }
@@ -137,46 +160,76 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
+      {lines.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="inline-flex items-center gap-2 font-semibold text-slate-700">
+            <input type="checkbox" checked={onlyDiff} onChange={e => setOnlyDiff(e.target.checked)} className="h-4 w-4" />
+            Hanya item yang ada lot selisih
+          </label>
+          <span className="text-slate-500">{groups.filter(g => g.diffLots).length} dari {groups.length} item ada lot selisih</span>
+        </div>
+      )}
+
       <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[980px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-left">
             <tr>
               <th className="px-3 py-3 font-semibold">No</th>
-              <th className="px-3 py-3 font-semibold">Item</th>
               <th className="px-3 py-3 font-semibold">Lot</th>
               <th className="px-3 py-3 font-semibold">ED</th>
               <th className="px-3 py-3 text-right font-semibold">Qty sistem</th>
               <th className="px-3 py-3 font-semibold">Qty fisik</th>
               <th className="px-3 py-3 text-right font-semibold">Selisih</th>
-              <th className="px-3 py-3 font-semibold">Penyebab</th>
-              <th className="px-3 py-3 font-semibold">Action plan</th>
+              {showReason && <th className="px-3 py-3 font-semibold">Penyebab</th>}
+              {showReason && <th className="px-3 py-3 font-semibold">Action plan</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading && !lines.length && <SkeletonRows cols={9} />}
-            {lines.map((line, index) => {
-              const draft = drafts[line.id] ?? toDraft(line)
-              const diff = lineDifference({ qty_system: line.qty_system, qty_physical: draft.qty_physical === '' ? null : Number(draft.qty_physical) })
-              const hasDiff = diff != null && diff !== 0
-              return (
-                <tr key={line.id} className={hasDiff ? 'bg-red-50/40' : undefined}>
-                  <td className="px-3 py-2 text-slate-500">{index + 1}</td>
-                  <td className="px-3 py-2"><div className="font-semibold text-slate-900">{line.no_item}</div><div className="max-w-[260px] truncate text-xs text-slate-500" title={line.nama_item ?? ''}>{line.nama_item}</div></td>
-                  <td className="px-3 py-2 font-mono text-xs">{line.lot_no ?? '-'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
-                  <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
-                  <td className="px-3 py-2">
-                    <input inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: e.target.value })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
-                  </td>
-                  <td className={`px-3 py-2 text-right font-mono font-semibold ${diff == null ? 'text-slate-300' : diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-amber-700'}`}>
-                    {diff == null ? '—' : diff === 0 ? 'Sesuai' : (diff > 0 ? '+' : '') + num(diff)}
-                  </td>
-                  <td className="px-3 py-2"><input aria-label="Penyebab" value={draft.penyebab} onChange={e => setDraft(line.id, { penyebab: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" placeholder={hasDiff ? 'Wajib bila selisih' : ''} /></td>
-                  <td className="px-3 py-2"><input aria-label="Action plan" value={draft.action_plan} onChange={e => setDraft(line.id, { action_plan: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" /></td>
-                </tr>
-              )
-            })}
-          </tbody>
+          {loading && !lines.length && <tbody><SkeletonRows cols={6} /></tbody>}
+          {groups.filter(group => !onlyDiff || group.diffLots).map(group => (
+            <tbody key={group.key} className="border-b-4 border-slate-100">
+              <tr className={group.diffLots ? 'bg-red-50' : 'bg-slate-50/70'}>
+                <td colSpan={3} className="px-3 py-2.5">
+                  <div className="font-bold text-slate-900">{group.no_item}</div>
+                  <div className="text-xs text-slate-500">
+                    {group.nama_item} · {group.lines.length} lot · {group.counted === group.lines.length ? 'semua dihitung' : `${group.counted}/${group.lines.length} dihitung`}
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-right font-mono font-bold">{num(group.systemQty)}</td>
+                <td className="px-3 py-2.5 text-right font-mono font-bold">{group.counted ? num(group.physicalQty) : '—'}</td>
+                <td className="px-3 py-2.5 text-right">
+                  {group.diffLots
+                    ? <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">{group.diffLots} lot selisih · {(group.diffQty > 0 ? '+' : '') + num(group.diffQty)}</span>
+                    : group.counted === group.lines.length
+                      ? <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold text-green-700">Sesuai</span>
+                      : <span className="text-xs text-slate-400">Belum lengkap</span>}
+                </td>
+                {showReason && <td colSpan={2} />}
+              </tr>
+              {group.lines.map(({ line, index, draft, diff }) => {
+                const hasDiff = diff != null && diff !== 0
+                return (
+                  <tr key={line.id} className={`border-t border-slate-100 ${hasDiff ? 'bg-red-50/40' : ''}`}>
+                    <td className="px-3 py-2 pl-5 text-slate-500">{index + 1}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{line.lot_no ?? '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
+                    <td className="px-3 py-2">
+                      <input inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: e.target.value })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
+                    </td>
+                    <td className={`px-3 py-2 text-right font-mono font-semibold ${diff == null ? 'text-slate-300' : diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-amber-700'}`}>
+                      {diff == null ? '—' : diff === 0 ? 'Sesuai' : (diff > 0 ? '+' : '') + num(diff)}
+                    </td>
+                    {showReason && (hasDiff ? (
+                      <>
+                        <td className="px-3 py-2"><input aria-label={`Penyebab ${line.no_item} lot ${line.lot_no}`} value={draft.penyebab} onChange={e => setDraft(line.id, { penyebab: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" placeholder="Penyebab selisih" /></td>
+                        <td className="px-3 py-2"><input aria-label={`Action plan ${line.no_item} lot ${line.lot_no}`} value={draft.action_plan} onChange={e => setDraft(line.id, { action_plan: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" /></td>
+                      </>
+                    ) : <td colSpan={2} />)}
+                  </tr>
+                )
+              })}
+            </tbody>
+          ))}
         </table>
       </div>
 
