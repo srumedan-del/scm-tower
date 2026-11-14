@@ -159,9 +159,12 @@ async function insertSession(input: { period: OpnamePeriod; opname_date: string;
   const hd = new Map<string, string>()
   const { data: categories, error: categoryError } = await supabaseAdmin.from('item_hd_category').select('no_item, category').limit(10000)
   if (!categoryError) for (const row of categories ?? []) hd.set(String(row.no_item).toUpperCase(), row.category)
-  const rows = lines.map((line, index) => ({
+  const withCategory = lines.map(line => ({ ...line, hd_category: categoryError ? undefined : hd.get(String(line.no_item ?? '').toUpperCase()) ?? null }))
+  // Item tanpa kategori HD/NHD diletakkan paling bawah (urutan lainnya tetap).
+  const ordered = categoryError ? withCategory : [...withCategory.filter(line => line.hd_category), ...withCategory.filter(line => !line.hd_category)]
+  const rows = ordered.map(({ hd_category, ...line }, index) => ({
     ...line, session_id: session.id, sort_order: index + 1,
-    ...(categoryError ? {} : { hd_category: hd.get(String(line.no_item ?? '').toUpperCase()) ?? null }),
+    ...(categoryError ? {} : { hd_category }),
   }))
   const { error: lineError } = await supabaseAdmin
     .from('stock_opname_line')
