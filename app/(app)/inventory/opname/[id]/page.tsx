@@ -188,17 +188,14 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
         </div>
         {session && (
           <div className="flex flex-wrap items-center gap-2">
-            <a href={`/api/stock-opname/${session.id}/excel?doc=lembar`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <Download className="h-4 w-4" aria-hidden="true" /> Lembar hitung (Excel)
-            </a>
             <Link href={`/print/opname/${session.id}?doc=lembar`} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <Printer className="h-4 w-4" aria-hidden="true" /> Cetak Lembar Kerja
+              <Printer className="h-4 w-4" aria-hidden="true" /> Lembar Kerja
             </Link>
             <a href={`/api/stock-opname/${session.id}/excel?doc=berita`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <Download className="h-4 w-4" aria-hidden="true" /> Berita acara (Excel)
+              <Download className="h-4 w-4" aria-hidden="true" /> Berita Acara (Excel)
             </a>
             <Link href={`/print/opname/${session.id}?doc=berita`} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <Printer className="h-4 w-4" aria-hidden="true" /> Cetak berita acara (PDF)
+              <Printer className="h-4 w-4" aria-hidden="true" /> Berita Acara (PDF)
             </Link>
             {/* Simpan otomatis tetap berjalan; tombol ini mempercepat dan sekaligus menunjukkan statusnya. */}
             <button
