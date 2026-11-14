@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Ambil stok dari SIRUP "Stok Gudang" dan simpan sebagai snapshot harian di SCM Tower.
+ * Ambil SELURUH stok SIRUP "Stok Gudang" (cabang Medan, semua lokasi, semua kategori) dan simpan:
+ *   - CSV lengkap di PC lokal (SIRUP_LOCAL_DIR, bawaan D:/SIRUP-Stok), arsip permanen;
+ *   - semua baris ke Supabase sirup_stock_row (hanya SIRUP_KEEP_DAYS hari terakhir, bawaan 30);
+ *   - ringkasan + baris opname (Dialyzer/Blood Tubing Set MDN-PAR-CON) ke sirup_stock_snapshot.
  * Snapshot TIDAK membuat sesi opname; sesi dibuat pengguna lewat Stock Opname → Buat Opname.
  *
  *   node fetch-sirup.cjs            -> simpan snapshot hari ini (WIB); Sabtu dan Minggu dilewati
@@ -20,6 +23,7 @@ const LOG_FILE = path.join(__dirname, 'fetch-sirup.log')
 const DRY_RUN = process.argv.includes('--dry-run')
 const FORCE = process.argv.includes('--force')
 const DEBUG = process.argv.includes('--debug')
+const argValue = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3)
 
 const CATEGORIES = new Set(['HOLOW FIBER / DIALYZER', 'BLOOD TUBING SET'])
 const BINCODE = 'MDN-PAR-CON'
@@ -40,6 +44,10 @@ function readEnv(file) {
 const env = { ...readEnv(path.join(ROOT, '.env.local')), ...readEnv(path.join(__dirname, '.env')) }
 const SIRUP_BASE = (env.SIRUP_BASE_URL || 'https://datawh.sinarrodautama.co.id/sirup').replace(/\/$/, '')
 const STOCK_PATH = env.SIRUP_STOCK_PATH || '/reportnav/stokgudang?idm=379&idm_enc=cFJ6NS9VWGU0SHhxWTRXdHdJMm1jUT09'
+const CABANG = argValue('cabang') || env.SIRUP_CABANG || 'CAB01-MDN'
+const LOCCODE = argValue('loccode') || env.SIRUP_LOCCODE || 'All'
+const LOCAL_DIR = env.SIRUP_LOCAL_DIR || 'D:/SIRUP-Stok'
+const KEEP_DAYS = Number(env.SIRUP_KEEP_DAYS || 30)
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -114,6 +122,38 @@ function extractLines(rows) {
   return { lines, totalRows: data.length }
 }
 
+/** Semua baris tabel SIRUP tanpa saringan, sebagai objek per kolom. */
+function allRows(rows) {
+  const headerIndex = rows.findIndex(r => r.some(c => c.toUpperCase() === 'KATEGORI PRODUK') && r.some(c => c.toUpperCase() === 'QUANTITY'))
+  const header = rows[headerIndex].map(c => c.toUpperCase())
+  const col = name => header.indexOf(name)
+  const get = (r, name) => { const i = col(name); return i < 0 ? null : (r[i] || null) }
+  return rows.slice(headerIndex + 1).filter(r => get(r, 'NO ITEM')).map(r => ({
+    kategori: get(r, 'KATEGORI PRODUK'),
+    no_item: get(r, 'NO ITEM'),
+    nama_item: get(r, 'NAMA ITEM'),
+    serial_no: get(r, 'SERIAL NO'),
+    lot_no: get(r, 'LOT NO') ? String(get(r, 'LOT NO')).replace(/\.+$/, '') : null,
+    expiration_date: parseExpiry(get(r, 'EXPIRATION DATE')),
+    cabang: get(r, 'CABANG'),
+    loccode: get(r, 'LOCODE') ?? get(r, 'LOCCODE'),
+    lokasi: get(r, 'LOKASI'),
+    bincode: get(r, 'BINCODE'),
+    rumah_sakit: get(r, 'RUMAH SAKIT'),
+    qty: parseQty(get(r, 'QUANTITY')),
+  }))
+}
+
+function writeLocalCsv(today, stock) {
+  fs.mkdirSync(LOCAL_DIR, { recursive: true })
+  const file = path.join(LOCAL_DIR, `stok-sirup-${today}.csv`)
+  const columns = ['kategori', 'no_item', 'nama_item', 'serial_no', 'lot_no', 'expiration_date', 'cabang', 'loccode', 'lokasi', 'bincode', 'rumah_sakit', 'qty']
+  const cell = value => { const text = value == null ? '' : String(value); return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text }
+  const body = [columns.join(','), ...stock.map(row => columns.map(c => cell(row[c])).join(','))].join('\r\n')
+  fs.writeFileSync(file, '﻿' + body, 'utf8') // BOM agar Excel membaca UTF-8
+  return file
+}
+
 // ── Supabase REST ────────────────────────────────────────────────────────────
 async function supabase(pathAndQuery, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
@@ -164,13 +204,13 @@ async function main() {
   const result = await request(stockUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: form({ _csrf: csrfOf(stockPage.text), cabang: 'CAB01-MDN', loccode: 'MDN-PAR', tglawal: '', tglakhir: '', lot: '', serno: '', tglawal2: '', kat: 'All', tombol: 'filter' }),
+    body: form({ _csrf: csrfOf(stockPage.text), cabang: CABANG, loccode: LOCCODE, tglawal: '', tglakhir: '', lot: '', serno: '', tglawal2: '', kat: 'All', tombol: 'filter' }),
   })
   if (DEBUG) { const file = path.join(require('os').tmpdir(), 'sirup-stok-last.html'); fs.writeFileSync(file, result.text); console.log(`  Halaman hasil filter disimpan di ${file}`) }
   const rows = tableRows(result.text)
   if (!rows) throw new Error('Tabel stok tidak ditemukan di halaman SIRUP (format halaman mungkin berubah)')
   const { lines, totalRows } = extractLines(rows)
-  log(`Tabel SIRUP: ${totalRows} baris, ${lines.length} lot opname (Dialyzer + Blood Tubing Set, ${BINCODE})`)
+  log(`Tabel SIRUP ${CABANG}/${LOCCODE}: ${totalRows} baris (${Math.round(result.text.length / 1024)} KB HTML), ${lines.length} lot opname (Dialyzer + Blood Tubing Set, ${BINCODE})`)
   if (!lines.length) throw new Error('Tidak ada baris opname setelah disaring')
 
   if (DRY_RUN) {
@@ -178,16 +218,30 @@ async function main() {
     return
   }
 
-  // 3. Simpan snapshot hari ini (ditimpa bila script dijalankan lagi di hari yang sama)
+  const stock = allRows(rows)
+
+  // 3. Arsip lengkap di PC lokal
+  const localFile = writeLocalCsv(today, stock)
+  log(`CSV lengkap disimpan: ${localFile} (${stock.length} baris)`)
+
+  // 4. Ringkasan + baris opname (ditimpa bila dijalankan lagi di hari yang sama)
   await supabase('sirup_stock_snapshot?on_conflict=snapshot_date', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({ snapshot_date: today, taken_at: new Date().toISOString(), total_rows: totalRows, source_note: `SIRUP Stok Gudang CAB01-MDN/MDN-PAR (${totalRows} baris)`, lines }),
+    body: JSON.stringify({ snapshot_date: today, taken_at: new Date().toISOString(), total_rows: totalRows, cabang: CABANG, loccode: LOCCODE, local_file: localFile, source_note: `SIRUP Stok Gudang ${CABANG}/${LOCCODE} (${totalRows} baris)`, lines }),
   })
-  log(`Snapshot stok ${today} disimpan (${lines.length} lot). Sesi opname dibuat dari menu Stock Opname → Buat Opname.`)
+
+  // 5. Semua baris stok ke Supabase, lalu buang yang lebih lama dari KEEP_DAYS hari
+  await supabase(`sirup_stock_row?snapshot_date=eq.${today}`, { method: 'DELETE' })
+  for (let i = 0; i < stock.length; i += 1000) {
+    await supabase('sirup_stock_row', { method: 'POST', body: JSON.stringify(stock.slice(i, i + 1000).map(row => ({ ...row, snapshot_date: today }))) })
+  }
+  const cutoff = new Date(Date.parse(`${today}T00:00:00Z`) - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10)
+  await supabase(`sirup_stock_row?snapshot_date=lt.${cutoff}`, { method: 'DELETE' })
+  log(`Snapshot stok ${today} disimpan: ${stock.length} baris stok, ${lines.length} lot opname. Baris sebelum ${cutoff} dibersihkan dari Supabase.`)
 }
 
-module.exports = { tableRows, extractLines }
+module.exports = { tableRows, extractLines, allRows, writeLocalCsv }
 
 if (require.main === module) {
   main().catch(error => { log(`GAGAL: ${error.message}`); process.exitCode = 1 })
