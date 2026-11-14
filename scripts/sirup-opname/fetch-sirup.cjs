@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ambil SELURUH stok SIRUP "Stok Gudang" (cabang Medan, semua lokasi, semua kategori) dan simpan:
+ * Ambil stok SIRUP "Stok Gudang" lokasi MDN-PAR (cabang Medan, semua kategori, tanpa saring) dan simpan:
  *   - CSV lengkap di PC lokal (SIRUP_LOCAL_DIR, bawaan D:/sirup), satu folder per hari download, arsip permanen;
  *   - semua baris ke Supabase sirup_stock_row (hanya SIRUP_KEEP_DAYS hari terakhir, bawaan 30);
  *   - ringkasan + baris opname (Dialyzer/Blood Tubing Set MDN-PAR-CON) ke sirup_stock_snapshot.
@@ -45,7 +45,7 @@ const env = { ...readEnv(path.join(ROOT, '.env.local')), ...readEnv(path.join(__
 const SIRUP_BASE = (env.SIRUP_BASE_URL || 'https://datawh.sinarrodautama.co.id/sirup').replace(/\/$/, '')
 const STOCK_PATH = env.SIRUP_STOCK_PATH || '/reportnav/stokgudang?idm=379&idm_enc=cFJ6NS9VWGU0SHhxWTRXdHdJMm1jUT09'
 const CABANG = argValue('cabang') || env.SIRUP_CABANG || 'CAB01-MDN'
-const LOCCODE = argValue('loccode') || env.SIRUP_LOCCODE || 'All'
+const LOCCODE = argValue('loccode') || env.SIRUP_LOCCODE || 'MDN-PAR'
 const LOCAL_DIR = env.SIRUP_LOCAL_DIR || 'D:/sirup'
 const KEEP_DAYS = Number(env.SIRUP_KEEP_DAYS || 30)
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL
