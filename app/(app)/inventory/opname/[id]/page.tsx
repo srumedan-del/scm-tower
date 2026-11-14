@@ -240,18 +240,18 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-4">
       <BackLink period={session?.period} />
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-bold">Opname {session?.period ?? ''} {date ? `${date.day}, ${date.long}` : ''}</h1>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="whitespace-nowrap text-3xl font-bold">Opname {session?.period ?? ''} {date ? `${date.day}, ${date.long}` : ''}</h1>
           {lines.length > 0 && (
-            <div className="flex w-full items-center gap-3 text-sm" aria-label="Progres pengisian">
-              <div className="h-2 w-48 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin={0} aria-valuemax={lines.length} aria-valuenow={summary.counted}>
+            <div className="flex items-center gap-2.5 whitespace-nowrap text-sm" aria-label="Progres pengisian">
+              <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin={0} aria-valuemax={lines.length} aria-valuenow={summary.counted}>
                 <div className={`h-full rounded-full ${complete ? 'bg-green-600' : 'bg-amber-500'}`} style={{ width: `${Math.round((summary.counted / lines.length) * 100)}%` }} />
               </div>
-              <span className="font-semibold text-slate-800">{summary.counted} dari {lines.length} lot terisi</span>
+              <span className="font-semibold text-slate-800">{summary.counted}/{lines.length} lot terisi</span>
               {complete
-                ? <span className="font-semibold text-green-700">Semua lot sudah diisi</span>
-                : <button type="button" onClick={focusFirstEmpty} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{uncounted} lot belum diisi</button>}
+                ? <span className="font-semibold text-green-700">Lengkap</span>
+                : <button type="button" onClick={focusFirstEmpty} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{uncounted} belum</button>}
               {session && <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{session.status}</span>}
             </div>
           )}
