@@ -17,6 +17,7 @@ const ROOT = path.resolve(__dirname, '..', '..')
 const LOG_FILE = path.join(__dirname, 'fetch-sirup.log')
 const DRY_RUN = process.argv.includes('--dry-run')
 const FORCE = process.argv.includes('--force')
+const DEBUG = process.argv.includes('--debug')
 
 const CATEGORIES = new Set(['HOLOW FIBER / DIALYZER', 'BLOOD TUBING SET'])
 const BINCODE = 'MDN-PAR-CON'
@@ -56,6 +57,7 @@ async function request(url, options = {}, redirects = 0) {
     headers: { 'User-Agent': 'SCM-Tower-Opname/1.0', Cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join('; '), ...(options.headers || {}) },
   })
   storeCookies(response)
+  if (DEBUG) console.log(`  ${options.method || 'GET'} ${url.replace(/idm_enc=[^&]+/, 'idm_enc=…')} -> ${response.status}${response.headers.get('location') ? ` (ke ${response.headers.get('location').replace(/idm_enc=[^&]+/, 'idm_enc=…')})` : ''} | cookie: ${[...cookies.keys()].join(', ')}`)
   const location = response.headers.get('location')
   if (location && response.status >= 300 && response.status < 400 && redirects < 5) {
     return request(new URL(location, url).toString(), { method: 'GET' }, redirects + 1)
@@ -141,14 +143,30 @@ async function main() {
   if (/LoginForm\[password\]/.test(loginResult.text)) throw new Error('Login SIRUP gagal. Periksa username dan password di .env')
   log('Login SIRUP berhasil')
 
+  // 1b. Pilih role dan client (halaman /site/akses setelah login). Tanpa ini semua menu "Akses Ditolak".
+  if (/name="role"/.test(loginResult.text)) {
+    const role = env.SIRUP_ROLE || '407' // 407 = SCM Medan
+    const client = env.SIRUP_CLIENT || '1' // 1 = Sinar Roda Utama
+    const roles = [...loginResult.text.matchAll(/<option value="(\d+)"[^>]*>([^<]+)</g)].map(m => ({ value: m[1], label: m[2].trim() }))
+    if (!roles.some(r => r.value === role)) throw new Error(`Role ${role} tidak tersedia untuk akun ini. Pilihan: ${roles.map(r => `${r.value}=${r.label}`).join(', ')}`)
+    const aksesResult = await request(loginResult.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form({ _csrf: csrfOf(loginResult.text), role, client, 'login-button': '' }),
+    })
+    if (/name="role"/.test(aksesResult.text)) throw new Error('Gagal memilih role di SIRUP')
+    log(`Role SIRUP: ${roles.find(r => r.value === role)?.label ?? role}`)
+  }
+
   // 2. Filter Stok Gudang: CAB01-MDN / MDN-PAR / semua kategori
   const stockUrl = `${SIRUP_BASE}${STOCK_PATH}`
   const stockPage = await request(stockUrl)
   const result = await request(stockUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: form({ _csrf: csrfOf(stockPage.text), cabang: 'CAB01-MDN', loccode: 'MDN-PAR', tglawal: '', tglakhir: '', lot: '', serno: '', tglawal2: '', kat: 'All', tombol: '' }),
+    body: form({ _csrf: csrfOf(stockPage.text), cabang: 'CAB01-MDN', loccode: 'MDN-PAR', tglawal: '', tglakhir: '', lot: '', serno: '', tglawal2: '', kat: 'All', tombol: 'filter' }),
   })
+  if (DEBUG) { const file = path.join(require('os').tmpdir(), 'sirup-stok-last.html'); fs.writeFileSync(file, result.text); console.log(`  Halaman hasil filter disimpan di ${file}`) }
   const rows = tableRows(result.text)
   if (!rows) throw new Error('Tabel stok tidak ditemukan di halaman SIRUP (format halaman mungkin berubah)')
   const { lines, totalRows } = extractLines(rows)
