@@ -84,8 +84,8 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   const groups = useMemo(() => {
     const byItem = new Map<string, { key: string; no_item: string; nama_item: string; systemQty: number; physicalQty: number; counted: number; diffLots: number; diffQty: number; lines: { line: OpnameLine; index: number; draft: Draft; diff: number | null }[] }>()
     lines.forEach((line, index) => {
-      const key = line.no_item ?? '-'
-      const group = byItem.get(key) ?? { key, no_item: key, nama_item: line.nama_item ?? '', systemQty: 0, physicalQty: 0, counted: 0, diffLots: 0, diffQty: 0, lines: [] }
+      const key = `${line.bincode ?? ''}|${line.no_item ?? '-'}`
+      const group = byItem.get(key) ?? { key, no_item: line.no_item ?? '-', nama_item: line.nama_item ?? '', systemQty: 0, physicalQty: 0, counted: 0, diffLots: 0, diffQty: 0, lines: [] }
       const draft = drafts[line.id] ?? toDraft(line)
       const physical = parseInput(draft.qty_physical)
       const diff = lineDifference({ qty_system: line.qty_system, qty_physical: physical })
@@ -97,6 +97,8 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     })
     return [...byItem.values()]
   }, [lines, drafts])
+  // Bulanan berisi semua bin: tampilkan kolom Bin.
+  const showBin = session?.period === 'Bulanan'
   // Penyebab dan Action plan dibuka per baris lewat tombol + di kanan.
   const [openNotes, setOpenNotes] = useState<Set<number>>(new Set())
   const toggleNotes = (lineId: number) => setOpenNotes(current => { const next = new Set(current); if (next.has(lineId)) next.delete(lineId); else next.add(lineId); return next })
@@ -292,6 +294,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
           <thead className="sticky top-0 z-10 bg-slate-50 text-left shadow-[0_1px_0_#e2e8f0]">
             <tr>
               <th className="px-3 py-3 font-semibold">No</th>
+              {showBin && <th className="px-3 py-3 font-semibold">Bin</th>}
               <th className="px-3 py-3 font-semibold">No Item</th>
               <th className="px-3 py-3 font-semibold">Item Description</th>
               <th className="px-3 py-3 font-semibold">Lot</th>
@@ -303,7 +306,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && !lines.length && <SkeletonRows cols={9} />}
+            {loading && !lines.length && <SkeletonRows cols={showBin ? 10 : 9} />}
             {groups.map(group => (
               <Fragment key={group.key}>
                 {group.lines.map(({ line, index, draft, diff }) => {
@@ -314,6 +317,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                     <Fragment key={line.id}>
                     <tr className={hasDiff ? 'bg-red-50/40' : undefined}>
                       <td className="px-3 py-2 text-slate-500">{index + 1}</td>
+                      {showBin && <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-700">{line.bincode}</td>}
                       <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">{line.no_item}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-slate-600">{line.nama_item}</td>
                       <td className="px-3 py-2 font-mono text-xs">{line.lot_no ?? '-'}</td>
@@ -342,7 +346,7 @@ Action plan: ${draft.action_plan || '-'}` : 'Isi penyebab dan action plan'}
                     {notesOpen && (
                       <tr className="bg-slate-50/60">
                         <td />
-                        <td colSpan={8} className="px-3 pb-3 pt-1">
+                        <td colSpan={showBin ? 9 : 8} className="px-3 pb-3 pt-1">
                           <div className="grid gap-3 sm:grid-cols-2">
                             <label className="text-xs font-semibold text-slate-600">Penyebab
                               <input value={draft.penyebab} onChange={e => setDraft(line.id, { penyebab: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-normal text-slate-900" placeholder="Penyebab selisih" />
@@ -357,13 +361,13 @@ Action plan: ${draft.action_plan || '-'}` : 'Isi penyebab dan action plan'}
                     </Fragment>
                   )
                 })}
-                <TotalRow label={`Total ${group.no_item}`} systemQty={group.systemQty} physicalQty={group.physicalQty} counted={group.counted} lineCount={group.lines.length} diffQty={group.diffQty} />
+                <TotalRow label={`Total ${group.no_item}`} showBin={showBin} systemQty={group.systemQty} physicalQty={group.physicalQty} counted={group.counted} lineCount={group.lines.length} diffQty={group.diffQty} />
               </Fragment>
             ))}
           </tbody>
           {lines.length > 0 && (
             <tfoot className="border-t-2 border-slate-300">
-              <TotalRow label="Total semua item" systemQty={summary.systemQty} physicalQty={groups.reduce((s, g) => s + g.physicalQty, 0)} counted={summary.counted} lineCount={lines.length} diffQty={summary.diffQty} strong />
+              <TotalRow label="Total semua item" showBin={showBin} systemQty={summary.systemQty} physicalQty={groups.reduce((s, g) => s + g.physicalQty, 0)} counted={summary.counted} lineCount={lines.length} diffQty={summary.diffQty} strong />
             </tfoot>
           )}
         </table>
@@ -374,14 +378,14 @@ Action plan: ${draft.action_plan || '-'}` : 'Isi penyebab dan action plan'}
 }
 
 /** Baris total di bawah lot satu item, dan total akhir semua item. */
-function TotalRow({ label, systemQty, physicalQty, counted, lineCount, diffQty, strong }: {
-  label: string; systemQty: number; physicalQty: number; counted: number; lineCount: number; diffQty: number; strong?: boolean
+function TotalRow({ label, showBin, systemQty, physicalQty, counted, lineCount, diffQty, strong }: {
+  label: string; showBin?: boolean; systemQty: number; physicalQty: number; counted: number; lineCount: number; diffQty: number; strong?: boolean
 }) {
   const complete = counted === lineCount
   return (
     <tr className={strong ? 'bg-slate-100 font-bold' : 'bg-slate-50 font-semibold'}>
       <td />
-      <td colSpan={4} className="px-3 py-2 text-slate-800">{label}{!complete && <span className="ml-2 text-xs font-normal text-slate-500">{counted}/{lineCount} lines dihitung</span>}</td>
+      <td colSpan={showBin ? 5 : 4} className="px-3 py-2 text-slate-800">{label}{!complete && <span className="ml-2 text-xs font-normal text-slate-500">{counted}/{lineCount} lines dihitung</span>}</td>
       <td className="px-3 py-2 text-right font-mono">{num(systemQty)}</td>
       <td className="px-3 py-2 text-right font-mono">{counted ? num(physicalQty) : '—'}</td>
       <td className={`px-3 py-2 text-right font-mono ${!counted ? 'text-slate-300' : diffQty === 0 ? 'text-green-700' : diffQty < 0 ? 'text-red-700' : 'text-amber-700'}`}>

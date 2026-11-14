@@ -78,7 +78,19 @@ const COLUMN_ALIASES: Record<string, string[]> = {
  * Baris mentah (array of cells, termasuk baris judul) menjadi baris opname yang
  * sudah disaring: kategori opname di bincode MDN-PAR-CON, qty > 0.
  */
-export function extractOpnameLines(rows: unknown[][]): { lines: OpnameLineInput[]; totalRows: number } {
+/** Bulanan: semua item di semua bin. Harian/Mingguan: Dialyzer + Blood Tubing Set di MDN-PAR-CON. */
+export const opnameTakesAll = (period: OpnamePeriod | null | undefined) => period === 'Bulanan'
+
+/** Urutan baris: per bin dulu (Bulanan), lalu kategori, item, ED, lot. */
+export function sortOpnameLines<T extends { bincode: string | null; kategori: string | null; no_item: string | null; expiration_date: string | null; lot_no: string | null }>(lines: T[], byBin: boolean): T[] {
+  const s = (v: string | null) => v ?? ''
+  return [...lines].sort((a, b) =>
+    (byBin ? s(a.bincode).localeCompare(s(b.bincode)) : 0) ||
+    s(a.kategori).localeCompare(s(b.kategori)) || s(a.no_item).localeCompare(s(b.no_item)) ||
+    s(a.expiration_date).localeCompare(s(b.expiration_date)) || s(a.lot_no).localeCompare(s(b.lot_no)))
+}
+
+export function extractOpnameLines(rows: unknown[][], options: { all?: boolean } = {}): { lines: OpnameLineInput[]; totalRows: number } {
   const headerIndex = rows.findIndex(row => row.some(cell => key(cell) === 'KATEGORI PRODUK') && row.some(cell => key(cell) === 'QUANTITY'))
   if (headerIndex < 0) throw new Error('Kolom "KATEGORI PRODUK" dan "QUANTITY" tidak ditemukan. Pastikan file berasal dari SIRUP Stok Gudang.')
   const header = rows[headerIndex].map(key)
@@ -91,7 +103,7 @@ export function extractOpnameLines(rows: unknown[][]): { lines: OpnameLineInput[
 
   const data = rows.slice(headerIndex + 1).filter(row => norm(at(row, 'no_item')))
   const lines = data
-    .filter(row => categories.has(key(at(row, 'kategori'))) && key(at(row, 'bincode')) === OPNAME_BINCODE)
+    .filter(row => options.all || (categories.has(key(at(row, 'kategori'))) && key(at(row, 'bincode')) === OPNAME_BINCODE))
     .map(row => ({
       bincode: key(at(row, 'bincode')),
       kategori: key(at(row, 'kategori')),
@@ -103,11 +115,8 @@ export function extractOpnameLines(rows: unknown[][]): { lines: OpnameLineInput[
       qty_system: parseQty(at(row, 'qty')),
     }))
     .filter(line => line.qty_system > 0)
-    // Urut seperti form: Blood Tubing Set dulu, lalu dialyzer; per item lalu ED.
-    .sort((a, b) =>
-      a.kategori.localeCompare(b.kategori) || a.no_item.localeCompare(b.no_item) ||
-      String(a.expiration_date ?? '').localeCompare(String(b.expiration_date ?? '')) || String(a.lot_no ?? '').localeCompare(String(b.lot_no ?? '')))
-  return { lines, totalRows: data.length }
+  // Urut seperti form: Blood Tubing Set dulu, lalu dialyzer; per item lalu ED. Bulanan: per bin lebih dulu.
+  return { lines: sortOpnameLines(lines, Boolean(options.all)), totalRows: data.length }
 }
 
 export function lineDifference(line: { qty_system: number | string; qty_physical: number | string | null }) {

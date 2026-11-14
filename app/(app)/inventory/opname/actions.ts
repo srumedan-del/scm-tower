@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
-import { extractOpnameLines, LINE_STATUSES, OPNAME_PERIODS, SESSION_STATUSES, statusFromProgress, type OpnamePeriod } from '@/lib/stock-opname'
+import { extractOpnameLines, LINE_STATUSES, OPNAME_PERIODS, opnameTakesAll, SESSION_STATUSES, sortOpnameLines, statusFromProgress, type OpnamePeriod } from '@/lib/stock-opname'
 
 export type OpnameSession = {
   id: number
@@ -98,8 +98,9 @@ export async function getOpnameSession(id: number): Promise<{ session: OpnameSes
 export async function createOpnameFromRows(input: { rows: unknown[][]; period: OpnamePeriod; opname_date: string; pic: string | null; source: 'sirup' | 'upload'; source_note?: string | null }) {
   const createdBy = await userLabel()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.opname_date)) throw new Error('Tanggal opname tidak valid')
-  const { lines, totalRows } = extractOpnameLines(input.rows)
-  if (!lines.length) throw new Error(`Tidak ada baris Hollow Fiber/Dialyzer atau Blood Tubing Set di bincode MDN-PAR-CON (dari ${totalRows} baris file).`)
+  const all = opnameTakesAll(input.period)
+  const { lines, totalRows } = extractOpnameLines(input.rows, { all })
+  if (!lines.length) throw new Error(all ? `Tidak ada baris stok dengan qty di file (dari ${totalRows} baris).` : `Tidak ada baris Hollow Fiber/Dialyzer atau Blood Tubing Set di bincode MDN-PAR-CON (dari ${totalRows} baris file).`)
   return insertSession({ ...input, lines, totalRows, createdBy })
 }
 
@@ -124,7 +125,22 @@ export async function createOpnameFromSnapshot(input: { snapshot_id: number; per
   const { data, error } = await supabaseAdmin.from('sirup_stock_snapshot').select('snapshot_date, taken_at, total_rows, lines').eq('id', input.snapshot_id).maybeSingle()
   if (error) throw new Error(/sirup_stock_snapshot/.test(error.message) ? SNAPSHOT_HINT : error.message)
   if (!data) throw new Error('Snapshot SIRUP tidak ditemukan')
-  const lines = (data.lines ?? []) as SnapshotLine[]
+  let lines = (data.lines ?? []) as SnapshotLine[]
+  if (opnameTakesAll(input.period)) {
+    // Bulanan: semua baris stok snapshot (tanpa saring kategori/bin), dari sirup_stock_row.
+    const { data: rows, error: rowsError } = await supabaseAdmin
+      .from('sirup_stock_row')
+      .select('bincode, kategori, no_item, nama_item, serial_no, lot_no, expiration_date, qty')
+      .eq('snapshot_date', data.snapshot_date)
+      .gt('qty', 0)
+      .limit(20000)
+    if (rowsError) throw new Error(rowsError.message)
+    if (!rows?.length) throw new Error('Data stok lengkap snapshot ini sudah tidak ada di server (disimpan 30 hari). Pakai Upload file Export Excel.')
+    lines = sortOpnameLines(rows.map(row => ({
+      bincode: row.bincode, kategori: row.kategori, no_item: row.no_item, nama_item: row.nama_item, serial_no: row.serial_no,
+      lot_no: row.lot_no, expiration_date: row.expiration_date, qty_system: Number(row.qty),
+    })), true)
+  }
   if (!lines.length) throw new Error('Snapshot SIRUP ini tidak berisi baris opname')
   const taken = new Date(data.taken_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })
   return insertSession({ ...input, source: 'sirup', source_note: `Snapshot SIRUP ${taken} (${data.total_rows} baris)`, lines, totalRows: data.total_rows, createdBy })

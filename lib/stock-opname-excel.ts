@@ -121,7 +121,7 @@ export function beritaEntries(lines: Line[]): BeritaEntry[] {
   lines.forEach((line, index) => {
     entries.push({ kind: 'line', line, no: index + 1 })
     const next = lines[index + 1]
-    if (next && next.no_item === line.no_item) return
+    if (next && next.no_item === line.no_item && next.bincode === line.bincode) return
     const group = lines.slice(start, index + 1)
     const counted = group.filter(l => l.qty_physical != null)
     const firstRow = entries.length - group.length

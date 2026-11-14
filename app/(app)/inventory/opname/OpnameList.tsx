@@ -168,7 +168,7 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
 
   return (
     <DialogShell onClose={onClose} size="lg">
-      <DialogHeader title={`Buat Opname ${period}`} subtitle="Hollow Fiber/Dialyzer dan Blood Tubing Set di bincode MDN-PAR-CON" icon={ClipboardList} />
+      <DialogHeader title={`Buat Opname ${period}`} subtitle={period === 'Bulanan' ? 'Semua item di semua bin MDN-PAR, dikelompokkan per bin' : 'Hollow Fiber/Dialyzer dan Blood Tubing Set di bincode MDN-PAR-CON'} icon={ClipboardList} />
       <div className={dialogBodyClass}>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Tanggal opname" required>
@@ -182,7 +182,7 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
           <div className="grid gap-2">
             {option('snapshot', 'Snapshot SIRUP terbaru',
               snapshot === undefined ? 'Memeriksa snapshot…'
-                : snapshot ? `Diambil ${snapshotLabel}, ${snapshot.line_count} lines${snapshotOld ? '. Bukan snapshot hari ini.' : ''}`
+                : snapshot ? `Diambil ${snapshotLabel}, ${period === 'Bulanan' ? snapshot.total_rows : snapshot.line_count} lines${snapshotOld ? '. Bukan snapshot hari ini.' : ''}`
                 : 'Belum ada snapshot. Snapshot diambil otomatis pukul 07.00 di hari kerja.',
               !snapshot)}
             {option('upload', 'Upload file Export Excel', 'Dari SIRUP Stok Gudang: CAB01-MDN, MDN-PAR, Kategori All, Filter, lalu Export to Excel.')}

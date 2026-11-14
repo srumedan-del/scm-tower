@@ -25,8 +25,11 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
   const signers = (settings?.signers as { name: string; title: string }[] | undefined) ?? []
   const date = opnameDateParts(session.opname_date)
   // A4 landscape: tinggi 190 mm setelah margin; ±140 mm tersedia untuk baris lot (sisanya judul, header, tanda tangan).
-  const rowMm = Math.min(7, 140 / Math.max(lines.length, 1))
-  const sheetFont = rowMm >= 5 ? '10pt' : rowMm >= 4 ? '8.5pt' : '7pt'
+  // Bulanan: semua item dan bin (ratusan baris), dicetak beberapa halaman dengan header berulang.
+  const monthly = session.period === 'Bulanan'
+  // Harian/Mingguan: dipadatkan agar muat 1 halaman A4 landscape (±140 mm untuk baris lot).
+  const rowMm = monthly ? 6.5 : Math.min(7, 140 / Math.max(lines.length, 1))
+  const sheetFont = monthly ? '9.5pt' : rowMm >= 5 ? '10pt' : rowMm >= 4 ? '8.5pt' : '7pt'
 
   return (
     <div className="opname-print">
@@ -44,8 +47,10 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         .opname-print .one-page { font-size: ${sheetFont}; }
         .opname-print .one-page th, .opname-print .one-page td { padding: 0 5px; white-space: nowrap; }
         .opname-print .one-page th { height: 7mm; }
+        .opname-print .one-page thead { display: table-header-group; }
+        .opname-print .one-page tr { break-inside: avoid; }
         .opname-print .one-page tbody td { height: ${rowMm.toFixed(2)}mm; }
-        @media print { .opname-print .lembar { break-inside: avoid; } }
+        @media print { .opname-print .lembar.fit { break-inside: avoid; } }
         .opname-print .sign td { text-align: center; padding: 4px; vertical-align: bottom; }
         .opname-print .toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
         .opname-print .toolbar button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid #999; background: #fff; cursor: pointer; }
@@ -54,21 +59,21 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
       <PrintOnLoad />
 
       {doc === 'lembar' ? (
-        <div className="lembar">
+        <div className={monthly ? 'lembar' : 'lembar fit'}>
           <table className="title">
             <tbody><tr>
-              <td style={{ fontWeight: 700, fontSize: '12pt' }}>FORM STOCK OPNAME {String(session.period ?? 'Mingguan').toUpperCase()} BLOOD LINE &amp; ELISIO</td>
+              <td style={{ fontWeight: 700, fontSize: '12pt' }}>FORM STOCK OPNAME {String(session.period ?? 'Mingguan').toUpperCase()} {monthly ? 'SEMUA ITEM' : <>BLOOD LINE &amp; ELISIO</>}</td>
               <td style={{ width: '32%', textAlign: 'right' }}>TANGGAL : {date.long}</td>
             </tr></tbody>
           </table>
           <table className="sheet one-page">
             <thead><tr>
-              <th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '9%' }}>ED</th><th style={{ width: '17%' }}>Quantity Fisik</th>
+              <th style={{ width: '5%' }}>No</th>{monthly && <th style={{ width: '12%' }}>Bin</th>}<th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '9%' }}>ED</th><th style={{ width: '17%' }}>Quantity Fisik</th>
             </tr></thead>
             <tbody>
               {lines.map((line, i) => (
                 <tr key={line.id}>
-                  <td className="c">{i + 1}</td><td>{line.no_item}</td><td>{line.nama_item}</td>
+                  <td className="c">{i + 1}</td>{monthly && <td>{line.bincode}</td>}<td>{line.no_item}</td><td>{line.nama_item}</td>
                   <td>{line.lot_no}</td><td className="c">{fmtDate(line.expiration_date)}</td><td />
                 </tr>
               ))}
