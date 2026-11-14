@@ -4,6 +4,8 @@
  *   - CSV lengkap di PC lokal (SIRUP_LOCAL_DIR, bawaan D:/sirup), satu folder per hari download, arsip permanen;
  *   - semua baris ke Supabase sirup_stock_row (hanya SIRUP_KEEP_DAYS hari terakhir, bawaan 30);
  *   - ringkasan + baris opname (Dialyzer/Blood Tubing Set MDN-PAR-CON) ke sirup_stock_snapshot.
+ * Perawatan: baris lebih lama dari KEEP_DAYS dipastikan ada arsip CSV-nya di PC sebelum dihapus dari Supabase,
+ * dan data opname di-backup harian ke D:/sirup/backup (simpan SIRUP_BACKUP_KEEP file terakhir).
  * Snapshot TIDAK membuat sesi opname; sesi dibuat pengguna lewat Stock Opname → Buat Opname.
  *
  *   node fetch-sirup.cjs            -> simpan snapshot hari ini (WIB); Sabtu dan Minggu dilewati
@@ -48,6 +50,7 @@ const CABANG = argValue('cabang') || env.SIRUP_CABANG || 'CAB01-MDN'
 const LOCCODE = argValue('loccode') || env.SIRUP_LOCCODE || 'MDN-PAR'
 const LOCAL_DIR = env.SIRUP_LOCAL_DIR || 'D:/sirup'
 const KEEP_DAYS = Number(env.SIRUP_KEEP_DAYS || 30)
+const BACKUP_KEEP = Number(env.SIRUP_BACKUP_KEEP || 90) // jumlah file backup opname harian yang disimpan di D:/sirup/backup
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -238,12 +241,63 @@ async function main() {
   for (let i = 0; i < stock.length; i += 1000) {
     await supabase('sirup_stock_row', { method: 'POST', body: JSON.stringify(stock.slice(i, i + 1000).map(row => ({ ...row, snapshot_date: today }))) })
   }
-  const cutoff = new Date(Date.parse(`${today}T00:00:00Z`) - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10)
-  await supabase(`sirup_stock_row?snapshot_date=lt.${cutoff}`, { method: 'DELETE' })
-  log(`Snapshot stok ${today} disimpan: ${stock.length} baris stok, ${lines.length} lot opname. Baris sebelum ${cutoff} dibersihkan dari Supabase.`)
+  log(`Snapshot stok ${today} disimpan: ${stock.length} baris stok, ${lines.length} lot opname.`)
+
+  // 6. Rawat penyimpanan: arsipkan ke D:\sirup sebelum membersihkan Supabase, lalu backup data opname
+  await maintainStorage(today)
 }
 
-module.exports = { tableRows, extractLines, allRows, writeLocalCsv }
+/** Ambil semua baris (melewati batas 1000 baris per permintaan Supabase). */
+async function supabaseAll(pathAndQuery, pageSize = 1000) {
+  const all = []
+  for (let from = 0; ; from += pageSize) {
+    const page = await supabase(pathAndQuery, { headers: { Range: `${from}-${from + pageSize - 1}` } })
+    all.push(...page)
+    if (page.length < pageSize) return all
+  }
+}
+
+async function supabaseCount(table) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, {
+    method: 'HEAD',
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: 'count=exact', Range: '0-0' },
+  })
+  return Number(response.headers.get('content-range')?.split('/')[1] ?? NaN)
+}
+
+async function maintainStorage(today) {
+  // a. Baris stok lebih lama dari KEEP_DAYS hari: pastikan CSV-nya ada di PC, baru hapus dari Supabase.
+  const cutoff = new Date(Date.parse(`${today}T00:00:00Z`) - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10)
+  const oldDates = [...new Set((await supabaseAll(`sirup_stock_row?select=snapshot_date&snapshot_date=lt.${cutoff}&order=snapshot_date`)).map(r => r.snapshot_date))]
+  for (const date of oldDates) {
+    const csv = path.join(LOCAL_DIR, date, `stok-sirup-${date}.csv`)
+    if (!fs.existsSync(csv)) {
+      const rows = await supabaseAll(`sirup_stock_row?select=kategori,no_item,nama_item,serial_no,lot_no,expiration_date,cabang,loccode,lokasi,bincode,rumah_sakit,qty&snapshot_date=eq.${date}&order=id`)
+      writeLocalCsv(date, rows.map(r => ({ ...r, qty: Number(r.qty) })))
+      log(`Arsip ${date} belum ada di PC, diekspor dari Supabase (${rows.length} baris)`)
+    }
+    await supabase(`sirup_stock_row?snapshot_date=eq.${date}`, { method: 'DELETE' })
+  }
+  if (oldDates.length) log(`Supabase dibersihkan: baris stok ${oldDates.join(', ')} (lebih dari ${KEEP_DAYS} hari; arsip ada di ${LOCAL_DIR})`)
+
+  // b. Backup data opname dan snapshot ke D:\sirup\backup (satu file per hari, simpan BACKUP_KEEP file terakhir).
+  const backupDir = path.join(LOCAL_DIR, 'backup')
+  fs.mkdirSync(backupDir, { recursive: true })
+  const tables = ['stock_opname_session', 'stock_opname_line', 'stock_opname_settings', 'sirup_stock_snapshot']
+  const backup = { created_at: new Date().toISOString(), tables: {} }
+  for (const table of tables) backup.tables[table] = await supabaseAll(`${table}?select=*&order=id`)
+  const backupFile = path.join(backupDir, `scm-opname-${today}.json`)
+  fs.writeFileSync(backupFile, JSON.stringify(backup))
+  const backups = fs.readdirSync(backupDir).filter(f => /^scm-opname-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort()
+  for (const file of backups.slice(0, Math.max(0, backups.length - BACKUP_KEEP))) fs.unlinkSync(path.join(backupDir, file))
+  log(`Backup opname: ${backupFile} (${tables.map(t => `${t} ${backup.tables[t].length}`).join(', ')})`)
+
+  // c. Catat pemakaian Supabase untuk tabel stok dan opname.
+  const counts = await Promise.all(['sirup_stock_row', 'sirup_stock_snapshot', 'stock_opname_session', 'stock_opname_line'].map(async t => `${t} ${await supabaseCount(t)}`))
+  log(`Jumlah baris di Supabase: ${counts.join(', ')}`)
+}
+
+module.exports = { tableRows, extractLines, allRows, writeLocalCsv, maintainStorage }
 
 if (require.main === module) {
   main().catch(error => { log(`GAGAL: ${error.message}`); process.exitCode = 1 })
