@@ -27,6 +27,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
   // A4 landscape: tinggi 190 mm setelah margin; ±140 mm tersedia untuk baris lot (sisanya judul, header, tanda tangan).
   // Bulanan: semua item dan bin (ratusan baris), dicetak beberapa halaman dengan header berulang.
   const monthly = session.period === 'Bulanan'
+  const monthLabel = new Date(`${session.opname_date}T00:00:00Z`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' }).toUpperCase()
   // Harian/Mingguan: dipadatkan agar muat 1 halaman A4 landscape (±140 mm untuk baris lot).
   const rowMm = monthly ? 6.5 : Math.min(7, 140 / Math.max(lines.length, 1))
   const sheetFont = monthly ? '9.5pt' : rowMm >= 5 ? '10pt' : rowMm >= 4 ? '8.5pt' : '7pt'
@@ -70,7 +71,11 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         <div className={monthly ? 'lembar' : 'lembar fit'}>
           <table className="title">
             <tbody><tr>
-              <td style={{ fontWeight: 700, fontSize: '12pt' }}>FORM STOCK OPNAME {String(session.period ?? 'Mingguan').toUpperCase()} {monthly ? 'SEMUA ITEM' : <>BLOOD LINE &amp; ELISIO</>}</td>
+              <td style={{ fontWeight: 700, fontSize: '12pt' }}>
+                {monthly
+                  ? <>FORM STOCK OPNAME BULANAN<div style={{ fontSize: '10.5pt', marginTop: 2 }}>BULAN : {monthLabel}</div></>
+                  : <>FORM STOCK OPNAME {String(session.period ?? 'Mingguan').toUpperCase()} BLOOD LINE &amp; ELISIO</>}
+              </td>
               <td style={{ width: '32%', textAlign: 'right' }}>TANGGAL : {date.long}</td>
             </tr></tbody>
           </table>

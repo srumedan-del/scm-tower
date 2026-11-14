@@ -81,11 +81,11 @@ const COLUMN_ALIASES: Record<string, string[]> = {
 /** Bulanan: semua item di semua bin. Harian/Mingguan: Dialyzer + Blood Tubing Set di MDN-PAR-CON. */
 export const opnameTakesAll = (period: OpnamePeriod | null | undefined) => period === 'Bulanan'
 
-/** Urutan baris: per bin dulu (Bulanan), lalu kategori, item, ED, lot. */
+/** Urutan baris: per bin dulu (Bulanan; MDN-PAR-CON paling atas), lalu kategori, item, ED, lot. */
 export function sortOpnameLines<T extends { bincode: string | null; kategori: string | null; no_item: string | null; expiration_date: string | null; lot_no: string | null }>(lines: T[], byBin: boolean): T[] {
   const s = (v: string | null) => v ?? ''
   return [...lines].sort((a, b) =>
-    (byBin ? s(a.bincode).localeCompare(s(b.bincode)) : 0) ||
+    (byBin ? Number(a.bincode !== OPNAME_BINCODE) - Number(b.bincode !== OPNAME_BINCODE) || s(a.bincode).localeCompare(s(b.bincode)) : 0) ||
     s(a.kategori).localeCompare(s(b.kategori)) || s(a.no_item).localeCompare(s(b.no_item)) ||
     s(a.expiration_date).localeCompare(s(b.expiration_date)) || s(a.lot_no).localeCompare(s(b.lot_no)))
 }
