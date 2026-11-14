@@ -34,7 +34,12 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
   return (
     <div className="opname-print">
       <style>{`
-        @page { size: A4 landscape; margin: 10mm; }
+        /* A4 mendatar (297 x 210 mm) untuk semua dokumen; nomor halaman di kanan bawah. */
+        @page {
+          size: 297mm 210mm;
+          margin: 10mm 10mm 12mm;
+          @bottom-right { content: "Halaman " counter(page) " dari " counter(pages); font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #333; }
+        }
         body { background: #fff !important; }
         .opname-print { font-family: Calibri, 'Segoe UI', Arial, sans-serif; color: #000; font-size: 10pt; padding: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .opname-print table { border-collapse: collapse; width: 100%; }
