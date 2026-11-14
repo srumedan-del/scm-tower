@@ -11,8 +11,8 @@ import { confirmAction, notify, showSuccess } from '@/lib/feedback'
 import { jakartaToday } from '@/lib/sla'
 import { opnameDateParts, type OpnamePeriod } from '@/lib/stock-opname'
 import {
-  createOpnameFromRows, deleteOpnameSession, getOpnameSettings, listOpnameSessions, saveOpnameSettings,
-  type OpnameSession, type OpnameSettings,
+  createOpnameFromRows, createOpnameFromSnapshot, deleteOpnameSession, getLatestSirupSnapshot, getOpnameSettings, listOpnameSessions, saveOpnameSettings,
+  type OpnameSession, type OpnameSettings, type SirupSnapshot,
 } from './actions'
 
 const STATUS_STYLE: Record<string, string> = {
@@ -71,7 +71,7 @@ export function OpnameList({ period }: { period: OpnamePeriod }) {
             {loading && !sessions.length && <SkeletonRows cols={7} rows={3} />}
             {!loading && !sessions.length && !error && (
               <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                Belum ada sesi opname {period.toLowerCase()}. Tekan <b>Buat Opname</b> dan unggah file Export to Excel dari SIRUP Stok Gudang.
+                Belum ada sesi opname {period.toLowerCase()}. Tekan <b>Buat Opname</b> untuk membuat sesi dari snapshot stok SIRUP atau file Export Excel.
               </td></tr>
             )}
             {sessions.map(session => {
@@ -114,44 +114,62 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
   const fileRef = useRef<HTMLInputElement>(null)
   const [date, setDate] = useState(jakartaToday())
   const [pic, setPic] = useState('')
+  const [source, setSource] = useState<'snapshot' | 'upload'>('snapshot')
+  const [snapshot, setSnapshot] = useState<SirupSnapshot | null | undefined>(undefined)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [saving, startSaving] = useTransition()
 
-  useEffect(() => { void getOpnameSettings().then(s => setPic(current => current || s.default_pic || '')).catch(() => {}) }, [])
+  useEffect(() => {
+    void getOpnameSettings().then(s => setPic(current => current || s.default_pic || '')).catch(() => {})
+    void getLatestSirupSnapshot().then(latest => { setSnapshot(latest); if (!latest) setSource('upload') }).catch(() => { setSnapshot(null); setSource('upload') })
+  }, [])
+
+  const snapshotLabel = snapshot
+    ? new Date(snapshot.taken_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : ''
+  const snapshotOld = snapshot ? snapshot.snapshot_date !== jakartaToday() : false
 
   function save() {
     setError('')
-    if (!file) { setError('Pilih file Export to Excel dari SIRUP.'); return }
+    if (source === 'snapshot' && !snapshot) { setError('Belum ada snapshot SIRUP. Pilih Upload file.'); return }
+    if (source === 'upload' && !file) { setError('Pilih file Export to Excel dari SIRUP.'); return }
     startSaving(async () => {
       try {
-        const XLSX = await import('xlsx')
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: false })
-        const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '', raw: false })
-        const result = await createOpnameFromRows({ rows, period, opname_date: date, pic, source: 'upload', source_note: file.name })
+        let result
+        if (source === 'snapshot') {
+          result = await createOpnameFromSnapshot({ snapshot_id: snapshot!.id, period, opname_date: date, pic })
+        } else {
+          const XLSX = await import('xlsx')
+          const workbook = XLSX.read(await file!.arrayBuffer(), { type: 'array', cellDates: false })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '', raw: false })
+          result = await createOpnameFromRows({ rows, period, opname_date: date, pic, source: 'upload', source_note: file!.name })
+        }
         onClose()
         void showSuccess({
           title: `Sesi opname ${period.toLowerCase()} dibuat`,
           message: 'Cetak lembar hitung untuk dibawa ke gudang, lalu isi Qty Fisik di halaman sesi.',
-          details: [{ label: 'Tanggal', value: opnameDateParts(date).long }, { label: 'Lot opname', value: String(result.lineCount) }, { label: 'Baris di file', value: String(result.totalRows) }],
+          details: [{ label: 'Tanggal', value: opnameDateParts(date).long }, { label: 'Lot opname', value: String(result.lineCount) }, { label: 'Baris SIRUP', value: String(result.totalRows) }],
           actionLabel: 'Buka sesi',
         }).then(() => { onCreated(); window.location.href = `/inventory/opname/${result.id}` })
       } catch (e: any) {
-        setError(e.message ?? 'File tidak bisa dibaca')
+        setError(e.message ?? 'Sesi opname gagal dibuat')
       }
     })
   }
 
+  const option = (value: 'snapshot' | 'upload', title: string, detail: string, disabled = false) => (
+    <label className={`flex cursor-pointer gap-3 rounded-xl border px-4 py-3 text-sm ${source === value ? 'border-indigo-500 bg-indigo-50/60' : 'border-slate-200'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}>
+      <input type="radio" name="opname-source" checked={source === value} disabled={disabled} onChange={() => setSource(value)} className="mt-1" />
+      <span><b className="block text-slate-800">{title}</b><span className="text-slate-600">{detail}</span></span>
+    </label>
+  )
+
   return (
     <DialogShell onClose={onClose} size="lg">
-      <DialogHeader title={`Buat Opname ${period}`} subtitle="Dari file Export to Excel SIRUP Stok Gudang" icon={ClipboardList} />
+      <DialogHeader title={`Buat Opname ${period}`} subtitle="Hollow Fiber/Dialyzer dan Blood Tubing Set di bincode MDN-PAR-CON" icon={ClipboardList} />
       <div className={dialogBodyClass}>
-        <ol className="list-decimal space-y-1 rounded-xl bg-slate-50 px-8 py-3 text-sm text-slate-600">
-          <li>Buka SIRUP, menu Report NAV, lalu Stock Gudang.</li>
-          <li>Pilih Cabang <b>CAB01-MDN</b>, Loccode <b>MDN-PAR</b>, Kategori <b>All</b>, lalu tekan Filter.</li>
-          <li>Tekan <b>Export to Excel</b> dan unggah file itu di sini.</li>
-        </ol>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Tanggal opname" required>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className={formControlClass} />
@@ -160,13 +178,25 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
             <input value={pic} onChange={e => setPic(e.target.value)} className={formControlClass} placeholder="Abdi & Ngadimin" />
           </FormField>
         </div>
-        <FormField label="File Export SIRUP" required hint="Hanya Hollow Fiber/Dialyzer dan Blood Tubing Set di bincode MDN-PAR-CON yang diambil.">
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={() => fileRef.current?.click()} className={dialogCancelClass}>Pilih file</button>
-            <span className="truncate text-sm text-slate-600">{file?.name ?? 'Belum ada file'}</span>
-            <input ref={fileRef} type="file" accept=".xls,.xlsx,.html,.htm" hidden onChange={e => setFile(e.target.files?.[0] ?? null)} />
+        <FormField label="Sumber data stok" required>
+          <div className="grid gap-2">
+            {option('snapshot', 'Snapshot SIRUP terbaru',
+              snapshot === undefined ? 'Memeriksa snapshot…'
+                : snapshot ? `Diambil ${snapshotLabel}, ${snapshot.line_count} lot${snapshotOld ? '. Bukan snapshot hari ini.' : ''}`
+                : 'Belum ada snapshot. Snapshot diambil otomatis pukul 07.00 di hari kerja.',
+              !snapshot)}
+            {option('upload', 'Upload file Export Excel', 'Dari SIRUP Stok Gudang: CAB01-MDN, MDN-PAR, Kategori All, Filter, lalu Export to Excel.')}
           </div>
         </FormField>
+        {source === 'upload' && (
+          <FormField label="File Export SIRUP" required>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => fileRef.current?.click()} className={dialogCancelClass}>Pilih file</button>
+              <span className="truncate text-sm text-slate-600">{file?.name ?? 'Belum ada file'}</span>
+              <input ref={fileRef} type="file" accept=".xls,.xlsx,.html,.htm" hidden onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            </div>
+          </FormField>
+        )}
         {error && <p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
       </div>
       <div className={dialogFooterClass}>

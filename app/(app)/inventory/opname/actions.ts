@@ -100,6 +100,39 @@ export async function createOpnameFromRows(input: { rows: unknown[][]; period: O
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.opname_date)) throw new Error('Tanggal opname tidak valid')
   const { lines, totalRows } = extractOpnameLines(input.rows)
   if (!lines.length) throw new Error(`Tidak ada baris Hollow Fiber/Dialyzer atau Blood Tubing Set di bincode MDN-PAR-CON (dari ${totalRows} baris file).`)
+  return insertSession({ ...input, lines, totalRows, createdBy })
+}
+
+type SnapshotLine = Omit<OpnameLine, 'id' | 'session_id' | 'sort_order' | 'qty_physical' | 'penyebab' | 'action_plan' | 'line_status'>
+export type SirupSnapshot = { id: number; snapshot_date: string; taken_at: string; total_rows: number; line_count: number }
+const SNAPSHOT_HINT = 'Jalankan dulu supabase/migration_v52_sirup_stock_snapshot.sql di Supabase.'
+
+/** Snapshot stok SIRUP terakhir (diambil otomatis pukul 07.00 hari kerja). null bila belum ada. */
+export async function getLatestSirupSnapshot(): Promise<SirupSnapshot | null> {
+  await requireAuthenticatedUser()
+  const { data, error } = await supabaseAdmin.from('sirup_stock_snapshot').select('id, snapshot_date, taken_at, total_rows, lines').order('snapshot_date', { ascending: false }).limit(1).maybeSingle()
+  if (error) {
+    if (/sirup_stock_snapshot/.test(error.message)) return null
+    throw new Error(error.message)
+  }
+  if (!data) return null
+  return { id: Number(data.id), snapshot_date: data.snapshot_date, taken_at: data.taken_at, total_rows: data.total_rows, line_count: Array.isArray(data.lines) ? data.lines.length : 0 }
+}
+
+export async function createOpnameFromSnapshot(input: { snapshot_id: number; period: OpnamePeriod; opname_date: string; pic: string | null }) {
+  const createdBy = await userLabel()
+  const { data, error } = await supabaseAdmin.from('sirup_stock_snapshot').select('snapshot_date, taken_at, total_rows, lines').eq('id', input.snapshot_id).maybeSingle()
+  if (error) throw new Error(/sirup_stock_snapshot/.test(error.message) ? SNAPSHOT_HINT : error.message)
+  if (!data) throw new Error('Snapshot SIRUP tidak ditemukan')
+  const lines = (data.lines ?? []) as SnapshotLine[]
+  if (!lines.length) throw new Error('Snapshot SIRUP ini tidak berisi baris opname')
+  const taken = new Date(data.taken_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })
+  return insertSession({ ...input, source: 'sirup', source_note: `Snapshot SIRUP ${taken} (${data.total_rows} baris)`, lines, totalRows: data.total_rows, createdBy })
+}
+
+async function insertSession(input: { period: OpnamePeriod; opname_date: string; pic: string | null; source: 'sirup' | 'upload'; source_note?: string | null; lines: SnapshotLine[]; totalRows: number; createdBy: string }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.opname_date)) throw new Error('Tanggal opname tidak valid')
+  const { lines, totalRows, createdBy } = input
   const { data: session, error } = await supabaseAdmin
     .from('stock_opname_session')
     .insert({ period: checkPeriod(input.period), opname_date: input.opname_date, pic: input.pic?.trim() || null, source: input.source, source_note: input.source_note ?? null, created_by: createdBy })
