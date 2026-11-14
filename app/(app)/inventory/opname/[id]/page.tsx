@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, use, useEffect, useMemo, useState, useTransition } from 'react'
+import { Fragment, use, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Download, NotebookPen, Plus, Printer } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
@@ -11,7 +11,7 @@ import { getOpnameSession, saveOpnameLines, updateOpnameSession, type OpnameLine
 type Draft = { qty_physical: string; penyebab: string; action_plan: string; line_status: string }
 
 const toDraft = (line: OpnameLine): Draft => ({
-  qty_physical: line.qty_physical == null ? '' : String(line.qty_physical),
+  qty_physical: line.qty_physical == null ? '' : line.qty_physical.toLocaleString('id-ID'),
   penyebab: line.penyebab ?? '',
   action_plan: line.action_plan ?? '',
   line_status: line.line_status ?? '',
@@ -21,6 +21,17 @@ const fmtDate = (iso: string | null) => (iso ? iso.split('-').reverse().join('/'
 const num = (n: number) => n.toLocaleString('id-ID')
 /** Qty Fisik yang diketik: titik = pemisah ribuan, koma = desimal. */
 const parseInput = (text: string) => (text.trim() === '' ? null : Number(text.replace(/\./g, '').replace(',', '.')))
+/** Saat mengetik: hanya angka, langsung diberi titik ribuan (4410 → 4.410). */
+const formatQtyInput = (text: string) => { const digits = text.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); return digits ? Number(digits).toLocaleString('id-ID') : '' }
+/** Draft sama dengan yang tersimpan di server (spasi di ujung diabaikan, seperti saat disimpan). */
+const isSaved = (line: OpnameLine, draft: Draft | undefined) => !draft || (
+  parseInput(draft.qty_physical) === line.qty_physical &&
+  (draft.penyebab.trim() || null) === (line.penyebab ?? null) &&
+  (draft.action_plan.trim() || null) === (line.action_plan ?? null) &&
+  (draft.line_status || null) === (line.line_status ?? null)
+)
+const backupKey = (sessionId: number) => `scm-opname-draft-${sessionId}`
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 export default function OpnameSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -30,19 +41,29 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   const [drafts, setDrafts] = useState<Record<number, Draft>>({})
   const [error, setError] = useState('')
   const [loading, startLoading] = useTransition()
-  const [saving, startSaving] = useTransition()
+  const [saveState, setSaveState] = useState<SaveState>('idle')
 
   const load = () => startLoading(async () => {
     try {
       const data = await getOpnameSession(sessionId)
-      setSession(data.session); setLines(data.lines)
-      setDrafts(Object.fromEntries(data.lines.map(line => [line.id, toDraft(line)])))
+      const fromServer: Record<number, Draft> = Object.fromEntries(data.lines.map(line => [line.id, toDraft(line)]))
+      // Pulihkan isian yang belum sempat terkirim (mis. halaman ditutup saat offline).
+      let restored = 0
+      try {
+        const backup = JSON.parse(localStorage.getItem(backupKey(sessionId)) ?? '{}') as Record<string, Draft>
+        for (const [lineId, draft] of Object.entries(backup)) {
+          const line = data.lines.find(l => l.id === Number(lineId))
+          if (line && !isSaved(line, draft)) { fromServer[line.id] = draft; restored++ }
+        }
+      } catch { /* cadangan lokal opsional */ }
+      setSession(data.session); setLines(data.lines); setDrafts(fromServer)
+      if (restored) notify.success(`${restored} isian yang belum tersimpan dipulihkan`)
       setError('')
     } catch (e: any) { setError(e.message) }
   })
   useEffect(() => { load() }, [sessionId])
 
-  const dirtyIds = useMemo(() => lines.filter(line => JSON.stringify(toDraft(line)) !== JSON.stringify(drafts[line.id])).map(line => line.id), [lines, drafts])
+  const dirtyIds = useMemo(() => lines.filter(line => !isSaved(line, drafts[line.id])).map(line => line.id), [lines, drafts])
 
   const summary = useMemo(() => {
     let counted = 0, diffLines = 0, diffQty = 0, systemQty = 0
@@ -80,21 +101,70 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
 
   const setDraft = (lineId: number, patch: Partial<Draft>) => setDrafts(current => ({ ...current, [lineId]: { ...current[lineId], ...patch } }))
 
-  function save() {
-    const updates = lines.filter(line => dirtyIds.includes(line.id)).map(line => {
-      const draft = drafts[line.id]
+  // ── Simpan otomatis ──────────────────────────────────────────────────────
+  const latest = useRef({ lines, drafts })
+  latest.current = { lines, drafts }
+  const inFlight = useRef(false)
+
+  /** Kirim semua baris yang berubah ke server. Dipanggil otomatis; tombol Simpan hanya mempercepat. */
+  const flush = useCallback(async () => {
+    if (inFlight.current) return
+    const { lines: current, drafts: currentDrafts } = latest.current
+    const updates = current.filter(line => !isSaved(line, currentDrafts[line.id])).map(line => {
+      const draft = currentDrafts[line.id]
       return {
         id: line.id,
         qty_physical: parseInput(draft.qty_physical),
-        penyebab: draft.penyebab, action_plan: draft.action_plan,
+        penyebab: draft.penyebab.trim(), action_plan: draft.action_plan.trim(),
         line_status: (draft.line_status || null) as OpnameLine['line_status'],
       }
-    })
-    if (updates.some(u => u.qty_physical != null && Number.isNaN(u.qty_physical))) { notify.error('Qty Fisik tidak valid', 'Isi dengan angka.'); return }
-    startSaving(async () => {
-      try { await saveOpnameLines(sessionId, updates); notify.success(`${updates.length} baris tersimpan`); load() } catch (e: any) { notify.error('Gagal menyimpan', e.message) }
-    })
-  }
+    }).filter(update => update.qty_physical == null || !Number.isNaN(update.qty_physical))
+    if (!updates.length) return
+    inFlight.current = true
+    setSaveState('saving')
+    try {
+      await saveOpnameLines(sessionId, updates)
+      const byId = new Map(updates.map(update => [update.id, update]))
+      setLines(previous => previous.map(line => {
+        const update = byId.get(line.id)
+        return update ? { ...line, qty_physical: update.qty_physical, penyebab: update.penyebab || null, action_plan: update.action_plan || null, line_status: update.line_status } : line
+      }))
+      setSaveState('saved')
+    } catch {
+      setSaveState('error')
+    } finally {
+      inFlight.current = false
+    }
+  }, [sessionId])
+
+  // Cadangkan isian yang belum terkirim di browser, lalu kirim 1 detik setelah berhenti mengetik.
+  useEffect(() => {
+    if (!lines.length) return
+    try {
+      const pending = Object.fromEntries(dirtyIds.map(lineId => [lineId, drafts[lineId]]))
+      if (dirtyIds.length) localStorage.setItem(backupKey(sessionId), JSON.stringify(pending))
+      else localStorage.removeItem(backupKey(sessionId))
+    } catch { /* cadangan lokal opsional */ }
+    if (!dirtyIds.length) return
+    const timer = window.setTimeout(() => { void flush() }, saveState === 'error' ? 10_000 : 1000)
+    return () => window.clearTimeout(timer)
+  }, [drafts, lines, dirtyIds, sessionId, flush, saveState])
+
+  // Kirim juga saat pindah tab/halaman, dan peringatkan bila browser ditutup sebelum terkirim.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') void flush() }
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const { lines: current, drafts: currentDrafts } = latest.current
+      if (current.some(line => !isSaved(line, currentDrafts[line.id]))) { void flush(); event.preventDefault() }
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      void flush() // keluar lewat menu/sidebar
+    }
+  }, [flush])
 
   async function changeStatus(status: OpnameSession['status']) {
     if (!session) return
@@ -160,9 +230,9 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-left">
+      <div className="max-h-[calc(100vh-9rem)] overflow-auto rounded-2xl border border-slate-200 bg-white">
+        <table className="opname-entry w-full min-w-[900px] text-sm">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-left shadow-[0_1px_0_#e2e8f0]">
             <tr>
               <th className="px-3 py-3 font-semibold">No</th>
               <th className="px-3 py-3 font-semibold">No Item</th>
@@ -193,7 +263,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                       <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
                       <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
                       <td className="px-3 py-2">
-                        <input inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: e.target.value })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
+                        <input inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: formatQtyInput(e.target.value) })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
                       </td>
                       <td className={`px-3 py-2 text-right font-mono font-semibold ${diff == null ? 'text-slate-300' : diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-amber-700'}`}>
                         {diff == null ? '—' : diff === 0 ? 'Sesuai' : (diff > 0 ? '+' : '') + num(diff)}
@@ -244,9 +314,14 @@ Action plan: ${draft.action_plan || '-'}` : 'Isi penyebab dan action plan'}
 
       {session && (
         <div className="sticky bottom-0 flex items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
-          <span className="text-sm text-slate-500">{dirtyIds.length ? `${dirtyIds.length} baris belum disimpan` : 'Semua perubahan tersimpan'}</span>
-          <button type="button" onClick={save} disabled={saving || !dirtyIds.length} data-busy={saving} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-60">
-            {saving ? 'Menyimpan…' : 'Simpan Hasil Hitung'}
+          <span role="status" aria-live="polite" className={`text-sm ${saveState === 'error' ? 'font-semibold text-red-700' : 'text-slate-500'}`}>
+            {saveState === 'saving' ? 'Menyimpan otomatis…'
+              : saveState === 'error' && dirtyIds.length ? `${dirtyIds.length} baris belum terkirim (koneksi?). Tersimpan di perangkat ini, dicoba lagi otomatis.`
+              : dirtyIds.length ? `${dirtyIds.length} baris akan disimpan otomatis…`
+              : 'Semua isian tersimpan otomatis'}
+          </span>
+          <button type="button" onClick={() => void flush()} disabled={saveState === 'saving' || !dirtyIds.length} data-busy={saveState === 'saving'} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white disabled:opacity-60">
+            {saveState === 'saving' ? 'Menyimpan…' : 'Simpan Sekarang'}
           </button>
         </div>
       )}

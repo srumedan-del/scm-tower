@@ -1422,3 +1422,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 
 /* Deskripsi di bawah judul halaman tidak ditampilkan — judul sudah cukup jelas */
 .app-main h1 + p { display: none; }
+
+/* Tabel entry stock opname: header tebal dan gelap (mengalahkan .app-main table thead th di atas). */
+.app-main table.opname-entry thead th {
+  font-weight: 700;
+  color: #1F1E1D;
+  background-color: #F8FAFC;
+}
