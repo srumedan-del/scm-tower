@@ -127,7 +127,7 @@ async function main() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
 
   if (!DRY_RUN && !FORCE) {
-    const existing = await supabase(`stock_opname_session?select=id&source=eq.sirup&opname_date=eq.${today}&limit=1`)
+    const existing = await supabase(`stock_opname_session?select=id&source=eq.sirup&period=eq.Mingguan&opname_date=eq.${today}&limit=1`)
     if (existing.length) { log(`Sesi opname SIRUP ${today} sudah ada (id ${existing[0].id}). Lewati. Pakai --force untuk membuat lagi.`); return }
   }
 
@@ -165,7 +165,7 @@ async function main() {
   const [session] = await supabase('stock_opname_session', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ opname_date: today, source: 'sirup', source_note: `SIRUP Stok Gudang CAB01-MDN/MDN-PAR (${totalRows} baris)`, pic: settings?.[0]?.default_pic ?? null, created_by: 'Jadwal otomatis SIRUP' }),
+    body: JSON.stringify({ period: 'Mingguan', opname_date: today, source: 'sirup', source_note: `SIRUP Stok Gudang CAB01-MDN/MDN-PAR (${totalRows} baris)`, pic: settings?.[0]?.default_pic ?? null, created_by: 'Jadwal otomatis SIRUP' }),
   })
   try {
     await supabase('stock_opname_line', { method: 'POST', body: JSON.stringify(lines.map((line, i) => ({ ...line, session_id: session.id, sort_order: i + 1 }))) })

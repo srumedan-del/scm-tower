@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { notify } from '@/lib/feedback'
-import { LINE_STATUSES, SESSION_STATUSES, lineDifference, opnameDateParts } from '@/lib/stock-opname'
+import { LINE_STATUSES, SESSION_STATUSES, lineDifference, opnameDateParts, periodHref, type OpnamePeriod } from '@/lib/stock-opname'
 import { getOpnameSession, saveOpnameLines, updateOpnameSession, type OpnameLine, type OpnameSession } from '../actions'
 
 type Draft = { qty_physical: string; penyebab: string; action_plan: string; line_status: string }
@@ -83,10 +83,10 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-4">
-      <BackLink />
+      <BackLink period={session?.period} />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Opname {date ? `${date.day}, ${date.long}` : ''}</h1>
+          <h1 className="text-3xl font-bold">Opname {session?.period ?? ''} {date ? `${date.day}, ${date.long}` : ''}</h1>
         </div>
         {session && (
           <div className="flex flex-wrap gap-2">
@@ -201,10 +201,10 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   )
 }
 
-function BackLink() {
+function BackLink({ period }: { period?: OpnamePeriod }) {
   return (
-    <Link href="/inventory/opname" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900">
-      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Semua sesi opname
+    <Link href={periodHref(period)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900">
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Semua sesi opname {(period ?? 'Mingguan').toLowerCase()}
     </Link>
   )
 }

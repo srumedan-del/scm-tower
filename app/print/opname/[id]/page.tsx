@@ -46,7 +46,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         <>
           <table className="head" style={{ marginBottom: 10 }}>
             <tbody><tr>
-              <td style={{ fontWeight: 700, fontSize: '12pt' }}>FORM STOCK OPNAME MINGGUAN BLOOD LINE &amp; ELISIO</td>
+              <td style={{ fontWeight: 700, fontSize: '12pt' }}>FORM STOCK OPNAME {String(session.period ?? 'Mingguan').toUpperCase()} BLOOD LINE &amp; ELISIO</td>
               <td style={{ width: '32%' }}>TANGGAL : {date.long}</td>
             </tr></tbody>
           </table>

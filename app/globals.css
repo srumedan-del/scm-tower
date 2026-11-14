@@ -1058,6 +1058,13 @@ a.bg-indigo-600:hover {
   transition: color 180ms ease, background-color 180ms ease;
 }
 
+/* Sub menu (mis. Stock Opname → Harian/Mingguan/Bulanan): menjorok sejajar teks induk. */
+.lux-nav-link.lux-nav-sub {
+  min-height: 34px;
+  padding-left: 2.625rem;
+  font-size: 0.875rem;
+}
+
 .lux-nav-link:hover {
   color: #1F1E1D;
   background-color: rgba(31, 30, 29, 0.05);

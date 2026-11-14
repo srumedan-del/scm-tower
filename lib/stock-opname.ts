@@ -12,6 +12,12 @@ export const OPNAME_BINCODE = 'MDN-PAR-CON'
 export const LINE_STATUSES = ['Open', 'Proses', 'Closed'] as const
 export const SESSION_STATUSES = ['Draft', 'Selesai dihitung', 'Diverifikasi'] as const
 
+export const OPNAME_PERIODS = ['Harian', 'Mingguan', 'Bulanan'] as const
+export type OpnamePeriod = typeof OPNAME_PERIODS[number]
+/** Segmen URL per periode: /inventory/opname/harian, /mingguan, /bulanan. */
+export const PERIOD_SLUG: Record<OpnamePeriod, string> = { Harian: 'harian', Mingguan: 'mingguan', Bulanan: 'bulanan' }
+export const periodHref = (period: OpnamePeriod | null | undefined) => `/inventory/opname/${PERIOD_SLUG[period ?? 'Mingguan']}`
+
 export type OpnameLineInput = {
   bincode: string
   kategori: string

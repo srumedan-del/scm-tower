@@ -31,6 +31,7 @@ const toDate = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`) : nul
 export async function buildOpnameWorkbook(input: {
   doc: OpnameDoc
   opnameDate: string
+  period?: string
   pic: string | null
   lines: Line[]
   signers: { name: string; title: string }[]
@@ -75,6 +76,16 @@ export async function buildOpnameWorkbook(input: {
 
   if (input.doc === 'lembar') {
     ws.getCell('M2').value = `TANGGAL : ${date.long}`
+    // Judul template berbunyi "...MINGGUAN..."; sesuaikan dengan periode sesi.
+    const period = (input.period ?? 'Mingguan').toUpperCase()
+    for (let row = 1; row <= 3; row++) {
+      ws.getRow(row).eachCell(cell => {
+        const value = cell.value as unknown
+        const text = typeof value === 'string' ? value
+          : value && typeof value === 'object' && 'richText' in value ? (value as { richText: { text: string }[] }).richText.map(part => part.text).join('') : null
+        if (text && /MINGGUAN/i.test(text)) cell.value = text.replace(/MINGGUAN/i, period)
+      })
+    }
   } else {
     ws.getCell('A3').value = `PERIODE ${date.upper}`
     ws.getCell('A5').value = `Pada hari ${date.day}, tanggal ${date.long} telah dilaksanakan stock opname di gudang Medan oleh Tim Accounting dan Tim SCM`

@@ -5,19 +5,32 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { MotionConfig, motion } from 'framer-motion'
 import {
-  ArrowLeftRight, ChartNoAxesCombined, CheckSquare, ClipboardList, Database, DollarSign,
+  ArrowLeftRight, ChartNoAxesCombined, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
   LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getNavBadges, type NavBadges } from '@/app/(app)/nav-badges'
 
 type NavItem = readonly [string, string, typeof LayoutDashboard]
+/** Menu bertingkat: href induk dipakai sebagai awalan path dan tujuan saat sidebar diciutkan. */
+type NavParent = { label: string; href: string; icon: typeof LayoutDashboard; collapsedHref: string; children: readonly NavItem[] }
+type NavEntry = NavItem | NavParent
+const isParent = (entry: NavEntry): entry is NavParent => !Array.isArray(entry)
+
+const stockOpname: NavParent = {
+  label: 'Stock Opname', href: '/inventory/opname', icon: ClipboardList, collapsedHref: '/inventory/opname/mingguan',
+  children: [
+    ['Harian', '/inventory/opname/harian', ClipboardList],
+    ['Mingguan', '/inventory/opname/mingguan', ClipboardList],
+    ['Bulanan', '/inventory/opname/bulanan', ClipboardList],
+  ],
+}
 
 const dashboard: NavItem = ['Dashboard', '/dashboard', LayoutDashboard]
-const groups: readonly { label: string; items: readonly NavItem[] }[] = [
+const groups: readonly { label: string; items: readonly NavEntry[] }[] = [
   { label: 'Workspace', items: [['Task Board', '/', CheckSquare], ['Peta & Stok HD', '/peta-stok-hd', MapPin], ['Live Tracking', '/live-tracking', Radio]] },
   { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', PackageOpen], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign]] },
-  { label: 'Monitoring', items: [['Service Level', '/service-level', ChartNoAxesCombined], ['Inventory', '/inventory', Warehouse], ['Stock Opname', '/inventory/opname', ClipboardList]] },
+  { label: 'Monitoring', items: [['Service Level', '/service-level', ChartNoAxesCombined], ['Inventory', '/inventory', Warehouse], stockOpname] },
   { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database]] },
 ]
 
@@ -29,7 +42,7 @@ const BADGE_HINT: Record<string, string> = {
 const COLLAPSE_KEY = 'scm-sidebar-collapsed'
 const BADGE_REFRESH_MS = 5 * 60_000
 
-const allHrefs = [dashboard[1], ...groups.flatMap(group => group.items.map(item => item[1]))]
+const allHrefs = [dashboard[1], ...groups.flatMap(group => group.items.flatMap(item => isParent(item) ? [item.href, ...item.children.map(child => child[1])] : [item[1]]))]
 
 /** Memilih menu paling spesifik agar /shipment-cost tidak ikut mengaktifkan /shipment. */
 function findActiveHref(pathname: string) {
@@ -38,8 +51,9 @@ function findActiveHref(pathname: string) {
     .sort((first, second) => second.length - first.length)[0]
 }
 
-function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate }: {
+function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate, nested }: {
   item: NavItem
+  nested?: boolean
   activeHref: string | undefined
   indicatorId: string
   collapsed: boolean
@@ -56,7 +70,7 @@ function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate }
       aria-current={active ? 'page' : undefined}
       aria-label={collapsed ? hint : undefined}
       title={collapsed || badge ? hint : undefined}
-      className={`lux-nav-link ${collapsed ? 'justify-center px-0' : ''}`}
+      className={`lux-nav-link ${collapsed ? 'justify-center px-0' : ''} ${nested ? 'lux-nav-sub' : ''}`}
     >
       {active && (
         <motion.span
@@ -65,7 +79,7 @@ function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate }
           transition={{ type: 'spring', stiffness: 420, damping: 36 }}
         />
       )}
-      <span className="relative">
+      <span className={`relative ${nested ? 'hidden' : ''}`}>
         <Icon size={18} aria-hidden="true" />
         {collapsed && badge ? <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-gold-500 ring-2 ring-[#F0EEE6]" /> : null}
       </span>
@@ -77,6 +91,42 @@ function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate }
   )
 }
 
+function NavParentLink({ parent, activeHref, indicatorId, collapsed, onNavigate }: {
+  parent: NavParent
+  activeHref: string | undefined
+  indicatorId: string
+  collapsed: boolean
+  onNavigate?: () => void
+}) {
+  const inside = activeHref === parent.href || parent.children.some(child => child[1] === activeHref)
+  const [open, setOpen] = useState(inside)
+  useEffect(() => { if (inside) setOpen(true) }, [inside])
+  const Icon = parent.icon
+
+  // Sidebar ciut: satu ikon menuju sub menu utama.
+  if (collapsed) return <NavLink item={[parent.label, parent.collapsedHref, Icon]} activeHref={inside ? parent.collapsedHref : undefined} indicatorId={indicatorId} collapsed onNavigate={onNavigate} />
+
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="lux-nav-link w-full">
+        {activeHref === parent.href && (
+          <motion.span layoutId={indicatorId} className="lux-nav-active" transition={{ type: 'spring', stiffness: 420, damping: 36 }} />
+        )}
+        <span className="relative"><Icon size={18} aria-hidden="true" /></span>
+        <span className="relative flex-1 truncate text-left">{parent.label}</span>
+        <ChevronDown size={16} aria-hidden="true" className={`relative transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="space-y-0.5">
+          {parent.children.map(child => (
+            <NavLink key={child[1]} item={child} activeHref={activeHref} indicatorId={indicatorId} collapsed={false} onNavigate={onNavigate} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Navigation({ pathname, indicatorId, collapsed, badges, onNavigate }: {
   pathname: string
   indicatorId: string
@@ -85,9 +135,9 @@ function Navigation({ pathname, indicatorId, collapsed, badges, onNavigate }: {
   onNavigate?: () => void
 }) {
   const activeHref = findActiveHref(pathname)
-  const link = (item: NavItem) => (
-    <NavLink key={item[1]} item={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} badge={badges[item[1]]} onNavigate={onNavigate} />
-  )
+  const link = (item: NavEntry) => isParent(item)
+    ? <NavParentLink key={item.href} parent={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} onNavigate={onNavigate} />
+    : <NavLink key={item[1]} item={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} badge={badges[item[1]]} onNavigate={onNavigate} />
   return (
     <nav className="space-y-0.5" aria-label="Navigasi utama">
       {link(dashboard)}

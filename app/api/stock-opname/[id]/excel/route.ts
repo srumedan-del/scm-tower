@@ -19,11 +19,12 @@ export async function GET(request: Request, context: Context) {
   const buffer = await buildOpnameWorkbook({
     doc,
     opnameDate: session.opname_date,
+    period: session.period ?? 'Mingguan',
     pic: session.pic,
     lines: (lines ?? []).map(line => ({ ...line, qty_system: Number(line.qty_system), qty_physical: line.qty_physical == null ? null : Number(line.qty_physical) })),
     signers: (settings?.signers as { name: string; title: string }[] | undefined) ?? [],
   })
-  const label = doc === 'lembar' ? 'Form Stock Opname Mingguan BL ELISIO' : 'F-SRU-SCMWHL-37 Selisih Stock Opname SRU Medan'
+  const label = doc === 'lembar' ? `Form Stock Opname ${session.period ?? 'Mingguan'} BL ELISIO` : 'F-SRU-SCMWHL-37 Selisih Stock Opname SRU Medan'
   return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

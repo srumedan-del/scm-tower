@@ -2,13 +2,14 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
-import { extractOpnameLines, LINE_STATUSES, SESSION_STATUSES } from '@/lib/stock-opname'
+import { extractOpnameLines, LINE_STATUSES, OPNAME_PERIODS, SESSION_STATUSES, type OpnamePeriod } from '@/lib/stock-opname'
 
 export type OpnameSession = {
   id: number
   opname_date: string
   source: 'sirup' | 'upload'
   source_note: string | null
+  period?: OpnamePeriod
   pic: string | null
   status: typeof SESSION_STATUSES[number]
   notes: string | null
@@ -42,9 +43,16 @@ export type OpnameSigner = { name: string; title: string }
 export type OpnameSettings = { signers: OpnameSigner[]; default_pic: string | null }
 
 const MIGRATION_HINT = 'Jalankan dulu supabase/migration_v50_stock_opname.sql di Supabase.'
+const PERIOD_HINT = 'Jalankan dulu supabase/migration_v51_stock_opname_period.sql di Supabase.'
 
 function explain(error: { message: string }) {
+  if (/period/.test(error.message) && /does not exist|schema cache|column/.test(error.message)) return PERIOD_HINT
   return /stock_opname/.test(error.message) && /does not exist|schema cache/.test(error.message) ? MIGRATION_HINT : error.message
+}
+
+function checkPeriod(period: string): OpnamePeriod {
+  if (!OPNAME_PERIODS.includes(period as OpnamePeriod)) throw new Error('Periode opname tidak valid')
+  return period as OpnamePeriod
 }
 
 async function userLabel() {
@@ -52,9 +60,9 @@ async function userLabel() {
   return String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'unknown')
 }
 
-export async function listOpnameSessions(): Promise<OpnameSession[]> {
+export async function listOpnameSessions(period: OpnamePeriod): Promise<OpnameSession[]> {
   await requireAuthenticatedUser()
-  const { data, error } = await supabaseAdmin.from('stock_opname_session').select('*').order('opname_date', { ascending: false }).order('id', { ascending: false }).limit(100)
+  const { data, error } = await supabaseAdmin.from('stock_opname_session').select('*').eq('period', checkPeriod(period)).order('opname_date', { ascending: false }).order('id', { ascending: false }).limit(100)
   if (error) throw new Error(explain(error))
   const sessions = (data ?? []) as OpnameSession[]
   if (!sessions.length) return sessions
@@ -87,14 +95,14 @@ export async function getOpnameSession(id: number): Promise<{ session: OpnameSes
 }
 
 /** Buat sesi dari baris tabel SIRUP (file Export to Excel atau pengambilan otomatis). */
-export async function createOpnameFromRows(input: { rows: unknown[][]; opname_date: string; pic: string | null; source: 'sirup' | 'upload'; source_note?: string | null }) {
+export async function createOpnameFromRows(input: { rows: unknown[][]; period: OpnamePeriod; opname_date: string; pic: string | null; source: 'sirup' | 'upload'; source_note?: string | null }) {
   const createdBy = await userLabel()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.opname_date)) throw new Error('Tanggal opname tidak valid')
   const { lines, totalRows } = extractOpnameLines(input.rows)
   if (!lines.length) throw new Error(`Tidak ada baris Hollow Fiber/Dialyzer atau Blood Tubing Set di bincode MDN-PAR-CON (dari ${totalRows} baris file).`)
   const { data: session, error } = await supabaseAdmin
     .from('stock_opname_session')
-    .insert({ opname_date: input.opname_date, pic: input.pic?.trim() || null, source: input.source, source_note: input.source_note ?? null, created_by: createdBy })
+    .insert({ period: checkPeriod(input.period), opname_date: input.opname_date, pic: input.pic?.trim() || null, source: input.source, source_note: input.source_note ?? null, created_by: createdBy })
     .select('id')
     .single()
   if (error) throw new Error(explain(error))
