@@ -39,7 +39,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         .opname-print .sheet th { background: #D9D9D9; font-weight: 700; text-align: center; }
         .opname-print .sheet tr.total td { background: #FFFF00; font-weight: 700; }
         .opname-print .r { text-align: right; } .opname-print .c { text-align: center; }
-        .opname-print .head td { border: 1px solid #000; padding: 4px 6px; }
+        .opname-print .head td { border: none; padding: 2px 6px; }
         .opname-print .title td { padding: 0 2px 6px; }
         .opname-print .one-page { font-size: ${sheetFont}; }
         .opname-print .one-page th, .opname-print .one-page td { padding: 0 5px; white-space: nowrap; }

@@ -198,7 +198,8 @@ function fillBerita(ws: ExcelJS.Worksheet, input: { opnameDate: string; pic: str
   bottom.forEach((row, i) => {
     const r = bottomStart + i
     if (row.height) ws.getRow(r).height = row.height
-    row.cells.forEach((cell, c) => { const target = ws.getCell(r, c + 1); target.style = cell.style ?? {}; target.value = cell.value })
+    // Tanpa garis: penutup dan tanda tangan tidak diberi border.
+    row.cells.forEach((cell, c) => { const target = ws.getCell(r, c + 1); target.style = { ...(cell.style ?? {}), border: {} }; target.value = cell.value })
   })
   bottomMerges.forEach(range => {
     const shifted = range.replace(/([A-Z]+)(\d+)/g, (_, col: string, row: string) => `${col}${Number(row) + offset}`)

@@ -2,10 +2,11 @@
 
 import { Fragment, use, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Download, NotebookPen, Plus, Printer, Save } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, CheckCircle2, Download, NotebookPen, Plus, Printer, Save } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
-import { notify } from '@/lib/feedback'
-import { SESSION_STATUSES, lineDifference, opnameDateParts, periodHref, type OpnamePeriod } from '@/lib/stock-opname'
+import { confirmAction, notify } from '@/lib/feedback'
+import { lineDifference, opnameDateParts, periodHref, type OpnamePeriod } from '@/lib/stock-opname'
 import { getOpnameSession, saveOpnameLines, updateOpnameSession, type OpnameLine, type OpnameSession } from '../actions'
 
 type Draft = { qty_physical: string; penyebab: string; action_plan: string; line_status: string }
@@ -42,6 +43,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState('')
   const [loading, startLoading] = useTransition()
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const router = useRouter()
 
   const load = () => startLoading(async () => {
     try {
@@ -166,9 +168,16 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     }
   }, [flush])
 
-  async function changeStatus(status: OpnameSession['status']) {
+  /** Semua isian tersimpan: tandai sesi selesai dihitung lalu kembali ke daftar sesi. */
+  async function finish() {
     if (!session) return
-    try { await updateOpnameSession(session.id, { status }); setSession({ ...session, status }); notify.success('Status sesi: ' + status) } catch (e: any) { notify.error('Gagal mengubah status', e.message) }
+    const uncounted = lines.length - summary.counted
+    if (uncounted > 0 && !(await confirmAction({ title: 'Selesaikan opname?', message: `${uncounted} lot belum diisi Qty Fisik. Tetap tandai sesi ini selesai?` }))) return
+    try {
+      if (session.status === 'Draft') await updateOpnameSession(session.id, { status: 'Selesai dihitung' })
+      notify.success('Stock opname selesai')
+      router.push(periodHref(session.period))
+    } catch (e: any) { notify.error('Gagal menyelesaikan', e.message) }
   }
 
   if (error) return <div className="space-y-4"><BackLink /><p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p></div>
@@ -180,11 +189,6 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold">Opname {session?.period ?? ''} {date ? `${date.day}, ${date.long}` : ''}</h1>
-          {session && (
-            <select aria-label="Status sesi" value={session.status} onChange={e => changeStatus(e.target.value as OpnameSession['status'])} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold text-slate-800">
-              {SESSION_STATUSES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          )}
         </div>
         {session && (
           <div className="flex flex-wrap items-center gap-2">
@@ -197,18 +201,19 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
             <Link href={`/print/opname/${session.id}?doc=berita`} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               <Printer className="h-4 w-4" aria-hidden="true" /> Berita Acara (PDF)
             </Link>
-            {/* Simpan otomatis tetap berjalan; tombol ini mempercepat dan sekaligus menunjukkan statusnya. */}
+            {/* Simpan otomatis tetap berjalan. Selama ada isian belum terkirim tombol ini menyimpan;
+                setelah semua tersimpan tombol menjadi Selesai untuk menutup sesi. */}
             <button
               type="button"
-              onClick={() => void flush()}
-              disabled={saveState === 'saving' || !dirtyIds.length}
+              onClick={() => (dirtyIds.length ? void flush() : void finish())}
+              disabled={saveState === 'saving'}
               data-busy={saveState === 'saving'}
-              title={saveState === 'error' && dirtyIds.length ? 'Belum terkirim (koneksi?). Isian tersimpan di perangkat ini dan dicoba lagi otomatis.' : 'Isian disimpan otomatis'}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white disabled:cursor-default ${saveState === 'error' && dirtyIds.length ? 'bg-red-600' : dirtyIds.length ? 'bg-indigo-600' : 'bg-indigo-600/60'}`}
+              title={saveState === 'error' && dirtyIds.length ? 'Belum terkirim (koneksi?). Isian tersimpan di perangkat ini dan dicoba lagi otomatis.' : dirtyIds.length ? 'Isian disimpan otomatis' : 'Semua isian tersimpan. Tandai opname selesai.'}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white ${saveState === 'error' && dirtyIds.length ? 'bg-red-600' : dirtyIds.length ? 'bg-indigo-600' : 'bg-green-700'}`}
             >
-              <Save className="h-4 w-4" aria-hidden="true" />
+              {dirtyIds.length || saveState === 'saving' ? <Save className="h-4 w-4" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
               <span role="status" aria-live="polite">
-                {saveState === 'saving' ? 'Menyimpan…' : saveState === 'error' && dirtyIds.length ? 'Gagal, simpan lagi' : dirtyIds.length ? 'Simpan' : 'Tersimpan'}
+                {saveState === 'saving' ? 'Menyimpan…' : saveState === 'error' && dirtyIds.length ? 'Gagal, simpan lagi' : dirtyIds.length ? 'Simpan' : 'Selesai'}
               </span>
             </button>
           </div>
