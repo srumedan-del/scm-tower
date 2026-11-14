@@ -492,5 +492,11 @@ insert into item_hd_category (no_item, category, source) values
   ('ZX 7120-120', 'NHD', 'HD NHD.xlsx')
 on conflict (no_item) do update set category = excluded.category, source = excluded.source, updated_at = now();
 
+-- Tidak berkategori di file (ditandai "-"); ditetapkan owner 14 Nov 2026.
+insert into item_hd_category (no_item, category, source) values
+  ('CSR-MDN-BAJUAPD-66', 'NHD', 'Owner 14 Nov 2026'),
+  ('CSR-MDN-BAJUAPD-75', 'NHD', 'Owner 14 Nov 2026')
+on conflict (no_item) do update set category = excluded.category, source = excluded.source, updated_at = now();
+
 -- Isi kategori untuk baris opname yang sudah ada.
 update stock_opname_line l set hd_category = c.category from item_hd_category c where upper(l.no_item) = c.no_item and l.hd_category is null;
