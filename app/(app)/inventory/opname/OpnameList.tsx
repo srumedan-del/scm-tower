@@ -80,7 +80,6 @@ export function OpnameList({ period }: { period: OpnamePeriod }) {
                 <tr key={session.id}>
                   <td className="px-4 py-3">
                     <Link href={`/inventory/opname/${session.id}`} className="font-semibold text-indigo-900 hover:underline">{date.day}, {date.long}</Link>
-                    {session.pic && <div className="text-xs text-slate-500">PIC {session.pic}</div>}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{session.source === 'sirup' ? 'Otomatis dari SIRUP' : 'Upload Excel'}</td>
                   <td className="px-4 py-3 text-right font-mono">{session.line_count ?? 0}</td>

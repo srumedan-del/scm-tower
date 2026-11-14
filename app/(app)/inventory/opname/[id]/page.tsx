@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { notify } from '@/lib/feedback'
-import { LINE_STATUSES, SESSION_STATUSES, lineDifference, opnameDateParts, periodHref, type OpnamePeriod } from '@/lib/stock-opname'
+import { SESSION_STATUSES, lineDifference, opnameDateParts, periodHref, type OpnamePeriod } from '@/lib/stock-opname'
 import { getOpnameSession, saveOpnameLines, updateOpnameSession, type OpnameLine, type OpnameSession } from '../actions'
 
 type Draft = { qty_physical: string; penyebab: string; action_plan: string; line_status: string }
@@ -138,11 +138,10 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
       )}
 
       <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[1180px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-left">
             <tr>
               <th className="px-3 py-3 font-semibold">No</th>
-              <th className="px-3 py-3 font-semibold">Kategori</th>
               <th className="px-3 py-3 font-semibold">Item</th>
               <th className="px-3 py-3 font-semibold">Lot</th>
               <th className="px-3 py-3 font-semibold">ED</th>
@@ -151,11 +150,10 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
               <th className="px-3 py-3 text-right font-semibold">Selisih</th>
               <th className="px-3 py-3 font-semibold">Penyebab</th>
               <th className="px-3 py-3 font-semibold">Action plan</th>
-              <th className="px-3 py-3 font-semibold">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && !lines.length && <SkeletonRows cols={11} />}
+            {loading && !lines.length && <SkeletonRows cols={9} />}
             {lines.map((line, index) => {
               const draft = drafts[line.id] ?? toDraft(line)
               const diff = lineDifference({ qty_system: line.qty_system, qty_physical: draft.qty_physical === '' ? null : Number(draft.qty_physical) })
@@ -163,7 +161,6 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
               return (
                 <tr key={line.id} className={hasDiff ? 'bg-red-50/40' : undefined}>
                   <td className="px-3 py-2 text-slate-500">{index + 1}</td>
-                  <td className="px-3 py-2 text-xs text-slate-600">{line.kategori === 'HOLOW FIBER / DIALYZER' ? 'Dialyzer' : 'Blood Tubing Set'}</td>
                   <td className="px-3 py-2"><div className="font-semibold text-slate-900">{line.no_item}</div><div className="max-w-[260px] truncate text-xs text-slate-500" title={line.nama_item ?? ''}>{line.nama_item}</div></td>
                   <td className="px-3 py-2 font-mono text-xs">{line.lot_no ?? '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
@@ -176,12 +173,6 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                   </td>
                   <td className="px-3 py-2"><input aria-label="Penyebab" value={draft.penyebab} onChange={e => setDraft(line.id, { penyebab: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" placeholder={hasDiff ? 'Wajib bila selisih' : ''} /></td>
                   <td className="px-3 py-2"><input aria-label="Action plan" value={draft.action_plan} onChange={e => setDraft(line.id, { action_plan: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" /></td>
-                  <td className="px-3 py-2">
-                    <select aria-label="Status baris" value={draft.line_status} onChange={e => setDraft(line.id, { line_status: e.target.value })} className="rounded-lg border border-slate-200 px-2 py-1.5">
-                      <option value="">—</option>
-                      {LINE_STATUSES.map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  </td>
                 </tr>
               )
             })}
