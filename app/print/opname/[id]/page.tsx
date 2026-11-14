@@ -29,10 +29,10 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
       <style>{`
         @page { size: A4 landscape; margin: 10mm; }
         body { background: #fff !important; }
-        .opname-print { font-family: Calibri, 'Segoe UI', Arial, sans-serif; color: #000; font-size: 10pt; padding: 12px; }
+        .opname-print { font-family: Calibri, 'Segoe UI', Arial, sans-serif; color: #000; font-size: 10pt; padding: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .opname-print table { border-collapse: collapse; width: 100%; }
-        .opname-print .grid th, .opname-print .grid td { border: 1px solid #000; padding: 3px 5px; vertical-align: middle; }
-        .opname-print .grid th { background: #D9D9D9; font-weight: 700; text-align: center; }
+        .opname-print .sheet th, .opname-print .sheet td { border: 1px solid #000; padding: 3px 5px; vertical-align: middle; }
+        .opname-print .sheet th { background: #D9D9D9; font-weight: 700; text-align: center; }
         .opname-print .r { text-align: right; } .opname-print .c { text-align: center; }
         .opname-print .head td { border: 1px solid #000; padding: 4px 6px; }
         .opname-print .sign td { text-align: center; padding: 4px; vertical-align: bottom; }
@@ -50,7 +50,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
               <td style={{ width: '32%' }}>TANGGAL : {date.long}</td>
             </tr></tbody>
           </table>
-          <table className="grid">
+          <table className="sheet">
             <thead><tr>
               <th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '12%' }}>Expiration Date</th><th style={{ width: '14%' }}>Quantity Fisik</th>
             </tr></thead>
@@ -83,7 +83,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
           </table>
           <p>Pada hari {date.day}, tanggal {date.long} telah dilaksanakan stock opname di gudang Medan oleh Tim Accounting dan Tim SCM</p>
           <p>Dari hasil stock opname didapatkan hasil sebagai berikut :</p>
-          <table className="grid">
+          <table className="sheet">
             <thead><tr>
               <th>No</th><th>BIN Code</th><th>Kategori Produk</th><th>Nama Item</th><th>No Item</th><th>Lot No</th><th>Expiration Date</th><th>Quantity System</th><th>PIC</th><th>Quantity Fisik</th><th>Selisih</th><th>Penyebab</th><th>Action Plan</th><th>Status</th>
             </tr></thead>
