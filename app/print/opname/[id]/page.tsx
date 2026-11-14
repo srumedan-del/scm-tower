@@ -54,6 +54,9 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         .opname-print .one-page th { height: 7mm; }
         .opname-print .one-page thead { display: table-header-group; }
         .opname-print .one-page tr { break-inside: avoid; }
+        .opname-print .one-page.monthly { table-layout: fixed; }
+        .opname-print .one-page.monthly td { overflow: hidden; }
+        .opname-print .one-page.monthly td:nth-child(4) { white-space: normal; line-height: 1.15; }
         .opname-print .one-page tbody td { height: ${rowMm.toFixed(2)}mm; }
         @media print { .opname-print .lembar.fit { break-inside: avoid; } }
         .opname-print .sign td { text-align: center; padding: 4px; vertical-align: bottom; }
@@ -71,9 +74,12 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
               <td style={{ width: '32%', textAlign: 'right' }}>TANGGAL : {date.long}</td>
             </tr></tbody>
           </table>
-          <table className="sheet one-page">
+          <table className={monthly ? 'sheet one-page monthly' : 'sheet one-page'}>
             <thead><tr>
-              <th style={{ width: '5%' }}>No</th>{monthly && <th style={{ width: '12%' }}>Bin</th>}<th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '9%' }}>ED</th><th style={{ width: '17%' }}>Quantity Fisik</th>
+              {/* Lebar kolom pas isi (Bin 11 karakter, No Item 18, Lot 12); sisa ruang untuk Quantity Fisik. */}
+              {monthly
+                ? <><th style={{ width: '4%' }}>No</th><th style={{ width: '8%' }}>Bin</th><th style={{ width: '14%' }}>No Item</th><th style={{ width: '32%' }}>Nama Item</th><th style={{ width: '10%' }}>Lot No</th><th style={{ width: '8%' }}>ED</th><th style={{ width: '24%' }}>Quantity Fisik</th></>
+                : <><th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '9%' }}>ED</th><th style={{ width: '17%' }}>Quantity Fisik</th></>}
             </tr></thead>
             <tbody>
               {lines.map((line, i) => (
