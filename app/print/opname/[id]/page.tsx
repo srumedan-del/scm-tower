@@ -27,7 +27,7 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
   return (
     <div className="opname-print">
       <style>{`
-        @page { size: A4 ${doc === 'berita' ? 'landscape' : 'portrait'}; margin: 10mm; }
+        @page { size: A4 landscape; margin: 10mm; }
         body { background: #fff !important; }
         .opname-print { font-family: Calibri, 'Segoe UI', Arial, sans-serif; color: #000; font-size: 10pt; padding: 12px; }
         .opname-print table { border-collapse: collapse; width: 100%; }
@@ -52,13 +52,13 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
           </table>
           <table className="grid">
             <thead><tr>
-              <th>No</th><th>BIN Code</th><th>Kategori Produk</th><th>No Item</th><th>Nama Item</th><th>Lot No</th><th>Expiration Date</th><th>NHD</th><th>Quantity Sistem</th><th style={{ width: '12%' }}>Quantity Fisik</th><th>Selisih</th>
+              <th style={{ width: '5%' }}>No</th><th style={{ width: '16%' }}>No Item</th><th>Nama Item</th><th style={{ width: '13%' }}>Lot No</th><th style={{ width: '12%' }}>Expiration Date</th><th style={{ width: '14%' }}>Quantity Fisik</th>
             </tr></thead>
             <tbody>
               {lines.map((line, i) => (
                 <tr key={line.id}>
-                  <td className="c">{i + 1}</td><td>{line.bincode}</td><td>{line.kategori}</td><td>{line.no_item}</td><td>{line.nama_item}</td>
-                  <td>{line.lot_no}</td><td className="c">{fmtDate(line.expiration_date)}</td><td /><td className="r">{num(line.qty_system)}</td><td /><td />
+                  <td className="c">{i + 1}</td><td>{line.no_item}</td><td>{line.nama_item}</td>
+                  <td>{line.lot_no}</td><td className="c">{fmtDate(line.expiration_date)}</td><td style={{ height: 26 }} />
                 </tr>
               ))}
             </tbody>
