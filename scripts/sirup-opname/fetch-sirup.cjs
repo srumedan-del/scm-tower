@@ -2,9 +2,12 @@
 /**
  * Ambil stok harian dari SIRUP "Stok Gudang" dan buat sesi stock opname di SCM Tower.
  *
- *   node fetch-sirup.cjs            -> buat sesi opname untuk hari ini (WIB)
- *   node fetch-sirup.cjs --dry-run  -> hanya tampilkan hasil saringan, tidak menyimpan
- *   node fetch-sirup.cjs --force    -> tetap buat sesi walau hari ini sudah ada sesi SIRUP
+ *   node fetch-sirup.cjs                    -> jadwal harian: sesi Harian tiap hari kerja, ditambah sesi Mingguan hari Jumat
+ *   node fetch-sirup.cjs --period=Bulanan   -> buat sesi periode tertentu saja (Harian, Mingguan, Bulanan), kapan pun
+ *   node fetch-sirup.cjs --dry-run          -> hanya tampilkan hasil saringan, tidak menyimpan
+ *   node fetch-sirup.cjs --force            -> tetap jalan walau hari libur atau sesi hari ini sudah ada
+ *
+ * Sabtu, Minggu, dan tanggal di tabel holidays (menu Stock Opname → Hari Libur) dilewati.
  *
  * Kredensial SIRUP ada di scripts/sirup-opname/.env (lihat .env.example), diisi sendiri
  * oleh pemilik akun. Koneksi Supabase dibaca dari .env.local di root proyek.
@@ -18,6 +21,9 @@ const LOG_FILE = path.join(__dirname, 'fetch-sirup.log')
 const DRY_RUN = process.argv.includes('--dry-run')
 const FORCE = process.argv.includes('--force')
 const DEBUG = process.argv.includes('--debug')
+const PERIOD_ARG = process.argv.find(arg => arg.startsWith('--period='))?.split('=')[1]
+const PERIODS = ['Harian', 'Mingguan', 'Bulanan']
+const WEEKLY_DAY = 5 // Jumat: hari stock opname mingguan
 
 const CATEGORIES = new Set(['HOLOW FIBER / DIALYZER', 'BLOOD TUBING SET'])
 const BINCODE = 'MDN-PAR-CON'
@@ -127,11 +133,35 @@ async function main() {
   if (!env.SIRUP_USERNAME || !env.SIRUP_PASSWORD) throw new Error('SIRUP_USERNAME dan SIRUP_PASSWORD belum diisi di scripts/sirup-opname/.env')
   if (!DRY_RUN && (!SUPABASE_URL || !SERVICE_KEY)) throw new Error('Koneksi Supabase (.env.local) tidak ditemukan')
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay()
+  const canQuery = Boolean(SUPABASE_URL && SERVICE_KEY)
+
+  let periods
+  if (PERIOD_ARG) {
+    const period = PERIODS.find(p => p.toLowerCase() === PERIOD_ARG.toLowerCase())
+    if (!period) throw new Error(`Periode tidak dikenal: ${PERIOD_ARG}. Pilihan: ${PERIODS.join(', ')}`)
+    periods = [period]
+  } else {
+    if (!FORCE && (weekday === 0 || weekday === 6)) { log(`${today} akhir pekan, tidak mengambil stok.`); return }
+    if (!FORCE && canQuery) {
+      try {
+        const holiday = await supabase(`holidays?select=name&holiday_date=eq.${today}`)
+        if (holiday.length) { log(`${today} hari libur (${holiday[0].name}), tidak mengambil stok.`); return }
+      } catch (error) {
+        log(`Peringatan: daftar hari libur tidak bisa dibaca (${error.message.slice(0, 120)}). Lanjut sebagai hari kerja.`)
+      }
+    }
+    periods = weekday === WEEKLY_DAY ? ['Harian', 'Mingguan'] : ['Harian']
+  }
 
   if (!DRY_RUN && !FORCE) {
-    const existing = await supabase(`stock_opname_session?select=id&source=eq.sirup&period=eq.Mingguan&opname_date=eq.${today}&limit=1`)
-    if (existing.length) { log(`Sesi opname SIRUP ${today} sudah ada (id ${existing[0].id}). Lewati. Pakai --force untuk membuat lagi.`); return }
+    const existing = await supabase(`stock_opname_session?select=period&source=eq.sirup&opname_date=eq.${today}&period=in.(${periods.join(',')})`)
+    const done = new Set(existing.map(row => row.period))
+    for (const period of done) log(`Sesi opname ${period} ${today} dari SIRUP sudah ada. Lewati.`)
+    periods = periods.filter(period => !done.has(period))
+    if (!periods.length) return
   }
+  log(`Membuat sesi: ${periods.join(' + ')} (${today})`)
 
   // 1. Login
   const loginPage = await request(`${SIRUP_BASE}/site/login`)
@@ -178,20 +208,22 @@ async function main() {
     return
   }
 
-  // 3. Simpan sesi opname
+  // 3. Simpan satu sesi per periode (Harian, dan Mingguan pada hari Jumat)
   const settings = await supabase('stock_opname_settings?select=default_pic&id=eq.1')
-  const [session] = await supabase('stock_opname_session', {
-    method: 'POST',
-    headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ period: 'Mingguan', opname_date: today, source: 'sirup', source_note: `SIRUP Stok Gudang CAB01-MDN/MDN-PAR (${totalRows} baris)`, pic: settings?.[0]?.default_pic ?? null, created_by: 'Jadwal otomatis SIRUP' }),
-  })
-  try {
-    await supabase('stock_opname_line', { method: 'POST', body: JSON.stringify(lines.map((line, i) => ({ ...line, session_id: session.id, sort_order: i + 1 }))) })
-  } catch (error) {
-    await supabase(`stock_opname_session?id=eq.${session.id}`, { method: 'DELETE' })
-    throw error
+  for (const period of periods) {
+    const [session] = await supabase('stock_opname_session', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ period, opname_date: today, source: 'sirup', source_note: `SIRUP Stok Gudang CAB01-MDN/MDN-PAR (${totalRows} baris)`, pic: settings?.[0]?.default_pic ?? null, created_by: 'Jadwal otomatis SIRUP' }),
+    })
+    try {
+      await supabase('stock_opname_line', { method: 'POST', body: JSON.stringify(lines.map((line, i) => ({ ...line, session_id: session.id, sort_order: i + 1 }))) })
+    } catch (error) {
+      await supabase(`stock_opname_session?id=eq.${session.id}`, { method: 'DELETE' })
+      throw error
+    }
+    log(`Sesi opname ${period} ${today} dibuat (id ${session.id}, ${lines.length} lot)`)
   }
-  log(`Sesi opname ${today} dibuat (id ${session.id}, ${lines.length} lot)`)
 }
 
 module.exports = { tableRows, extractLines }
