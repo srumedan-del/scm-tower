@@ -3,6 +3,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { ScmTask, TaskStatus, INITIAL_TASKS } from './types'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
+import { nextOccurrenceDate } from './recurrence'
 
 function mapDbToTask(row: any): ScmTask {
   return {
@@ -77,12 +78,60 @@ export async function getScmTasks(): Promise<{ tasks: ScmTask[]; isSupabaseAvail
   }
 }
 
+type SaveResult = { success: boolean; error?: string; next?: ScmTask }
+
+/**
+ * Tugas berulang (Harian/Mingguan/Bulanan) yang baru saja DONE: buat tugas periode berikutnya
+ * berstatus TODO. Tugas yang selesai tetap di DONE sebagai riwayat.
+ * Tidak dibuat bila sudah ada tugas dengan nama + frekuensi sama yang belum DONE.
+ */
+async function spawnNextOccurrence(row: any): Promise<ScmTask | undefined> {
+  const frequency = row?.frequency
+  if (!frequency || frequency === 'Sekali saja') return undefined
+  const { data: open } = await supabaseAdmin
+    .from('scm_tasks')
+    .select('id')
+    .eq('name', row.name)
+    .eq('frequency', frequency)
+    .neq('status', 'DONE')
+    .neq('id', row.id)
+    .limit(1)
+  if (open?.length) return undefined
+
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+  const deadline = nextOccurrenceDate(frequency, row.deadline ? String(row.deadline).slice(0, 10) : today, today)
+  if (!deadline) return undefined
+  const next = {
+    id: `t-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    name: row.name,
+    description: row.description ?? null,
+    status: 'TODO',
+    deadline,
+    pic: row.pic || 'Erwin',
+    assigner: row.assigner || 'Erwin',
+    frequency,
+    tags: Array.isArray(row.tags) ? row.tags.filter((tag: string) => tag !== 'needs_input') : [],
+    warning_count: 0,
+    comments_count: 0,
+    subtasks: null,
+    icon: row.icon ?? null,
+    updated_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabaseAdmin.from('scm_tasks').insert(next).select('*').single()
+  if (error) {
+    console.error('[spawnNextOccurrence] Supabase error:', error.message)
+    return undefined
+  }
+  return { ...mapDbToTask(data), attachmentsCount: 0 }
+}
+
 /**
  * Menyimpan / memperbarui task ke Supabase.
  */
-export async function saveScmTask(task: ScmTask): Promise<{ success: boolean; error?: string }> {
+export async function saveScmTask(task: ScmTask): Promise<SaveResult> {
   await requireAuthenticatedUser()
   try {
+    const { data: before } = await supabaseAdmin.from('scm_tasks').select('status').eq('id', task.id).maybeSingle()
     const payload = mapTaskToDb(task)
     const { error } = await supabaseAdmin
       .from('scm_tasks')
@@ -93,7 +142,8 @@ export async function saveScmTask(task: ScmTask): Promise<{ success: boolean; er
       return { success: false, error: error.message }
     }
 
-    return { success: true }
+    const next = task.status === 'DONE' && before?.status !== 'DONE' ? await spawnNextOccurrence(payload) : undefined
+    return { success: true, next }
   } catch (err: any) {
     console.error('[saveScmTask] Exception:', err?.message)
     return { success: false, error: err?.message }
@@ -129,9 +179,10 @@ export async function deleteScmTask(taskId: string): Promise<{ success: boolean;
 export async function updateScmTaskStatus(
   taskId: string,
   newStatus: TaskStatus
-): Promise<{ success: boolean; error?: string }> {
+): Promise<SaveResult> {
   await requireAuthenticatedUser()
   try {
+    const { data: before } = await supabaseAdmin.from('scm_tasks').select('*').eq('id', taskId).maybeSingle()
     const { error } = await supabaseAdmin
       .from('scm_tasks')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -142,7 +193,8 @@ export async function updateScmTaskStatus(
       return { success: false, error: error.message }
     }
 
-    return { success: true }
+    const next = newStatus === 'DONE' && before && before.status !== 'DONE' ? await spawnNextOccurrence(before) : undefined
+    return { success: true, next }
   } catch (err: any) {
     console.error('[updateScmTaskStatus] Exception:', err?.message)
     return { success: false, error: err?.message }

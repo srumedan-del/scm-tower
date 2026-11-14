@@ -257,9 +257,23 @@ export function ScmTaskHub() {
     })
 
     // Simpan ke Supabase
-    saveScmTask(taskToSave).catch((err) =>
-      console.error('Error saving task to Supabase:', err)
-    )
+    saveScmTask(taskToSave)
+      .then(result => addNextOccurrence(result.next))
+      .catch((err) => console.error('Error saving task to Supabase:', err))
+  }
+
+  /** Tugas berulang yang selesai: tampilkan tugas periode berikutnya yang dibuat server. */
+  const addNextOccurrence = (next?: ScmTask) => {
+    if (!next) return
+    setTasks((prev) => {
+      if (prev.some((t) => t.id === next.id)) return prev
+      const list = [next, ...prev]
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+      } catch {}
+      return list
+    })
+    notify.success(`Tugas ${next.frequency.toLowerCase()} berikutnya dibuat`, `${next.name} · deadline ${next.deadline.split('-').reverse().join('/')}`)
   }
 
   const handleDeleteTask = (taskId: string) => {
@@ -287,9 +301,9 @@ export function ScmTaskHub() {
     })
 
     // Update status di Supabase
-    updateScmTaskStatus(taskId, newStatus).catch((err) =>
-      console.error('Error moving task status in Supabase:', err)
-    )
+    updateScmTaskStatus(taskId, newStatus)
+      .then(result => addNextOccurrence(result.next))
+      .catch((err) => console.error('Error moving task status in Supabase:', err))
   }
 
   const handleQuickAdd = (name: string) => {
