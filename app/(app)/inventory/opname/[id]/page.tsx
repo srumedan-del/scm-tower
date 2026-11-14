@@ -2,7 +2,7 @@
 
 import { Fragment, use, useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Download, Printer } from 'lucide-react'
+import { ArrowLeft, Download, NotebookPen, Plus, Printer } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { notify } from '@/lib/feedback'
 import { SESSION_STATUSES, lineDifference, opnameDateParts, periodHref, type OpnamePeriod } from '@/lib/stock-opname'
@@ -74,7 +74,9 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
     })
     return [...byItem.values()]
   }, [lines, drafts])
-  const showReason = groups.some(group => group.diffLots > 0)
+  // Penyebab dan Action plan dibuka per baris lewat tombol + di kanan.
+  const [openNotes, setOpenNotes] = useState<Set<number>>(new Set())
+  const toggleNotes = (lineId: number) => setOpenNotes(current => { const next = new Set(current); if (next.has(lineId)) next.delete(lineId); else next.add(lineId); return next })
 
   const setDraft = (lineId: number, patch: Partial<Draft>) => setDrafts(current => ({ ...current, [lineId]: { ...current[lineId], ...patch } }))
 
@@ -163,26 +165,30 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-left">
             <tr>
               <th className="px-3 py-3 font-semibold">No</th>
-              <th className="px-3 py-3 font-semibold">Item</th>
+              <th className="px-3 py-3 font-semibold">No Item</th>
+              <th className="px-3 py-3 font-semibold">Item Description</th>
               <th className="px-3 py-3 font-semibold">Lot</th>
               <th className="px-3 py-3 font-semibold">ED</th>
               <th className="px-3 py-3 text-right font-semibold">Qty sistem</th>
               <th className="px-3 py-3 font-semibold">Qty fisik</th>
               <th className="px-3 py-3 text-right font-semibold">Selisih</th>
-              {showReason && <th className="px-3 py-3 font-semibold">Penyebab</th>}
-              {showReason && <th className="px-3 py-3 font-semibold">Action plan</th>}
+              <th className="w-12 px-2 py-3"><span className="sr-only">Penyebab dan action plan</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && !lines.length && <SkeletonRows cols={7} />}
+            {loading && !lines.length && <SkeletonRows cols={9} />}
             {groups.map(group => (
               <Fragment key={group.key}>
                 {group.lines.map(({ line, index, draft, diff }) => {
                   const hasDiff = diff != null && diff !== 0
+                  const hasNotes = Boolean(draft.penyebab.trim() || draft.action_plan.trim())
+                  const notesOpen = openNotes.has(line.id)
                   return (
-                    <tr key={line.id} className={hasDiff ? 'bg-red-50/40' : undefined}>
+                    <Fragment key={line.id}>
+                    <tr className={hasDiff ? 'bg-red-50/40' : undefined}>
                       <td className="px-3 py-2 text-slate-500">{index + 1}</td>
-                      <td className="max-w-[420px] truncate whitespace-nowrap px-3 py-2" title={`${line.no_item} - ${line.nama_item ?? ''}`}><b className="font-semibold text-slate-900">{line.no_item}</b><span className="text-slate-500"> - {line.nama_item}</span></td>
+                      <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">{line.no_item}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">{line.nama_item}</td>
                       <td className="px-3 py-2 font-mono text-xs">{line.lot_no ?? '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
                       <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
@@ -192,22 +198,45 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                       <td className={`px-3 py-2 text-right font-mono font-semibold ${diff == null ? 'text-slate-300' : diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-amber-700'}`}>
                         {diff == null ? '—' : diff === 0 ? 'Sesuai' : (diff > 0 ? '+' : '') + num(diff)}
                       </td>
-                      {showReason && (hasDiff ? (
-                        <>
-                          <td className="px-3 py-2"><input aria-label={`Penyebab ${line.no_item} lot ${line.lot_no}`} value={draft.penyebab} onChange={e => setDraft(line.id, { penyebab: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" placeholder="Penyebab selisih" /></td>
-                          <td className="px-3 py-2"><input aria-label={`Action plan ${line.no_item} lot ${line.lot_no}`} value={draft.action_plan} onChange={e => setDraft(line.id, { action_plan: e.target.value })} className="w-44 rounded-lg border border-slate-200 px-2 py-1.5" /></td>
-                        </>
-                      ) : <td colSpan={2} />)}
+                      <td className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleNotes(line.id)}
+                          aria-expanded={notesOpen}
+                          aria-label={`Penyebab dan action plan ${line.no_item} lot ${line.lot_no}`}
+                          title={hasNotes ? `Penyebab: ${draft.penyebab || '-'}
+Action plan: ${draft.action_plan || '-'}` : 'Isi penyebab dan action plan'}
+                          className={`grid h-8 w-8 place-items-center rounded-lg border ${hasNotes ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          {hasNotes ? <NotebookPen className="h-4 w-4" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
+                        </button>
+                      </td>
                     </tr>
+                    {notesOpen && (
+                      <tr className="bg-slate-50/60">
+                        <td />
+                        <td colSpan={8} className="px-3 pb-3 pt-1">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="text-xs font-semibold text-slate-600">Penyebab
+                              <input value={draft.penyebab} onChange={e => setDraft(line.id, { penyebab: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-normal text-slate-900" placeholder="Penyebab selisih" />
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600">Action plan
+                              <input value={draft.action_plan} onChange={e => setDraft(line.id, { action_plan: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-normal text-slate-900" />
+                            </label>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   )
                 })}
-                <TotalRow label={`Total ${group.no_item}`} systemQty={group.systemQty} physicalQty={group.physicalQty} counted={group.counted} lineCount={group.lines.length} diffQty={group.diffQty} showReason={showReason} />
+                <TotalRow label={`Total ${group.no_item}`} systemQty={group.systemQty} physicalQty={group.physicalQty} counted={group.counted} lineCount={group.lines.length} diffQty={group.diffQty} />
               </Fragment>
             ))}
           </tbody>
           {lines.length > 0 && (
             <tfoot className="border-t-2 border-slate-300">
-              <TotalRow label="Total semua item" systemQty={summary.systemQty} physicalQty={groups.reduce((s, g) => s + g.physicalQty, 0)} counted={summary.counted} lineCount={lines.length} diffQty={summary.diffQty} showReason={showReason} strong />
+              <TotalRow label="Total semua item" systemQty={summary.systemQty} physicalQty={groups.reduce((s, g) => s + g.physicalQty, 0)} counted={summary.counted} lineCount={lines.length} diffQty={summary.diffQty} strong />
             </tfoot>
           )}
         </table>
@@ -226,20 +255,20 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
 }
 
 /** Baris total di bawah lot satu item, dan total akhir semua item. */
-function TotalRow({ label, systemQty, physicalQty, counted, lineCount, diffQty, showReason, strong }: {
-  label: string; systemQty: number; physicalQty: number; counted: number; lineCount: number; diffQty: number; showReason: boolean; strong?: boolean
+function TotalRow({ label, systemQty, physicalQty, counted, lineCount, diffQty, strong }: {
+  label: string; systemQty: number; physicalQty: number; counted: number; lineCount: number; diffQty: number; strong?: boolean
 }) {
   const complete = counted === lineCount
   return (
     <tr className={strong ? 'bg-slate-100 font-bold' : 'bg-slate-50 font-semibold'}>
       <td />
-      <td colSpan={3} className="px-3 py-2 text-slate-800">{label}{!complete && <span className="ml-2 text-xs font-normal text-slate-500">{counted}/{lineCount} lot dihitung</span>}</td>
+      <td colSpan={4} className="px-3 py-2 text-slate-800">{label}{!complete && <span className="ml-2 text-xs font-normal text-slate-500">{counted}/{lineCount} lot dihitung</span>}</td>
       <td className="px-3 py-2 text-right font-mono">{num(systemQty)}</td>
       <td className="px-3 py-2 text-right font-mono">{counted ? num(physicalQty) : '—'}</td>
       <td className={`px-3 py-2 text-right font-mono ${!counted ? 'text-slate-300' : diffQty === 0 ? 'text-green-700' : diffQty < 0 ? 'text-red-700' : 'text-amber-700'}`}>
         {!counted ? '—' : diffQty === 0 ? (complete ? 'Sesuai' : '0') : (diffQty > 0 ? '+' : '') + num(diffQty)}
       </td>
-      {showReason && <td colSpan={2} />}
+      <td />
     </tr>
   )
 }
