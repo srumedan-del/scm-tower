@@ -50,10 +50,13 @@ const ONLY = new Set((option('only') ?? 'pss,ptr,ile').split(',').map((s) => s.t
 // Hanya gudang Medan (SCM Tower berisi lokasi MDN-PAR saja): PSS & ILE per Location Code, PTR per Transfer-to Code.
 const LOCATION = env.NAV_LOCATION || 'MDN-PAR'
 const SOURCES = [
-  { key: 'pss', label: 'PSS Header (Posted Sales Shipments)', page: env.NAV_PAGE_PSS || '142', dateField: 'Posting Date', locationField: 'Location Code' },
-  { key: 'ptr', label: 'PTR Header (Posted Transfer Receipts)', page: env.NAV_PAGE_PTR || '5753', dateField: 'Posting Date', locationField: 'Transfer-to Code' },
-  { key: 'ile', label: 'ILE (Item Ledger Entries)', page: env.NAV_PAGE_ILE || '38', dateField: 'Posting Date', locationField: 'Location Code' },
+  // PSS dibuka lewat menu "Posted Documents Sales": hanya di konteks menu itu kolom Document Date dan PROJECT tampil
+  // (dibuka langsung lewat alamat, kolom itu tidak ada). Filter dipasang lewat dialog filter kolom NAV.
+  { key: 'pss', label: 'PSS Header (Posted Sales Shipments)', page: env.NAV_PAGE_PSS || '142', dateField: 'Document Date', locationField: 'Location Code', menu: 'Posted Documents Sales' },
+  { key: 'ptr', label: 'PTR Header (Posted Transfer Receipts)', page: env.NAV_PAGE_PTR || '5753', dateField: 'Posting Date', locationField: 'Transfer-to Code', menu: null },
+  { key: 'ile', label: 'ILE (Item Ledger Entries)', page: env.NAV_PAGE_ILE || '38', dateField: 'Posting Date', locationField: 'Location Code', menu: null },
 ] as const
+type Source = (typeof SOURCES)[number]
 
 function log(message: string) {
   const line = `[${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}] ${message}`
@@ -84,7 +87,7 @@ async function waitForList(page: Page): Promise<Frame> {
     if (!frame) await page.waitForTimeout(500)
   }
   if (!frame) throw new Error('Frame isi NAV (runinframe) tidak ditemukan')
-  await frame.locator('.ribbon-container.loaded').waitFor({ state: 'visible', timeout: 60_000 })
+  await frame.locator('.ribbon-container.loaded:not([aria-hidden="true"])').first().waitFor({ state: 'visible', timeout: 60_000 })
   await page.waitForTimeout(1500)
   return frame
 }
@@ -96,6 +99,47 @@ async function openInExcelButton(frame: Frame) {
   await frame.locator('li.ms-cui-tt[title="Home"] a.ms-cui-tt-a').first().click()
   await button.waitFor({ state: 'visible', timeout: 20_000 })
   return button
+}
+
+/** Buka halaman lewat menu navigasi role center (mis. "Posted Documents Sales"). */
+async function openViaMenu(page: Page, menuTitle: string, expectedTitle: RegExp): Promise<Frame> {
+  await page.goto(`${BASE}?company=${encodeURIComponent(COMPANY)}`, { waitUntil: 'domcontentloaded', timeout: 90_000 })
+  const home = await waitForList(page)
+  const found = await home.evaluate((title) => {
+    const el = [...document.querySelectorAll('a')].find((a) => (a as HTMLElement).title === title) as HTMLElement | undefined
+    el?.click()
+    return Boolean(el)
+  }, menuTitle)
+  if (!found) throw new Error(`Menu "${menuTitle}" tidak ditemukan di NAV`)
+  await page.waitForFunction((source) => new RegExp(source).test(document.title), expectedTitle.source, { timeout: 90_000 })
+  return waitForList(page)
+}
+
+/** Filter kolom lewat NAV: klik kanan judul kolom → Filter... → isi nilai → OK. */
+async function filterColumn(page: Page, frame: Frame, column: string, value: string) {
+  const header = frame.locator(`th[abbr="${column}"]`).first()
+  await header.waitFor({ state: 'visible', timeout: 30_000 })
+  await header.click({ button: 'right' })
+  await frame.locator('[role="menuitem"]', { hasText: /^Filter/ }).first().click()
+  const dialog = frame.locator('[role="dialog"]').last()
+  const input = dialog.locator('input').first()
+  await input.waitFor({ state: 'visible', timeout: 15_000 })
+  await input.fill(value)
+  await dialog.getByRole('button', { name: 'OK' }).click()
+  await dialog.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => {})
+  await page.waitForTimeout(2500)
+}
+
+/** Buka halaman sumber dengan filter tanggal + lokasi; kembalikan frame isinya. */
+async function openSource(page: Page, source: Source, from: string, to: string): Promise<Frame> {
+  if (!source.menu) {
+    await page.goto(pageUrl(source.page, source.dateField, source.locationField, from, to), { waitUntil: 'domcontentloaded', timeout: 90_000 })
+    return waitForList(page)
+  }
+  const frame = await openViaMenu(page, source.menu, /Posted Sales Shipments/)
+  await filterColumn(page, frame, source.dateField, `${navDate(from)}..${navDate(to)}`)
+  await filterColumn(page, frame, source.locationField, LOCATION)
+  return frame
 }
 
 async function probe(page: Page, frame: Frame, source: (typeof SOURCES)[number], dir: string) {
@@ -168,8 +212,7 @@ async function main() {
     for (const source of SOURCES) {
       if (!ONLY.has(source.key)) continue
       try {
-        await page.goto(pageUrl(source.page, source.dateField, source.locationField, from, to), { waitUntil: 'domcontentloaded', timeout: 90_000 })
-        const frame = await waitForList(page)
+        const frame = await openSource(page, source, from, to)
         if (PROBE) { await probe(page, frame, source, dir); continue }
 
         const file = await download(page, frame, source, dir)
