@@ -5,9 +5,12 @@
  *   npx tsx scripts/nav-sync/nav-sync.ts               ambil 7 hari terakhir dan simpan ke SCM Tower
  *   npx tsx scripts/nav-sync/nav-sync.ts --dry-run     ambil dan hitung baris baru, tidak menyimpan
  *   npx tsx scripts/nav-sync/nav-sync.ts --probe       buka tiap halaman, catat judul/kolom + screenshot, tanpa unduh
+ *   npx tsx scripts/nav-sync/nav-sync.ts --setup       buka jendela NAV (profil script) untuk mengatur kolom satu kali
  *   opsi: --days=14  --only=pss,ptr,ile  --headed (tampilkan jendela Chrome)  --windows-auth
  *
  * Akun NAV diisi sendiri oleh pemiliknya di scripts/nav-sync/.env (lihat .env.example).
+ * Tampilan kolom NAV (Personalize) tersimpan di browser, jadi script memakai profil Chrome tetap
+ * di scripts/nav-sync/.chrome-profile; atur kolomnya sekali lewat --setup.
  * Koneksi Supabase dibaca dari .env.local di root proyek.
  * Urutan wajib: PSS Header dan PTR Header dulu, lalu ILE (detail butuh header).
  */
@@ -35,6 +38,8 @@ const env = { ...readEnv(path.join(ROOT, '.env.local')), ...readEnv(path.join(__
 
 const DRY_RUN = flag('dry-run')
 const PROBE = flag('probe')
+const SETUP = flag('setup')
+const PROFILE_DIR = path.join(__dirname, '.chrome-profile')
 const DAYS = Number(option('days') ?? env.NAV_DAYS ?? 7)
 const BASE = (env.NAV_BASE_URL || 'http://10.10.20.166:8080/dynamicsnav110/WebClient/').replace(/\/?$/, '/')
 const COMPANY = env.NAV_COMPANY || 'PT. SINAR RODA UTAMA'
@@ -132,18 +137,30 @@ async function main() {
   fs.mkdirSync(dir, { recursive: true })
   log(`Mulai ${PROBE ? 'probe' : DRY_RUN ? 'uji coba' : 'sinkronisasi'} NAV: ${from} s/d ${to} (${[...ONLY].join(', ')})`)
 
-  const browser = await chromium.launch({
+  // Profil Chrome tetap: pengaturan kolom NAV (Personalize) disimpan di browser dan dipakai lagi tiap jalan.
+  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
     channel: 'chrome',
-    headless: !flag('headed'),
+    headless: !(flag('headed') || SETUP),
+    acceptDownloads: true,
+    viewport: SETUP ? null : { width: 1600, height: 900 },
     // --windows-auth: pakai login Windows yang sedang aktif (tanpa username/password di .env).
     args: flag('windows-auth') ? [`--auth-server-allowlist=${new URL(BASE).hostname}`] : [],
-  })
-  const context = await browser.newContext({
-    acceptDownloads: true,
-    viewport: { width: 1600, height: 900 },
     ...(flag('windows-auth') ? {} : { httpCredentials: { username: env.NAV_USERNAME!, password: env.NAV_PASSWORD! } }),
   })
-  const page = await context.newPage()
+  const browser = { close: () => context.close() }
+  const page = context.pages()[0] ?? await context.newPage()
+
+  if (SETUP) {
+    // Buka halaman yang dipakai script; pemilik akun menambah kolom lewat Personalize lalu menutup jendela.
+    for (const source of SOURCES.filter((s) => ONLY.has(s.key))) {
+      const tab = source.key === SOURCES.find((s) => ONLY.has(s.key))!.key ? page : await context.newPage()
+      await tab.goto(`${BASE}?company=${encodeURIComponent(COMPANY)}&page=${source.page}`, { waitUntil: 'domcontentloaded' })
+    }
+    log('Mode setup: atur kolom di jendela Chrome yang terbuka (Personalize), lalu tutup jendelanya.')
+    await new Promise<void>((resolve) => context.on('close', () => resolve()))
+    log('Mode setup selesai.')
+    return
+  }
   const db = PROBE ? null : createClient<any>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 
   let failed = false
