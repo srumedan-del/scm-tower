@@ -1,6 +1,7 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { PtrHeaderUploadButton } from '@/components/receiving/ReceivingUploadButton'
 import MultiDestinationDetailUpload from '@/components/shared/MultiDestinationDetailUpload'
+import { NavSyncButton } from '@/components/shared/NavSyncButton'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
 import ReceivingAIAnalysis from '@/components/receiving/ReceivingAIAnalysis'
@@ -124,6 +125,7 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
           <Suspense>
             <ReceivingFilter months={availableMonths} defaultMonth={defaultMonth} />
           </Suspense>
+          <NavSyncButton />
           <PtrHeaderUploadButton />
           <MultiDestinationDetailUpload />
           <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />

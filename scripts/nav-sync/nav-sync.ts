@@ -7,6 +7,9 @@
  *   npx tsx scripts/nav-sync/nav-sync.ts --probe       buka tiap halaman, catat judul/kolom + screenshot, tanpa unduh
  *   npx tsx scripts/nav-sync/nav-sync.ts --setup       buka jendela NAV (profil script) untuk mengatur kolom satu kali
  *   opsi: --days=14  --only=pss,ptr,ile  --headed (tampilkan jendela Chrome)  --windows-auth
+ *         --run-id=N  jalankan permintaan "Update dari NAV" nomor N (dipakai nav-sync-watch.ts)
+ * Setiap sinkronisasi sungguhan dicatat di tabel nav_sync_run (migrasi v56) agar terlihat di SCM Tower.
+ * Bila sinkronisasi lain sedang berjalan, proses ini dilewati (profil Chrome tidak bisa dipakai berdua).
  *
  * Akun NAV diisi sendiri oleh pemiliknya di scripts/nav-sync/.env (lihat .env.example).
  * Tampilan kolom NAV (Personalize) tersimpan di browser, jadi script memakai profil Chrome tetap
@@ -167,6 +170,21 @@ function readRows(file: string): Record<string, any>[] {
   return XLSX.utils.sheet_to_json(sheet, { defval: null, range: findNavHeaderRowIndex(asArrays) }) as Record<string, any>[]
 }
 
+// ── Riwayat sinkronisasi (nav_sync_run) ─────────────────────────────────────
+type Db = ReturnType<typeof createClient<any>>
+let run: { db: Db; id: number } | null = null
+const report: string[] = []
+/** Catat ke log dan ke ringkasan yang tampil di SCM Tower. */
+function note(message: string) { log(message); report.push(message.trim()) }
+
+async function finishRun(status: 'done' | 'failed', error?: string) {
+  if (!run) return
+  await run.db.from('nav_sync_run').update({
+    status, finished_at: new Date().toISOString(), summary: report.join('\n') || null, error: error ?? null,
+  }).eq('id', run.id)
+  run = null
+}
+
 const summary = (r?: StepResult) => (r ? `${r.inserted} baru${DRY_RUN ? ' (uji coba)' : ''}, ${r.skipped} dilewati dari ${r.total}${r.note ? ` · ${r.note}` : ''}` : '-')
 
 async function main() {
@@ -174,6 +192,28 @@ async function main() {
     if (!flag('windows-auth')) throw new Error('NAV_USERNAME dan NAV_PASSWORD belum diisi di scripts/nav-sync/.env (atau pakai --windows-auth)')
   }
   if (!PROBE && (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)) throw new Error('Koneksi Supabase (.env.local) tidak ditemukan')
+
+  const db = PROBE ? null : createClient<any>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+
+  // Sinkronisasi sungguhan dicatat di nav_sync_run; satu proses saja dalam satu waktu.
+  if (db && !DRY_RUN && !SETUP) {
+    const runId = Number(option('run-id') ?? 0) || null
+    const since = new Date(Date.now() - 30 * 60_000).toISOString()
+    const { data: busy, error: busyError } = await db.from('nav_sync_run').select('id').eq('status', 'running').gte('started_at', since).limit(1)
+    if (busyError) log(`Peringatan: riwayat sinkronisasi tidak bisa dibaca (${busyError.message}). Jalankan migrasi v56.`)
+    else if (busy?.length && busy[0].id !== runId) {
+      log(`Sinkronisasi lain (#${busy[0].id}) sedang berjalan. Proses ini dilewati.`)
+      return
+    } else if (runId) {
+      await db.from('nav_sync_run').update({ status: 'running', started_at: new Date().toISOString() }).eq('id', runId)
+      run = { db, id: runId }
+    } else {
+      const { data: created } = await db.from('nav_sync_run')
+        .insert({ trigger: 'schedule', status: 'running', requested_by: 'Jadwal otomatis', started_at: new Date().toISOString() })
+        .select('id').single()
+      if (created) run = { db, id: Number(created.id) }
+    }
+  }
 
   const to = jakartaDate()
   const from = jakartaDate(-(DAYS - 1))
@@ -205,7 +245,6 @@ async function main() {
     log('Mode setup selesai.')
     return
   }
-  const db = PROBE ? null : createClient<any>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 
   let failed = false
   try {
@@ -225,29 +264,35 @@ async function main() {
         })
         log(`${source.label}: ${downloaded.length} baris diunduh, ${rows.length} baris ${LOCATION} → ${file}`)
         const name = path.basename(file)
-        if (source.key === 'pss') log(`  PSS Header: ${summary(await ingestPssHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
-        if (source.key === 'ptr') log(`  PTR Header: ${summary(await ingestPtrHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
+        if (source.key === 'pss') note(`PSS Header: ${summary(await ingestPssHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
+        if (source.key === 'ptr') note(`PTR Header: ${summary(await ingestPtrHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
         if (source.key === 'ile') {
           const result = await ingestIle(db!, rows, name, { dryRun: DRY_RUN })
-          log(`  ILE → Receiving: ${summary(result.receiving)}`)
-          log(`  ILE → Outbound: ${summary(result.outbound)}`)
-          log(`  ILE → PTS crossdocking: ${summary(result.pts)}`)
-          for (const error of result.errors) { failed = true; log(`  GAGAL ${error}`) }
+          note(`ILE → Receiving: ${summary(result.receiving)}`)
+          note(`ILE → Outbound: ${summary(result.outbound)}`)
+          note(`ILE → PTS crossdocking: ${summary(result.pts)}`)
+          for (const error of result.errors) { failed = true; note(`GAGAL ${error}`) }
         }
       } catch (error) {
         failed = true
         const shot = path.join(dir, `error-${source.key}.png`)
         await page.screenshot({ path: shot }).catch(() => {})
         log(`GAGAL ${source.label}: ${formatError(error)} (screenshot: ${shot})`)
+        report.push(`GAGAL ${source.label}: ${formatError(error).split('\n')[0]}`)
         // Header gagal: jangan lanjut ke ILE agar detail tidak masuk tanpa header.
-        if (source.key !== 'ile') { ONLY.delete('ile'); log('  ILE dilewati karena header gagal diambil') }
+        if (source.key !== 'ile' && ONLY.has('ile')) { ONLY.delete('ile'); note('ILE dilewati karena header gagal diambil') }
       }
     }
   } finally {
     await browser.close()
   }
   log(failed ? 'Selesai dengan kegagalan. Data bisa di-upload manual seperti biasa.' : 'Selesai.')
+  await finishRun(failed ? 'failed' : 'done', failed ? 'Sebagian data gagal diambil' : undefined)
   if (failed) process.exitCode = 1
 }
 
-main().catch((error) => { log(`GAGAL: ${formatError(error)}`); process.exitCode = 1 })
+main().catch(async (error) => {
+  log(`GAGAL: ${formatError(error)}`)
+  await finishRun('failed', formatError(error).slice(0, 500)).catch(() => {})
+  process.exitCode = 1
+})

@@ -4,6 +4,7 @@ import {
 
 } from "@/components/outbound/OutboundUploadButton";
 import PssDetailModal from "@/components/outbound/PssDetailModal";
+import { NavSyncButton } from "@/components/shared/NavSyncButton";
 import OutboundFilter from "@/components/outbound/OutboundFilter";
 import { Suspense } from "react";
 
@@ -208,6 +209,7 @@ export default async function OutboundPage({
           <Suspense>
             <OutboundFilter months={availableMonths} defaultMonth={defaultMonth} />
           </Suspense>
+          <NavSyncButton />
           <OutboundHeaderUploadButton />
 
         </div>
