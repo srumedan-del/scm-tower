@@ -247,11 +247,21 @@ async function main() {
   }
 
   let failed = false
+  // Header yang gagal diambil: bagian ILE yang bergantung padanya dilewati (PSS → Outbound, PTR → Receiving).
+  const skipIle = new Set<'outbound' | 'receiving'>()
   try {
     for (const source of SOURCES) {
       if (!ONLY.has(source.key)) continue
       try {
-        const frame = await openSource(page, source, from, to)
+        // NAV kadang lambat/menu belum siap: coba ulang sekali dengan membuka halaman dari awal.
+        let frame: Frame
+        try {
+          frame = await openSource(page, source, from, to)
+        } catch (error) {
+          log(`${source.label}: percobaan pertama gagal (${formatError(error).split('\n')[0]}), mencoba lagi`)
+          await page.waitForTimeout(5000)
+          frame = await openSource(page, source, from, to)
+        }
         if (PROBE) { await probe(page, frame, source, dir); continue }
 
         const file = await download(page, frame, source, dir)
@@ -267,9 +277,9 @@ async function main() {
         if (source.key === 'pss') note(`PSS Header: ${summary(await ingestPssHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
         if (source.key === 'ptr') note(`PTR Header: ${summary(await ingestPtrHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
         if (source.key === 'ile') {
-          const result = await ingestIle(db!, rows, name, { dryRun: DRY_RUN })
-          note(`ILE → Receiving: ${summary(result.receiving)}`)
-          note(`ILE → Outbound: ${summary(result.outbound)}`)
+          const result = await ingestIle(db!, rows, name, { dryRun: DRY_RUN, skip: [...skipIle] })
+          note(`ILE → Receiving: ${skipIle.has('receiving') ? 'dilewati (PTR Header gagal)' : summary(result.receiving)}`)
+          note(`ILE → Outbound: ${skipIle.has('outbound') ? 'dilewati (PSS Header gagal)' : summary(result.outbound)}`)
           note(`ILE → PTS crossdocking: ${summary(result.pts)}`)
           for (const error of result.errors) { failed = true; note(`GAGAL ${error}`) }
         }
@@ -279,8 +289,9 @@ async function main() {
         await page.screenshot({ path: shot }).catch(() => {})
         log(`GAGAL ${source.label}: ${formatError(error)} (screenshot: ${shot})`)
         report.push(`GAGAL ${source.label}: ${formatError(error).split('\n')[0]}`)
-        // Header gagal: jangan lanjut ke ILE agar detail tidak masuk tanpa header.
-        if (source.key !== 'ile' && ONLY.has('ile')) { ONLY.delete('ile'); note('ILE dilewati karena header gagal diambil') }
+        // Header gagal: detail yang bergantung padanya tidak diambil dulu (akan masuk di sinkron berikutnya).
+        if (source.key === 'pss') skipIle.add('outbound')
+        if (source.key === 'ptr') skipIle.add('receiving')
       }
     }
   } finally {

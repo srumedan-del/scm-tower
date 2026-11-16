@@ -8,6 +8,7 @@ import { mapPssHeaderRow, mapPtrHeaderRow, normalizePaoToPss, pssKey, receivingD
 import { formatError } from './parse'
 
 type Options = { dryRun?: boolean }
+type IleOptions = Options & { skip?: Array<'receiving' | 'outbound'> }
 export type StepResult = { inserted: number; skipped: number; total: number; note?: string }
 
 export async function ingestPssHeader(client: db.Db, rawRows: RawRow[], fileName: string, options: Options = {}): Promise<StepResult> {
@@ -54,12 +55,12 @@ export async function ingestPtrHeader(client: db.Db, rawRows: RawRow[], fileName
 
 export type IleResult = { receiving?: StepResult; outbound?: StepResult; pts?: StepResult; errors: string[] }
 
-export async function ingestIle(client: db.Db, rawRows: RawRow[], fileName: string, options: Options = {}): Promise<IleResult> {
+export async function ingestIle(client: db.Db, rawRows: RawRow[], fileName: string, options: IleOptions = {}): Promise<IleResult> {
   const { receivingRows, outboundRows, ptsRows } = splitIleRows(rawRows, fileName)
   const out: IleResult = { errors: [] }
 
   // 1. Transfer Receipt → receiving_detail (butuh PTR Header).
-  if (receivingRows.length) {
+  if (receivingRows.length && !options.skip?.includes('receiving')) {
     try {
       const ptrNos = [...new Set(receivingRows.map((r) => String(r.document_no ?? '').trim()))].filter(Boolean)
       const { data: headers, error } = await db.getReceivingHeadersByPtrs(client, ptrNos)
@@ -89,7 +90,7 @@ export async function ingestIle(client: db.Db, rawRows: RawRow[], fileName: stri
   }
 
   // 2. Posted Assembly / Sales Shipment → outbound_detail (PAO dipetakan ke PSS).
-  if (outboundRows.length) {
+  if (outboundRows.length && !options.skip?.includes('outbound')) {
     const valid = outboundRows.filter((r) => r.entry_no !== null && r.entry_no !== undefined && !isNaN(Number(r.entry_no)) && r.document_no)
     try {
       const { data: matchingHeaders } = await db.getOutboundHeadersForPaoMatching(client)
