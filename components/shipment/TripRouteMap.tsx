@@ -9,17 +9,21 @@ export type RouteDestination = { name: string; latitude: number; longitude: numb
 
 const MEDAN: [number, number] = [3.5952, 98.6722]
 
-// Peta dasar tanpa tulisan; nama jalan/tempat ditumpuk sebagai lapisan terpisah yang baru muncul saat di-zoom.
-const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO'
-const BASE_TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png'
-const LABEL_TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png'
-const LABEL_MIN_ZOOM = 15
+// Tampilan jauh: peta dasar polos tanpa tulisan (Esri, tanpa API key).
+// Saat di-zoom dekat: peta OpenStreetMap lengkap dengan nama jalan.
+const PLAIN_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+const PLAIN_ATTRIBUTION = 'Tiles &copy; Esri'
+const STREET_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const STREET_ATTRIBUTION = '&copy; OpenStreetMap contributors'
+const STREET_NAMES_MIN_ZOOM = 15
 
-function LabelsWhenZoomed() {
+function BaseTiles() {
   const map = useMap()
   const [zoom, setZoom] = useState(map.getZoom())
   useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
-  return zoom >= LABEL_MIN_ZOOM ? <TileLayer url={LABEL_TILES} subdomains="abcd" zIndex={2} /> : null
+  return zoom >= STREET_NAMES_MIN_ZOOM
+    ? <TileLayer key="street" attribution={STREET_ATTRIBUTION} url={STREET_TILES} />
+    : <TileLayer key="plain" attribution={PLAIN_ATTRIBUTION} url={PLAIN_TILES} maxNativeZoom={16} />
 }
 
 /** Sesuaikan tampilan hanya saat trip berganti atau data pertama tiba, agar geseran admin tidak direset tiap refresh. */
@@ -27,8 +31,9 @@ function FitToRoute({ fitKey, positions }: { fitKey: string; positions: [number,
   const map = useMap()
   useEffect(() => {
     if (!positions.length) return
-    if (positions.length === 1) map.setView(positions[0], 15)
-    else map.fitBounds(positions, { padding: [32, 32], maxZoom: 16 })
+    // Tampilan awal di bawah STREET_NAMES_MIN_ZOOM agar belum ada nama jalan.
+    if (positions.length === 1) map.setView(positions[0], STREET_NAMES_MIN_ZOOM - 1)
+    else map.fitBounds(positions, { padding: [32, 32], maxZoom: STREET_NAMES_MIN_ZOOM - 1 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey])
   return null
@@ -47,8 +52,7 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
 
   return (
     <MapContainer center={current ?? MEDAN} zoom={13} scrollWheelZoom className={`${className} w-full rounded-xl`}>
-      <TileLayer attribution={ATTRIBUTION} url={BASE_TILES} subdomains="abcd" />
-      <LabelsWhenZoomed />
+      <BaseTiles />
       <FitToRoute fitKey={`${tripId}:${path.length > 0}:${destinations.length}`} positions={all} />
 
       {path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#C96442', weight: 4, opacity: 0.85 }} />}
