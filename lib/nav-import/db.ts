@@ -216,7 +216,7 @@ export async function getReceivingHeadersByPtrs(db: Db, ptrs: string[]) {
 
 export async function getExistingReceivingDetailKeys(db: Db, docNos: string[]) {
   if (!docNos.length) return { data: [] as any[], error: null }
-  const { data, error } = await db.from('receiving_detail').select('document_no, item_no, variant_code, lot_no, serial_no').in('document_no', docNos)
+  const { data, error } = await db.from('receiving_detail').select('document_no, item_no, variant_code, lot_no, serial_no, entry_no').in('document_no', docNos)
   return { data: data ?? [], error }
 }
 

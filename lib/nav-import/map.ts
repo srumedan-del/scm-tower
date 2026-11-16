@@ -162,8 +162,15 @@ export const mapReceivingDetailRow = (raw: RawRow, fileName: string, now: string
 export const mapOutboundDetailRow = (raw: RawRow, fileName: string, now: string) =>
   keepFields(mapIleRecord(raw, fileName, now, ['document_no', 'doc_no', 'pss_no', 'no', 'document_no_1']), OUTBOUND_DETAIL_FIELDS)
 
-/** Kunci unik receiving_detail. */
+/**
+ * Kunci unik receiving_detail. Entry No. ILE selalu unik per baris, jadi dipakai bila ada; satu lot bisa
+ * diterima dalam beberapa entry (mis. 71 + 14 + 21 + 14), dan kunci dokumen|item|lot saja akan membuang sebagiannya.
+ */
 export function receivingDetailKey(row: RawRow): string {
+  const entryNo = row.entry_no
+  if (entryNo !== null && entryNo !== undefined && String(entryNo).trim() !== '' && !Number.isNaN(Number(entryNo))) {
+    return `entry:${Number(entryNo)}`
+  }
   return [row.document_no, row.item_no, row.variant_code, row.lot_no, row.serial_no]
     .map((value) => String(value ?? '').trim()).join('|')
 }
