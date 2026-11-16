@@ -1864,6 +1864,17 @@ export async function getActiveDriverLiveLocations(includeFinished = false): Pro
   return result
 }
 
+/** Foto dari aplikasi driver disimpan sebagai path Storage; ubah jadi link sementara agar bisa dibuka admin. */
+async function signDriverPhotos(paths: (string | null | undefined)[]) {
+  const unique = [...new Set(paths.filter((path): path is string => Boolean(path?.startsWith('driver/'))))]
+  if (!unique.length) return new Map<string, string>()
+  const { data } = await supabaseAdmin.storage.from('pod-documents').createSignedUrls(unique, 60 * 60)
+  return new Map<string, string>((data ?? []).filter(row => row.path && row.signedUrl).map(row => [row.path as string, row.signedUrl as string]))
+}
+
+const photoLink = (signed: Map<string, string>, value: string | null | undefined) =>
+  !value ? null : value.startsWith('driver/') ? signed.get(value) ?? null : value
+
 export async function getTripFuelAuditLogs(tripId: string) {
   await requireAuthenticatedUser()
   const { data, error } = await supabaseAdmin
@@ -1873,7 +1884,58 @@ export async function getTripFuelAuditLogs(tripId: string) {
     .order('logged_at', { ascending: false })
 
   if (error) return []
-  return data ?? []
+  const rows = data ?? []
+  const signed = await signDriverPhotos(rows.flatMap((row: any) => [row.photo_odometer_before_url, row.photo_odometer_after_url, row.photo_receipt_url]))
+  return rows.map((row: any) => ({
+    ...row,
+    photo_odometer_before_url: photoLink(signed, row.photo_odometer_before_url),
+    photo_odometer_after_url: photoLink(signed, row.photo_odometer_after_url),
+    photo_receipt_url: photoLink(signed, row.photo_receipt_url),
+  }))
+}
+
+export type TripPodPhoto = {
+  shipment_id: number
+  reference_no: string
+  customer_name: string | null
+  status: string
+  receiver_name: string | null
+  received_at: string | null
+  photo_url: string | null
+  signature_url: string | null
+  failure_reason: string | null
+}
+
+/** Bukti terima (POD) semua pengiriman dalam satu trip, untuk Live Tracking. */
+export async function getTripPodPhotos(tripId: string): Promise<TripPodPhoto[]> {
+  await requireAuthenticatedUser()
+  const { data: shipments } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('id, pss_no, crossdocking_id, customer_name, status, failure_reason, delivery_sequence')
+    .eq('trip_id', tripId)
+    .order('delivery_sequence', { ascending: true, nullsFirst: false })
+    .order('id', { ascending: true })
+  if (!shipments?.length) return []
+  const { data: pods } = await supabaseAdmin
+    .from('delivery_pod')
+    .select('tracking_id, receiver_name, received_at, photo_url, signature_url')
+    .in('tracking_id', shipments.map(row => row.id))
+  const podById = new Map((pods ?? []).map((row: any) => [Number(row.tracking_id), row]))
+  const signed = await signDriverPhotos((pods ?? []).flatMap((row: any) => [row.photo_url, row.signature_url]))
+  return shipments.map((row: any) => {
+    const pod = podById.get(Number(row.id))
+    return {
+      shipment_id: row.id,
+      reference_no: row.pss_no ?? `CD-${row.crossdocking_id}`,
+      customer_name: row.customer_name,
+      status: row.status,
+      receiver_name: pod?.receiver_name ?? null,
+      received_at: pod?.received_at ?? null,
+      photo_url: photoLink(signed, pod?.photo_url),
+      signature_url: photoLink(signed, pod?.signature_url),
+      failure_reason: row.failure_reason ?? null,
+    }
+  })
 }
 
 export async function getTripLocationHistory(tripId: string) {

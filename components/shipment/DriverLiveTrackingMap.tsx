@@ -6,7 +6,9 @@ import {
   getActiveDriverLiveLocations,
   getTripFuelAuditLogs,
   getTripLocationHistory,
+  getTripPodPhotos,
   type LiveDriverTrip,
+  type TripPodPhoto,
 } from '@/app/(app)/shipment/actions'
 import type { RoutePoint } from './TripRouteMap'
 import { smoothRoute } from './route-smoothing'
@@ -131,6 +133,17 @@ export default function DriverLiveTrackingMap() {
     }, 20000)
     return () => clearInterval(interval)
   }, [])
+
+  const [podModal, setPodModal] = useState<TripPodPhoto[] | null>(null)
+  const [podLoading, setPodLoading] = useState(false)
+  function viewPods(tripId: string) {
+    setPodLoading(true)
+    setPodModal([])
+    getTripPodPhotos(tripId).then(data => {
+      setPodModal(data)
+      setPodLoading(false)
+    }).catch(() => setPodLoading(false))
+  }
 
   function viewFuelLogs(tripId: string) {
     setFuelLoading(true)
@@ -268,6 +281,16 @@ export default function DriverLiveTrackingMap() {
                   <li key={customer} className="flex gap-2"><span className="w-5 shrink-0 text-slate-400">{index + 1}.</span><span className="[overflow-wrap:anywhere]">{customer}</span></li>
                 ))}
               </ol>
+              {selectedTrip.delivered_count > 0 && (
+                <button
+                  type="button"
+                  onClick={() => viewPods(selectedTrip.trip_id)}
+                  className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-gray-100"
+                >
+                  <Camera className="h-4 w-4" aria-hidden="true" />
+                  Lihat foto POD
+                </button>
+              )}
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -290,6 +313,57 @@ export default function DriverLiveTrackingMap() {
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">
           {loading ? 'Memuat trip...' : 'Tidak ada trip driver internal yang sedang berjalan.'}
+        </div>
+      )}
+
+      {/* MODAL FOTO POD PER TUJUAN */}
+      {podModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs" onClick={() => setPodModal(null)}>
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl space-y-4" onClick={event => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-base font-bold text-slate-900">Bukti terima (POD) · {selectedTrip?.trip_id}</h3>
+              </div>
+              <button onClick={() => setPodModal(null)} className="text-xl font-bold text-slate-400 hover:text-slate-600" aria-label="Tutup">×</button>
+            </div>
+            {podLoading ? (
+              <p className="py-8 text-center text-sm text-slate-500">Memuat foto POD...</p>
+            ) : podModal.length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-500">Belum ada data pengiriman.</p>
+            ) : (
+              <div className="space-y-3">
+                {podModal.map((pod, index) => (
+                  <div key={pod.shipment_id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{index + 1}. {pod.customer_name ?? '-'}</p>
+                        <p className="text-xs text-slate-500">{pod.reference_no}</p>
+                      </div>
+                      <div className="text-right text-xs">
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${pod.status === 'Delivered' ? 'bg-green-100 text-green-800' : pod.status === 'Failed Delivery' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-700'}`}>{pod.status}</span>
+                        {pod.received_at && <p className="mt-1 text-slate-500">{new Date(pod.received_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
+                      </div>
+                    </div>
+                    {pod.receiver_name && <p className="mt-2 text-sm text-slate-700">Penerima: <strong>{pod.receiver_name}</strong></p>}
+                    {pod.failure_reason && <p className="mt-2 text-sm text-red-700">Alasan gagal: {pod.failure_reason}</p>}
+                    {(pod.photo_url || pod.signature_url) ? (
+                      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {[['Foto bukti terima', pod.photo_url], ['Tanda tangan', pod.signature_url]].map(([label, url]) => url && (
+                          <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="block space-y-1">
+                            <img src={url} alt={label ?? ''} className="h-40 w-full rounded-lg border border-slate-200 object-cover" />
+                            <span className="block text-center text-[11px] font-semibold text-slate-500">{label} · klik untuk perbesar</span>
+                          </a>
+                        ))}
+                      </div>
+                    ) : pod.status === 'Delivered' ? (
+                      <p className="mt-2 text-xs text-slate-500">Tidak ada foto.</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
