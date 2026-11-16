@@ -10,6 +10,7 @@ import {
 } from '@/app/(app)/shipment/actions'
 import type { RoutePoint } from './TripRouteMap'
 import { smoothRoute } from './route-smoothing'
+import { AdminEndTripButton } from './AdminEndTripButton'
 
 const TripRouteMap = dynamic(() => import('./TripRouteMap'), {
   ssr: false,
@@ -23,7 +24,6 @@ import {
   RefreshCw,
   Clock,
   Radio,
-  ExternalLink,
   CheckCircle2,
   AlertTriangle,
   Receipt,
@@ -193,17 +193,6 @@ export default function DriverLiveTrackingMap() {
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           Refresh
         </button>
-        {selectedTrip?.last_location && (
-          <a
-            href={`https://www.google.com/maps?q=${selectedTrip.last_location.latitude},${selectedTrip.last_location.longitude}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-          >
-            <ExternalLink className="h-4 w-4" aria-hidden="true" />
-            Buka di Google Maps
-          </a>
-        )}
       </div>
 
       {selectedTrip ? (
@@ -232,6 +221,22 @@ export default function DriverLiveTrackingMap() {
           </div>
 
           <div className="grid content-start gap-4 lg:grid-cols-3 xl:grid-cols-1">
+            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">Informasi trip</h3>
+              <dl className="space-y-1.5 text-sm">
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Driver</dt><dd className="text-right font-semibold text-slate-900">{selectedTrip.driver_name ?? '-'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Kendaraan</dt><dd className="text-right font-semibold text-slate-900">{selectedTrip.vehicle_nopol ?? '-'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Mulai</dt><dd className="font-semibold text-slate-900">{selectedTrip.started_at ? new Date(selectedTrip.started_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">KM awal</dt><dd className="font-mono font-semibold text-slate-900">{selectedTrip.odometer_start != null ? selectedTrip.odometer_start.toLocaleString('id-ID') : '-'}</dd></div>
+                {selectedTrip.odometer_end != null && (
+                  <div className="flex justify-between gap-3"><dt className="text-slate-500">KM akhir</dt><dd className="font-mono font-semibold text-slate-900">{selectedTrip.odometer_end.toLocaleString('id-ID')}{selectedTrip.odometer_start != null ? ` (${(selectedTrip.odometer_end - selectedTrip.odometer_start).toLocaleString('id-ID')} km)` : ''}</dd></div>
+                )}
+              </dl>
+              {selectedTrip.started_at && !selectedTrip.completed_at && (
+                <AdminEndTripButton tripNo={selectedTrip.trip_id} odometerStart={selectedTrip.odometer_start} onDone={reload} />
+              )}
+            </section>
+
             <section className="rounded-2xl border border-slate-200 bg-white p-4">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gold-700">Posisi terakhir</h3>
               {selectedTrip.last_location ? (

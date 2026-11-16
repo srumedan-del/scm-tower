@@ -711,7 +711,10 @@ function FinishScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
   function submit() {
     if (!Number.isInteger(endKm) || endKm < 0) return setError('Isi odometer akhir')
     if (startKm != null && endKm < startKm) return setError(`Odometer akhir lebih kecil dari odometer awal (${startKm} KM)`)
-    void run(() => finishDriverTrip(tripNo, endKm), () => { ctx.notify(`Trip ${tripNo} ditutup`); ctx.backToRoot() })
+    void run(async () => {
+      const position = await currentPosition()
+      return finishDriverTrip(tripNo, endKm, position ? { latitude: position.lat, longitude: position.lng } : null)
+    }, () => { ctx.notify(`Trip ${tripNo} ditutup`); ctx.backToRoot() })
   }
 
   return (

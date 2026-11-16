@@ -1,6 +1,6 @@
 import { decodeDriverSession, encodeDriverSession, type DriverSession } from '@/lib/driverAuth'
 import {
-  DriverAccessError, DriverInputError, authenticateDriver, changeDefaultPin, changeDriverPin, finishTrip,
+  DriverAccessError, DriverInputError, assertTripOwned, authenticateDriver, changeDefaultPin, changeDriverPin, checkEndTripLocation, finishTrip,
   getTripClosingSummary, getTripCostDetails, isDriverActive, listDriverTripHistory, listDriverTrips, pinLockedMessage, recordExpense, recordFuel, saveLocations,
   startTrip, storeDriverImage, submitFailedDelivery, submitPod, updateDeliverySequence,
 } from '@/lib/driver-service'
@@ -8,6 +8,13 @@ import {
 type Context = { params: Promise<{ action: string }> }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })
+
+/** Koordinat HP yang dikirim bersama End Trip (opsional). */
+function positionFrom(body: any) {
+  const latitude = Number(body?.latitude)
+  const longitude = Number(body?.longitude)
+  return body?.latitude != null && body?.longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null
+}
 
 async function requireSession(request: Request): Promise<DriverSession> {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
@@ -89,7 +96,11 @@ export async function POST(request: Request, context: Context) {
       case 'trip-start':
         return json(await startTrip(session.id, String(body.trip_id), body.odometer_start == null ? null : Number(body.odometer_start)))
       case 'trip-finish':
-        return json({ summary: await finishTrip(session.id, String(body.trip_id), body.odometer_end == null ? null : Number(body.odometer_end)) })
+        return json({ summary: await finishTrip(session.id, String(body.trip_id), body.odometer_end == null ? null : Number(body.odometer_end), positionFrom(body)) })
+      case 'trip-finish-check':
+        // Aplikasi bisa memanggil ini untuk menonaktifkan tombol End Trip saat di luar radius gudang.
+        await assertTripOwned(String(body.trip_id), session.id)
+        return json(await checkEndTripLocation(session.id, String(body.trip_id), positionFrom(body)))
       case 'fuel':
         await recordFuel(session.id, body)
         return json({ ok: true })

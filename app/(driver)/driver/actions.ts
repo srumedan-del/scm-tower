@@ -156,10 +156,10 @@ export async function startDriverTrip(tripId: string, odometerStart: number) {
   }
 }
 
-export async function finishDriverTrip(tripId: string, odometerEnd: number) {
+export async function finishDriverTrip(tripId: string, odometerEnd: number, position?: { latitude: number; longitude: number } | null) {
   try {
     const session = await requireDriverSession()
-    return { success: true as const, error: undefined, summary: await service.finishTrip(session.id, tripId, odometerEnd) }
+    return { success: true as const, error: undefined, summary: await service.finishTrip(session.id, tripId, odometerEnd, position) }
   } catch (error) {
     return failure(error)
   }

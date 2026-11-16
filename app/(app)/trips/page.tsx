@@ -3,6 +3,7 @@ import { getTrips } from './actions'
 import { displayVendorName } from '@/lib/vendor-display'
 import { TripCreateButton } from './TripCreateButton'
 import { statusClass } from '@/lib/status-style'
+import { AdminEndTripButton } from '@/components/shipment/AdminEndTripButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,9 +62,14 @@ export default async function TripsPage() {
                 <td className="px-4 py-3 text-xs font-medium text-slate-600">{trip.stop_count}</td>
                 <td className="px-4 py-3 text-xs font-medium text-slate-600">{rupiah(trip.total_expense)}</td>
                 <td className="px-4 py-3 text-xs font-medium text-center text-slate-600">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(trip.status)}`}>
-                    {trip.status}
-                  </span>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(trip.status)}`}>
+                      {trip.status}
+                    </span>
+                    {trip.started_at && !trip.completed_at && trip.status !== 'Cancelled' && (
+                      <AdminEndTripButton tripNo={trip.trip_no} odometerStart={trip.odometer_start} compact />
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

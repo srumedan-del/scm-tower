@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
 import { isPersonalVehicleType } from '@/lib/personal-vehicle'
+import { END_TRIP_LOCATION_MAX_AGE_MINUTES, SRU_DEPOT, distanceFromDepot, formatDistance } from '@/lib/sru-depot'
 import { DEFAULT_DRIVER_PIN, hashPin, isDefaultPin, isHashedPin, isValidNewPin, verifyPin } from '@/lib/driverAuth'
 
 /**
@@ -429,7 +430,38 @@ export async function startTrip(driverId: number, tripNo: string, odometerStartI
   return { started_at: now }
 }
 
-export async function finishTrip(driverId: number, tripNo: string, odometerEndInput: number | null) {
+type Position = { latitude: number; longitude: number }
+
+/** Posisi driver untuk cek radius: dari HP saat menekan End Trip, atau titik GPS terakhir yang masih baru. */
+async function currentDriverPosition(tripNo: string, driverId: number, reported?: Position | null): Promise<Position | null> {
+  if (reported && Number.isFinite(reported.latitude) && Number.isFinite(reported.longitude) && (reported.latitude !== 0 || reported.longitude !== 0)) {
+    return { latitude: Number(reported.latitude), longitude: Number(reported.longitude) }
+  }
+  const since = new Date(Date.now() - END_TRIP_LOCATION_MAX_AGE_MINUTES * 60_000).toISOString()
+  const { data } = await supabaseAdmin
+    .from('driver_location_logs')
+    .select('latitude, longitude')
+    .eq('trip_id', tripNo)
+    .eq('driver_id', driverId)
+    .gte('recorded_at', since)
+    .order('recorded_at', { ascending: false })
+    .limit(1)
+  const last = data?.[0]
+  return last ? { latitude: Number(last.latitude), longitude: Number(last.longitude) } : null
+}
+
+/** End trip hanya di sekitar gudang SRU (radius SRU_DEPOT.radiusMeters). */
+export async function checkEndTripLocation(driverId: number, tripNo: string, reported?: Position | null) {
+  const position = await currentDriverPosition(tripNo, driverId, reported)
+  if (!position) return { allowed: false, distanceMeters: null as number | null, message: 'Lokasi GPS belum terbaca. Aktifkan GPS, tunggu sebentar, lalu coba lagi.' }
+  const distanceMeters = Math.round(distanceFromDepot(position))
+  if (distanceMeters > SRU_DEPOT.radiusMeters) {
+    return { allowed: false, distanceMeters, message: `End trip hanya bisa di sekitar gudang SRU (radius ${SRU_DEPOT.radiusMeters} m). Posisi Anda ±${formatDistance(distanceMeters)} dari gudang.` }
+  }
+  return { allowed: true, distanceMeters, message: null as string | null }
+}
+
+export async function finishTrip(driverId: number, tripNo: string, odometerEndInput: number | null, reported?: Position | null) {
   const personal = await isPersonalVehicleTrip(tripNo)
   const odometerEnd = personal ? null : odometerEndInput
   if (!personal && (!Number.isInteger(odometerEnd) || (odometerEnd as number) < 0)) throw new DriverInputError('Odometer akhir tidak valid')
@@ -442,6 +474,12 @@ export async function finishTrip(driverId: number, tripNo: string, odometerEndIn
 
   const summary = await getTripClosingSummary(driverId, tripNo)
   if (summary.totalPending > 0) throw new DriverInputError('Masih ada pengiriman yang belum diselesaikan')
+
+  // Kendaraan pribadi tidak dilacak, jadi tidak dicek radiusnya.
+  if (!personal) {
+    const location = await checkEndTripLocation(driverId, tripNo, reported)
+    if (!location.allowed) throw new DriverInputError(location.message ?? 'Di luar area gudang SRU')
+  }
 
   const { error } = await supabaseAdmin
     .from('trip')

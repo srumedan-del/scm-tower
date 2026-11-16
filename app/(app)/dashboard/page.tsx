@@ -540,57 +540,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
             </div>
-
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><AlertTriangle size={14} /> Open Issues</span>
-                <Link href="/issues" className="text-xs text-indigo-600 hover:underline">Lihat →</Link>
-              </div>
-              {d.openIssues.length === 0 ? (
-                <div className="px-4 py-4 text-xs text-gray-400 flex items-center gap-2"><CheckCircle2 size={14} className="text-green-500" /> Tidak ada open issue.</div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {d.openIssues.map(iss => (
-                    <div key={iss.issue_no} className="flex items-start gap-2 px-4 py-2.5">
-                      <span className={`mt-0.5 shrink-0 text-xs rounded px-1.5 py-0.5 font-medium ${iss.status === 'In Progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{iss.status}</span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-gray-700 truncate">{iss.title}</div>
-                        {iss.due_date && <div className="text-xs text-gray-400">Due {iss.due_date}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
-        </div>
-      </section>
-
-      {/* ZONA 4 — MENU CEPAT */}
-      <section aria-label="Menu cepat">
-        <h2 className="mb-3 text-base font-semibold text-gray-700 flex items-center gap-2">
-          <Minus size={16} /> Menu Cepat
-        </h2>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
-          {[
-            { href: '/receiving',               label: 'Receiving',        icon: <Warehouse size={16} />,     color: 'text-emerald-600 bg-emerald-50' },
-            { href: '/outbound',                label: 'Outbound',         icon: <Package size={16} />,        color: 'text-indigo-600 bg-indigo-50' },
-            { href: '/crossdocking',            label: 'Crossdocking',     icon: <ArrowLeftRight size={16} />, color: 'text-amber-600 bg-amber-50' },
-            { href: '/shipment',                label: 'Shipment',         icon: <Truck size={16} />,          color: 'text-blue-600 bg-blue-50' },
-            { href: '/shipment-cost',           label: 'Shipment Cost',    icon: <TrendingUp size={16} />,     color: 'text-gold-600 bg-gold-50' },
-            { href: '/service-level',           label: 'Service Level',    icon: <CheckCircle2 size={16} />,   color: 'text-teal-600 bg-teal-50' },
-            { href: '/inventory',               label: 'Inventory',        icon: <Warehouse size={16} />,      color: 'text-orange-600 bg-orange-50' },
-            { href: '/issues',                  label: 'Issue Log',        icon: <AlertTriangle size={16} />,  color: 'text-red-600 bg-red-50' },
-            { href: '/master-data',             label: 'Master Data',      icon: <Minus size={16} />,          color: 'text-gray-600 bg-gray-100' },
-            { href: '/shipment/budget-request', label: 'Pengajuan Dana',   icon: <TrendingDown size={16} />,   color: 'text-pink-600 bg-pink-50' },
-            { href: '/warehouse-checklist',     label: 'Warehouse Check',  icon: <CheckCircle2 size={16} />,   color: 'text-green-600 bg-green-50' },
-          ].map(({ href, label, icon, color }) => (
-            <Link key={href} href={href} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-all hover:border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-sm">
-              <span className={`rounded-lg p-1.5 ${color}`}>{icon}</span>
-              {label}
-            </Link>
-          ))}
         </div>
       </section>
 

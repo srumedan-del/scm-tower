@@ -9,6 +9,8 @@ export type TripRow = {
   status: 'Assigned' | 'Dispatched' | 'In Transit' | 'Completed' | 'Cancelled'
   dispatch_time: string | null
   completed_at: string | null
+  started_at: string | null
+  odometer_start: number | null
   vendor_name: string | null
   vehicle_no: string | null
   driver_name: string | null
@@ -33,7 +35,7 @@ export async function getTrips(): Promise<TripRow[]> {
   const { data, error } = await supabaseAdmin
     .from('trip')
     .select(`
-      id, trip_no, status, dispatch_time, completed_at,
+      id, trip_no, status, dispatch_time, completed_at, started_at, odometer_start,
       vendors(vendor_name),
       transport_fleet(vehicle_no),
       master_driver!trip_driver_id_fkey(driver_name),
@@ -51,6 +53,8 @@ export async function getTrips(): Promise<TripRow[]> {
     status: row.status,
     dispatch_time: row.dispatch_time,
     completed_at: row.completed_at,
+    started_at: row.started_at ?? null,
+    odometer_start: row.odometer_start ?? null,
     vendor_name: row.vendors?.vendor_name ?? null,
     vehicle_no: row.transport_fleet?.vehicle_no ?? null,
     driver_name: row.master_driver?.driver_name ?? null,
@@ -60,6 +64,49 @@ export async function getTrips(): Promise<TripRow[]> {
       0,
     ),
   }))
+}
+
+const FINISHED_SHIPMENT_STATUSES = ['Delivered', 'Closed', 'Failed Delivery', 'Cancelled']
+
+/**
+ * End trip oleh admin, untuk driver yang lupa menutup trip.
+ * Tidak dicek radius gudang; semua pengiriman trip harus sudah selesai.
+ */
+export async function adminFinishTrip(tripNo: string, odometerEnd: number | null, reason: string) {
+  const user = await requireAuthenticatedUser()
+  const actor = String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'admin')
+  const { data: trip, error } = await supabaseAdmin
+    .from('trip')
+    .select('id, trip_no, started_at, completed_at, odometer_start, notes')
+    .eq('trip_no', tripNo)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!trip) throw new Error(`Trip ${tripNo} tidak ditemukan`)
+  if (trip.completed_at) throw new Error(`Trip ${tripNo} sudah selesai`)
+  if (odometerEnd != null) {
+    if (!Number.isInteger(odometerEnd) || odometerEnd < 0) throw new Error('KM akhir tidak valid')
+    if (trip.odometer_start != null && odometerEnd < trip.odometer_start) throw new Error(`KM akhir lebih kecil dari KM awal (${Number(trip.odometer_start).toLocaleString('id-ID')})`)
+  }
+
+  const { data: shipments } = await supabaseAdmin.from('shipment_tracking').select('status').eq('trip_id', tripNo)
+  const pending = (shipments ?? []).filter((row: any) => !FINISHED_SHIPMENT_STATUSES.includes(row.status)).length
+  if (pending > 0) throw new Error(`Masih ada ${pending} pengiriman yang belum selesai di trip ini`)
+
+  const now = new Date()
+  const stamp = now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const note = `[End trip oleh admin ${actor}, ${stamp}${reason.trim() ? `: ${reason.trim()}` : ''}]`
+  const { error: updateError } = await supabaseAdmin
+    .from('trip')
+    .update({
+      status: 'Completed',
+      completed_at: now.toISOString(),
+      odometer_end: odometerEnd,
+      notes: [trip.notes, note].filter(Boolean).join('\n'),
+      updated_at: now.toISOString(),
+    })
+    .eq('id', trip.id)
+  if (updateError) throw new Error(updateError.message)
+  return { trip_no: tripNo }
 }
 
 export async function getTripCreationOptions(): Promise<{

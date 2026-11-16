@@ -1676,6 +1676,10 @@ export type LiveDriverTrip = {
   fuel_logs_count: number
   total_fuel_liters: number
   total_fuel_rupiah: number
+  started_at: string | null
+  completed_at: string | null
+  odometer_start: number | null
+  odometer_end: number | null
 }
 
 export async function getActiveDriverLiveLocations(includeFinished = false): Promise<LiveDriverTrip[]> {
@@ -1780,9 +1784,16 @@ export async function getActiveDriverLiveLocations(includeFinished = false): Pro
     }
   }
 
+  const { data: tripRecords } = await supabaseAdmin
+    .from('trip')
+    .select('trip_no, started_at, completed_at, odometer_start, odometer_end')
+    .in('trip_no', [...tripMap.keys()])
+  const tripRecordByNo = new Map((tripRecords ?? []).map((row: any) => [String(row.trip_no), row]))
+
   const result: LiveDriverTrip[] = []
 
   for (const [tripId, items] of tripMap.entries()) {
+    const tripRecord = tripRecordByNo.get(tripId)
     const first = items[0]
     const driverInfo = first.driver_id ? driverMap.get(first.driver_id) : null
 
@@ -1843,6 +1854,10 @@ export async function getActiveDriverLiveLocations(includeFinished = false): Pro
       fuel_logs_count: fuelLogs?.length ?? 0,
       total_fuel_liters: totalLiters,
       total_fuel_rupiah: totalRp,
+      started_at: tripRecord?.started_at ?? null,
+      completed_at: tripRecord?.completed_at ?? null,
+      odometer_start: tripRecord?.odometer_start ?? null,
+      odometer_end: tripRecord?.odometer_end ?? null,
     })
   }
 
