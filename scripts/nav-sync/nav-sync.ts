@@ -15,8 +15,8 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import * as XLSX from 'xlsx'
-import { chromium, type Page } from 'playwright-core'
-import { findNavHeaderRowIndex, formatError } from '../../lib/nav-import/parse'
+import { chromium, type Frame, type Page } from 'playwright-core'
+import { findNavHeaderRowIndex, formatError, normalizeKey } from '../../lib/nav-import/parse'
 import { ingestIle, ingestPssHeader, ingestPtrHeader, type StepResult } from '../../lib/nav-import/pipeline'
 
 const ROOT = path.resolve(__dirname, '..', '..')
@@ -42,10 +42,12 @@ const ARCHIVE = env.NAV_ARCHIVE_DIR || 'D:/nav'
 const ONLY = new Set((option('only') ?? 'pss,ptr,ile').split(',').map((s) => s.trim().toLowerCase()))
 
 // Halaman NAV dan field tanggal untuk filter. Bisa diganti lewat .env bila nomor halaman berbeda.
+// Hanya gudang Medan (SCM Tower berisi lokasi MDN-PAR saja): PSS & ILE per Location Code, PTR per Transfer-to Code.
+const LOCATION = env.NAV_LOCATION || 'MDN-PAR'
 const SOURCES = [
-  { key: 'pss', label: 'PSS Header (Posted Sales Shipments)', page: env.NAV_PAGE_PSS || '142', dateField: 'Posting Date' },
-  { key: 'ptr', label: 'PTR Header (Posted Transfer Receipts)', page: env.NAV_PAGE_PTR || '5753', dateField: 'Posting Date' },
-  { key: 'ile', label: 'ILE (Item Ledger Entries)', page: env.NAV_PAGE_ILE || '38', dateField: 'Posting Date' },
+  { key: 'pss', label: 'PSS Header (Posted Sales Shipments)', page: env.NAV_PAGE_PSS || '142', dateField: 'Posting Date', locationField: 'Location Code' },
+  { key: 'ptr', label: 'PTR Header (Posted Transfer Receipts)', page: env.NAV_PAGE_PTR || '5753', dateField: 'Posting Date', locationField: 'Transfer-to Code' },
+  { key: 'ile', label: 'ILE (Item Ledger Entries)', page: env.NAV_PAGE_ILE || '38', dateField: 'Posting Date', locationField: 'Location Code' },
 ] as const
 
 function log(message: string) {
@@ -59,43 +61,50 @@ const jakartaDate = (offsetDays = 0) =>
 /** Format tanggal filter NAV sesuai tampilan web client (bulan/tanggal/tahun). */
 const navDate = (iso: string) => { const [y, m, d] = iso.split('-'); return `${m}/${d}/${y}` }
 
-function pageUrl(page: string, dateField: string, from: string, to: string) {
-  const filter = `'${dateField}' IS '${navDate(from)}..${navDate(to)}'`
+function pageUrl(page: string, dateField: string, locationField: string, from: string, to: string) {
+  const filter = `'${dateField}' IS '${navDate(from)}..${navDate(to)}' AND '${locationField}' IS '${LOCATION}'`
   return `${BASE}?company=${encodeURIComponent(COMPANY)}&page=${page}&filter=${encodeURIComponent(filter)}`
 }
 
-/** Tunggu daftar NAV selesai dimuat (judul halaman berisi nama halaman, bukan "Microsoft Dynamics NAV" saja). */
-async function waitForList(page: Page) {
+/**
+ * Tunggu daftar NAV selesai dimuat. Isi web client NAV 2018 berada di iframe (?runinframe=1);
+ * kembalikan frame itu karena semua tombol dan kolom ada di dalamnya.
+ */
+async function waitForList(page: Page): Promise<Frame> {
   await page.waitForLoadState('domcontentloaded')
   await page.waitForFunction(() => /- Microsoft Dynamics NAV$/.test(document.title) && !/^Microsoft Dynamics NAV$/.test(document.title), null, { timeout: 90_000 })
-  await page.waitForTimeout(2500)
+  let frame: Frame | undefined
+  for (let i = 0; i < 60 && !frame; i++) {
+    frame = page.frames().find((f) => f.url().includes('runinframe=1'))
+    if (!frame) await page.waitForTimeout(500)
+  }
+  if (!frame) throw new Error('Frame isi NAV (runinframe) tidak ditemukan')
+  await frame.locator('.ribbon-container.loaded').waitFor({ state: 'visible', timeout: 60_000 })
+  await page.waitForTimeout(1500)
+  return frame
 }
 
-/** Klik tab ribbon HOME bila tombol "Open in Excel" belum terlihat, lalu kembalikan tombolnya. */
-async function openInExcelButton(page: Page) {
-  const button = page.getByRole('button', { name: /Open in Excel/i }).or(page.getByTitle(/Open in Excel/i)).first()
+/** Tombol "Open in Excel" ada di grup Page pada tab ribbon HOME; buka tab HOME bila belum terlihat. */
+async function openInExcelButton(frame: Frame) {
+  const button = frame.locator('a.ms-cui-ctl-large', { hasText: /Open in\s*Excel/i }).first()
   if (await button.isVisible().catch(() => false)) return button
-  const home = page.getByRole('tab', { name: /^HOME$/i }).or(page.getByText(/^HOME$/)).first()
-  if (await home.isVisible().catch(() => false)) {
-    await home.click()
-    await page.waitForTimeout(800)
-  }
+  await frame.locator('li.ms-cui-tt[title="Home"] a.ms-cui-tt-a').first().click()
   await button.waitFor({ state: 'visible', timeout: 20_000 })
   return button
 }
 
-async function probe(page: Page, source: (typeof SOURCES)[number], dir: string) {
+async function probe(page: Page, frame: Frame, source: (typeof SOURCES)[number], dir: string) {
   const title = await page.title()
-  const headers = await page.locator('[role="columnheader"], th').allInnerTexts().catch(() => [])
-  const excel = await openInExcelButton(page).then(() => 'ada').catch(() => 'TIDAK ditemukan')
+  const headers = await frame.locator('th').allInnerTexts().catch(() => [])
+  const excel = await openInExcelButton(frame).then(() => 'ada').catch(() => 'TIDAK ditemukan')
   const shot = path.join(dir, `probe-${source.key}.png`)
   await page.screenshot({ path: shot, fullPage: false }).catch(() => {})
   log(`[probe] ${source.label}: judul "${title}" | tombol Open in Excel ${excel} | kolom: ${headers.map((h) => h.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 30).join(' | ')}`)
   log(`[probe] screenshot: ${shot}`)
 }
 
-async function download(page: Page, source: (typeof SOURCES)[number], dir: string) {
-  const button = await openInExcelButton(page)
+async function download(page: Page, frame: Frame, source: (typeof SOURCES)[number], dir: string) {
+  const button = await openInExcelButton(frame)
   const [file] = await Promise.all([page.waitForEvent('download', { timeout: 120_000 }), button.click()])
   const target = path.join(dir, `${source.key}-${jakartaDate()}.xlsx`)
   await file.saveAs(target)
@@ -142,13 +151,19 @@ async function main() {
     for (const source of SOURCES) {
       if (!ONLY.has(source.key)) continue
       try {
-        await page.goto(pageUrl(source.page, source.dateField, from, to), { waitUntil: 'domcontentloaded', timeout: 90_000 })
-        await waitForList(page)
-        if (PROBE) { await probe(page, source, dir); continue }
+        await page.goto(pageUrl(source.page, source.dateField, source.locationField, from, to), { waitUntil: 'domcontentloaded', timeout: 90_000 })
+        const frame = await waitForList(page)
+        if (PROBE) { await probe(page, frame, source, dir); continue }
 
-        const file = await download(page, source, dir)
-        const rows = readRows(file)
-        log(`${source.label}: ${rows.length} baris diunduh → ${file}`)
+        const file = await download(page, frame, source, dir)
+        const downloaded = readRows(file)
+        // Pengaman bila filter lokasi di alamat NAV tidak diterapkan: buang baris lokasi lain.
+        const locationKey = normalizeKey(source.locationField)
+        const rows = downloaded.filter((row) => {
+          const entry = Object.entries(row).find(([k]) => normalizeKey(k) === locationKey)
+          return !entry || String(entry[1] ?? '').trim().toUpperCase() === LOCATION
+        })
+        log(`${source.label}: ${downloaded.length} baris diunduh, ${rows.length} baris ${LOCATION} → ${file}`)
         const name = path.basename(file)
         if (source.key === 'pss') log(`  PSS Header: ${summary(await ingestPssHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
         if (source.key === 'ptr') log(`  PTR Header: ${summary(await ingestPtrHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
