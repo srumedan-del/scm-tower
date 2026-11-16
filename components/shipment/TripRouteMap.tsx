@@ -51,7 +51,7 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
   const all = [...path, ...destinations.map(destination => [destination.latitude, destination.longitude] as [number, number])]
 
   return (
-    <MapContainer center={current ?? MEDAN} zoom={13} scrollWheelZoom className={`${className} w-full rounded-xl`}>
+    <MapContainer center={current ?? MEDAN} zoom={13} scrollWheelZoom className={`${className} w-full rounded-xl`} style={{ isolation: 'isolate', zIndex: 0 }}>
       <BaseTiles />
       <FitToRoute fitKey={`${tripId}:${path.length > 0}:${destinations.length}`} positions={all} />
 
