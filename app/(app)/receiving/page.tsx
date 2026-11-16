@@ -19,7 +19,7 @@ function getNextMonthFirstDay(month: string): string {
 async function getReceiving(months: string[]) {
   let query = supabase
     .from('receiving_header')
-    .select('id, ptr_no, transfer_order_no, transfer_from_code, transfer_to_code, posting_date, shipment_date, receipt_date, shipping_agent_code, transport_mode, land_vendor_code, sea_vendor_code, air_vendor_code, container_no, ship_to_receipt_days, receipt_to_posting_days, ship_to_posting_days')
+    .select('*')
     .order('posting_date', { ascending: false })
     .order('ptr_no', { ascending: false })
     .order('transfer_order_no', { ascending: false })
@@ -128,7 +128,8 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
           <NavSyncButton />
           <PtrHeaderUploadButton />
           <MultiDestinationDetailUpload />
-          <ReceivingAIAnalysis rows={rows} details={details} packaging={packaging} />
+          {/* PTR koreksi bukan pengiriman: tidak ikut analisis lead time dan volume. */}
+          <ReceivingAIAnalysis rows={rows.filter((r: any) => r.ptr_type !== 'koreksi')} details={details} packaging={packaging} />
         </div>
       </header>
 

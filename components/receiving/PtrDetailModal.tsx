@@ -5,7 +5,7 @@ import { showSuccess } from '@/lib/feedback'
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Package, Check, ChevronDown } from 'lucide-react'
-import { getReceivingFullData, updateReceivingTransportDetails, updateShipmentDate, getReceivingVendorHistory } from '@/app/(app)/receiving/actions'
+import { getReceivingFullData, updateReceivingPtrType, updateReceivingTransportDetails, updateShipmentDate, getReceivingVendorHistory } from '@/app/(app)/receiving/actions'
 
 interface HeaderData {
   id: string | number
@@ -23,6 +23,8 @@ interface HeaderData {
   sea_vendor_code: string | null
   air_vendor_code: string | null
   container_no: string | null
+  ptr_type?: 'pengiriman' | 'koreksi' | null
+  ptr_note?: string | null
   ship_to_receipt_days: number | null
   receipt_to_posting_days: number | null
   ship_to_posting_days: number | null
@@ -84,6 +86,8 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
     container_no: '',
     shipment_date: '',
   })
+  const [ptrForm, setPtrForm] = useState({ ptr_type: 'pengiriman' as 'pengiriman' | 'koreksi', ptr_note: '' })
+  const isCorrection = ptrForm.ptr_type === 'koreksi'
   const [vendorHistory, setVendorHistory] = useState<string[]>([])
   const [showVendorDropdown, setShowVendorDropdown] = useState(false)
   const vendorContainerRef = useRef<HTMLDivElement>(null)
@@ -139,6 +143,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
           container_no: (headerData?.container_no ?? '').toUpperCase(),
           shipment_date: headerData?.shipment_date ? String(headerData.shipment_date).slice(0, 10) : '',
         })
+        setPtrForm({ ptr_type: headerData?.ptr_type === 'koreksi' ? 'koreksi' : 'pengiriman', ptr_note: headerData?.ptr_note ?? '' })
 
         // Ambil riwayat nama vendor
         getReceivingVendorHistory().then((history) => {
@@ -183,6 +188,10 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
           await updateShipmentDate(header.id, sDate)
         }
 
+        if (ptrForm.ptr_type !== (header.ptr_type ?? 'pengiriman') || ptrForm.ptr_note.trim() !== (header.ptr_note ?? '')) {
+          await updateReceivingPtrType(header.id, ptrForm.ptr_type, ptrForm.ptr_note)
+        }
+
         await updateReceivingTransportDetails(header.id, {
           transport_mode: transportForm.transport_mode,
           land_vendor_code: v,
@@ -191,7 +200,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
           container_no: c,
         })
         handleClose()
-        void showSuccess({ title: 'Informasi transportasi tersimpan', message: ptrNo }).then(() => router.refresh())
+        void showSuccess({ title: 'Informasi PTR tersimpan', message: ptrNo }).then(() => router.refresh())
       } catch (error: any) {
         setErrorMsg(error?.message || 'Gagal menyimpan informasi transportasi.')
       }
@@ -283,7 +292,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
                           Lead Time:
                         </span>
                         <span className="text-[14px] font-bold text-indigo-700">
-                          {leadTimeDays !== null ? `${leadTimeDays} hari` : '-'}
+                          {isCorrection ? 'Tidak dihitung (koreksi)' : leadTimeDays !== null ? `${leadTimeDays} hari` : '-'}
                         </span>
                       </div>
                     </div>
@@ -291,6 +300,32 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
 
                   {/* ── 2. Form Informasi Pengiriman & Vendor ── */}
                   <div className="p-4 sm:p-5 bg-white">
+                    {/* Jenis PTR: koreksi/pembatalan PTS tidak dihitung sebagai pengiriman */}
+                    <div className={`mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3.5 rounded-xl p-3 ${isCorrection ? 'border border-amber-200 bg-amber-50' : 'border border-slate-100 bg-slate-50/60'}`}>
+                      <div>
+                        <label className="block text-[14px] font-bold text-slate-700 mb-1">Jenis PTR</label>
+                        <select
+                          value={ptrForm.ptr_type}
+                          onChange={(e) => setPtrForm((c) => ({ ...c, ptr_type: e.target.value as 'pengiriman' | 'koreksi' }))}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-xs"
+                        >
+                          <option value="pengiriman">Pengiriman</option>
+                          <option value="koreksi">Koreksi / pembatalan PTS</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[14px] font-bold text-slate-700 mb-1">
+                          Catatan
+                          {isCorrection && <span className="text-[12px] text-amber-700 font-normal ml-1">(tidak dihitung di lead time dan jumlah inbound)</span>}
+                        </label>
+                        <input
+                          value={ptrForm.ptr_note}
+                          onChange={(e) => setPtrForm((c) => ({ ...c, ptr_note: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[14px] font-medium text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-xs"
+                          placeholder={isCorrection ? 'Mis. pembatalan PTS-2611-xxxx yang salah' : 'Catatan (opsional)'}
+                        />
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       <div>
                         <label className="block text-[14px] font-bold text-slate-700 mb-1">

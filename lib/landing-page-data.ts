@@ -33,7 +33,7 @@ export async function getLandingPageData() {
     // { count: inventoryCount },
   ] = await Promise.all([
     supabase.from('vendors').select('*', { count: 'exact', head: true }),
-    supabase.from('receiving_header').select('*', { count: 'exact', head: true }),
+    supabase.from('receiving_header').select('*', { count: 'exact', head: true }).neq('ptr_type', 'koreksi'),
     supabase.from('issue_log').select('*', { count: 'exact', head: true }).in('status', ['Open', 'In Progress']),
     supabase.from('outbound_header').select('*', { count: 'exact', head: true }),
     supabase.from('shipment_tracking').select('*', { count: 'exact', head: true }).not('status', 'in', '("Delivered","Closed","Failed Delivery")'),
@@ -63,7 +63,7 @@ export async function getLandingPageData() {
       .limit(20),
     supabase.from('receiving_header')
       .select('ptr_no, posting_date, ship_to_posting_days, transfer_from_code')
-      .gte('posting_date', fromDate)
+      .gte('posting_date', fromDate).neq('ptr_type', 'koreksi')
       .order('posting_date', { ascending: true }),
     supabase.from('receiving_detail')
       .select('document_no, item_no, description, quantity')

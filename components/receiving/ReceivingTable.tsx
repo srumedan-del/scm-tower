@@ -26,6 +26,8 @@ type HeaderRow = {
   ship_to_receipt_days?: number | null
   receipt_to_posting_days?: number | null
   ship_to_posting_days?: number | null
+  ptr_type?: 'pengiriman' | 'koreksi' | null
+  ptr_note?: string | null
 }
 
 type DetailRow = {
@@ -144,7 +146,9 @@ export default function ReceivingTable({ rows, details }: Props) {
               : 0
             const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt >= 11 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
             const isExpanded = expandedRows.has(r.id)
-            const hasContainer = Boolean(r.container_no && r.container_no.trim())
+            const isCorrection = r.ptr_type === 'koreksi'
+            // PTR koreksi tidak punya container: jangan ditandai merah.
+            const hasContainer = isCorrection || Boolean(r.container_no && r.container_no.trim())
 
             return (
               <Fragment key={String(r.id)}>
@@ -192,6 +196,11 @@ export default function ReceivingTable({ rows, details }: Props) {
                     >
                       {ptr || '-'}
                     </button>
+                    {isCorrection && (
+                      <span className="ml-2 inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-[12px] font-bold uppercase text-amber-800" title={r.ptr_note || 'Koreksi/pembatalan PTS, bukan pengiriman'}>
+                        Koreksi
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-[14px] font-medium text-slate-600">{String(r.transfer_order_no ?? '-').toUpperCase()}</td>
                   <td className="px-4 py-2.5 text-[14px] font-medium text-slate-600">{String(`${r.transfer_from_code ?? '-'} → ${r.transfer_to_code ?? '-'}`).toUpperCase()}</td>
@@ -243,7 +252,9 @@ export default function ReceivingTable({ rows, details }: Props) {
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-[14px] font-medium text-right whitespace-nowrap text-slate-600">
-                    <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[14px] font-bold ${ltColor}`}>{lt} hari</span>
+                    {isCorrection
+                      ? <span className="text-slate-400" title="PTR koreksi tidak dihitung di lead time">—</span>
+                      : <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[14px] font-bold ${ltColor}`}>{lt} hari</span>}
                   </td>
                 </tr>
                 {isExpanded && (
@@ -256,6 +267,12 @@ export default function ReceivingTable({ rows, details }: Props) {
                   >
                     <td colSpan={8} className="px-8 py-3">
                       <div className="flex flex-wrap items-center gap-8 text-[14px] text-slate-600">
+                        {isCorrection && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold uppercase tracking-wider text-[14px] text-amber-700">Koreksi PTS:</span>
+                            <span className="text-[14px] font-medium text-slate-700">{r.ptr_note || '-'}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <span className="font-bold uppercase tracking-wider text-[14px] text-slate-500">
                             Mode Pengiriman:

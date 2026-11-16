@@ -173,6 +173,16 @@ export async function updateReceivingTransportDetails(
   if (error) throw error
 }
 
+/** Tandai PTR sebagai pengiriman biasa atau koreksi/pembatalan PTS (tidak dihitung di lead time dan jumlah inbound). */
+export async function updateReceivingPtrType(headerId: string | number, ptrType: 'pengiriman' | 'koreksi', note: string | null) {
+  await requireAuthenticatedUser()
+  const { error } = await supabaseAdmin
+    .from('receiving_header')
+    .update({ ptr_type: ptrType, ptr_note: note?.trim() || null, updated_at: new Date().toISOString() })
+    .eq('id', headerId)
+  if (error) throw new Error(/ptr_type|ptr_note/.test(error.message) ? 'Jalankan dulu supabase/migration_v57_receiving_ptr_type.sql di Supabase.' : error.message)
+}
+
 export async function getReceivingVendorHistory(): Promise<string[]> {
   await requireAuthenticatedUser()
   try {

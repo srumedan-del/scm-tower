@@ -64,7 +64,7 @@ async function getDashboardData(period: string) {
     { data: recentPtr },
   ] = await Promise.all([
     supabase.from('receiving_header').select('*', { count: 'exact', head: true })
-      .gte('posting_date', from).lt('posting_date', to),
+      .gte('posting_date', from).lt('posting_date', to).neq('ptr_type', 'koreksi'),
 
     supabase.from('crossdocking_header').select('*', { count: 'exact', head: true })
       .not('status', 'eq', 'Delivered').gte('received_from_hq_date', DATA_START),
@@ -88,7 +88,7 @@ async function getDashboardData(period: string) {
 
     supabase.from('receiving_header')
       .select('id, ptr_no, transfer_from_code, transfer_to_code, posting_date, ship_to_posting_days')
-      .gte('posting_date', from).lt('posting_date', to)
+      .gte('posting_date', from).lt('posting_date', to).neq('ptr_type', 'koreksi')
       .order('posting_date', { ascending: false }).limit(5),
   ])
 
