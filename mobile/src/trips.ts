@@ -25,7 +25,44 @@ export type Trip = {
   odometer_start: number | null
   last_odometer?: number | null
   vehicle?: { vehicle_no: string; vehicle_type: string | null } | null
+  personal_vehicle?: boolean
   stops: Stop[]
+}
+
+/** Gudang SRU Medan (sama dengan lib/sru-depot.ts di server). End trip hanya dalam radius ini. */
+export const SRU_DEPOT = { lat: 3.60357, lng: 98.62717, radiusMeters: 500 }
+// Jarak jalan biasanya ±30% lebih jauh dari garis lurus antar titik.
+const ROAD_FACTOR = 1.3
+
+export type DropPoint = { key: string; customer_name: string | null; destination_city: string | null; lat: number | null; lng: number | null; stops: Stop[] }
+
+/** Kelompokkan stop per titik tujuan (drop point) sesuai urutan pengiriman. */
+export function dropPoints(stops: Stop[]): DropPoint[] {
+  const groups = new Map<string, DropPoint>()
+  for (const stop of stops) {
+    const key = (stop.customer_name ?? stop.reference_no).trim().toLowerCase()
+    const group = groups.get(key)
+    if (group) group.stops.push(stop)
+    else groups.set(key, { key, customer_name: stop.customer_name, destination_city: stop.destination_city, lat: stop.target_lat, lng: stop.target_lng, stops: [stop] })
+  }
+  return [...groups.values()]
+}
+
+function straightKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (value: number) => (value * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
+/** Perkiraan jarak rute gudang → drop point berurutan → gudang. Drop point tanpa koordinat dilewati. */
+export function planDistance(points: DropPoint[]) {
+  const located = points.filter((point): point is DropPoint & { lat: number; lng: number } => point.lat != null && point.lng != null)
+  const path = [SRU_DEPOT, ...located, SRU_DEPOT]
+  let km = 0
+  for (let i = 1; i < path.length; i++) km += straightKm(path[i - 1], path[i])
+  return { km: Math.round(km * ROAD_FACTOR), missing: points.length - located.length }
 }
 
 const CACHE_KEY = 'trips'
@@ -100,11 +137,15 @@ function withPendingChanges(trips: Trip[]) {
     .filter(trip => !pending.some(item => item.kind === 'trip-finish' && item.payload.trip_id === trip.trip_no))
     .map(trip => {
       const start = pending.find(item => item.kind === 'trip-start' && item.payload.trip_id === trip.trip_no)
+      // Urutan yang diatur driver tapi belum terkirim ke server.
+      const sequence = [...pending].reverse().find(item => item.kind === 'sequence' && item.payload.trip_id === trip.trip_no)
+      const rank = new Map<number, number>(((sequence?.payload.updates ?? []) as { id: number; delivery_sequence: number }[]).map(update => [update.id, update.delivery_sequence]))
+      const ordered = rank.size ? [...trip.stops].sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999)) : trip.stops
       return {
         ...trip,
         started_at: trip.started_at ?? (start ? new Date().toISOString() : null),
         odometer_start: trip.odometer_start ?? (start?.payload.odometer_start as number | undefined) ?? null,
-        stops: trip.stops.map(stop => {
+        stops: ordered.map(stop => {
           if (pending.some(item => item.kind === 'pod' && item.payload.shipment_id === stop.id)) return { ...stop, status: 'Delivered' }
           if (pending.some(item => item.kind === 'failed' && item.payload.shipment_id === stop.id)) return { ...stop, status: 'Failed Delivery' }
           return stop

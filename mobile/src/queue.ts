@@ -3,7 +3,7 @@ import { File } from 'expo-file-system'
 import { ApiError, apiPost, apiUpload } from './api'
 import { db } from './db'
 
-export type QueueKind = 'trip-start' | 'trip-finish' | 'fuel' | 'expense' | 'pod' | 'failed'
+export type QueueKind = 'trip-start' | 'trip-finish' | 'fuel' | 'expense' | 'pod' | 'failed' | 'sequence'
 
 export type QueueItem = {
   id: number

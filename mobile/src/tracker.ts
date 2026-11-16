@@ -103,6 +103,18 @@ export async function currentPosition() {
   }
 }
 
+/** Posisi terkini yang baru dibaca (bukan posisi tersimpan), untuk cek radius end trip. */
+export async function freshPosition() {
+  try {
+    const { granted } = await Location.requestForegroundPermissionsAsync()
+    if (!granted) return null
+    const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+    return { lat: position.coords.latitude, lng: position.coords.longitude }
+  } catch {
+    return currentPosition()
+  }
+}
+
 export function distanceMeters(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
   const toRad = (value: number) => (value * Math.PI) / 180
   const dLat = toRad(to.lat - from.lat)

@@ -1,13 +1,26 @@
 'use client'
 
-import { useEffect } from 'react'
-import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 export type RoutePoint = { latitude: number; longitude: number; recorded_at: string }
 export type RouteDestination = { name: string; latitude: number; longitude: number; done: boolean }
 
 const MEDAN: [number, number] = [3.5952, 98.6722]
+
+// Peta dasar tanpa tulisan; nama jalan/tempat ditumpuk sebagai lapisan terpisah yang baru muncul saat di-zoom.
+const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO'
+const BASE_TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png'
+const LABEL_TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png'
+const LABEL_MIN_ZOOM = 15
+
+function LabelsWhenZoomed() {
+  const map = useMap()
+  const [zoom, setZoom] = useState(map.getZoom())
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  return zoom >= LABEL_MIN_ZOOM ? <TileLayer url={LABEL_TILES} subdomains="abcd" zIndex={2} /> : null
+}
 
 /** Sesuaikan tampilan hanya saat trip berganti atau data pertama tiba, agar geseran admin tidak direset tiap refresh. */
 function FitToRoute({ fitKey, positions }: { fitKey: string; positions: [number, number][] }) {
@@ -34,7 +47,8 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
 
   return (
     <MapContainer center={current ?? MEDAN} zoom={13} scrollWheelZoom className={`${className} w-full rounded-xl`}>
-      <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <TileLayer attribution={ATTRIBUTION} url={BASE_TILES} subdomains="abcd" />
+      <LabelsWhenZoomed />
       <FitToRoute fitKey={`${tripId}:${path.length > 0}:${destinations.length}`} positions={all} />
 
       {path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#C96442', weight: 4, opacity: 0.85 }} />}

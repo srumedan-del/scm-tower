@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTrips } from '../../src/hooks'
 import { enqueue } from '../../src/queue'
 import { startTracking } from '../../src/tracker'
-import { isStopDone, nextStop, vehicleLabel, type Stop } from '../../src/trips'
+import { dropPoints, isStopDone, nextStop, planDistance, vehicleLabel, type DropPoint, type Stop } from '../../src/trips'
 import { ActionTile, Button, Card, ErrorText, Field, InfoRow, Notice, ProgressBar, Screen, SectionTitle, StatusPill, notifySaved } from '../../src/ui'
 import { colors, radius } from '../../src/theme'
 
@@ -40,6 +40,33 @@ function StopRow({ stop, index, isNext, isLast, onPress }: { stop: Stop; index: 
   )
 }
 
+/** Sebelum trip dimulai: satu kartu per titik tujuan, bisa dinaikkan/diturunkan. */
+function DropPointRow({ point, index, total, onMove }: { point: DropPoint; index: number; total: number; onMove: (delta: -1 | 1) => void }) {
+  return (
+    <View style={styles.stopRow}>
+      <View style={styles.rail}>
+        <View style={[styles.dot, styles.dotTodo]}><Text style={styles.dotText}>{index + 1}</Text></View>
+        {index < total - 1 ? <View style={styles.line} /> : null}
+      </View>
+      <View style={[styles.stopCard, styles.dropCard]}>
+        <View style={styles.dropBody}>
+          <Text style={styles.stopName}>{point.customer_name ?? '-'}</Text>
+          <Text style={styles.meta}>{point.destination_city ?? '-'} · {point.stops.length} PSS/SJ</Text>
+          <Text style={styles.refs}>{point.stops.map(stop => stop.reference_no).join(', ')}</Text>
+        </View>
+        <View style={styles.moveButtons}>
+          <Pressable accessibilityLabel="Naikkan urutan" disabled={index === 0} onPress={() => onMove(-1)} style={[styles.moveButton, index === 0 && styles.moveDisabled]}>
+            <Ionicons name="chevron-up" size={22} color={colors.navy} />
+          </Pressable>
+          <Pressable accessibilityLabel="Turunkan urutan" disabled={index === total - 1} onPress={() => onMove(1)} style={[styles.moveButton, index === total - 1 && styles.moveDisabled]}>
+            <Ionicons name="chevron-down" size={22} color={colors.navy} />
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  )
+}
+
 export default function TripScreen() {
   const { tripNo } = useLocalSearchParams<{ tripNo: string }>()
   const router = useRouter()
@@ -47,8 +74,23 @@ export default function TripScreen() {
   const trip = trips.find(row => row.trip_no === tripNo)
   const [odometer, setOdometer] = useState('')
   const [error, setError] = useState('')
+  // Urutan titik tujuan yang diatur driver sebelum mulai (key drop point).
+  const [order, setOrder] = useState<string[] | null>(null)
 
   if (!trip) return <Screen><Text style={styles.meta}>Trip tidak ditemukan.</Text></Screen>
+
+  const basePoints = dropPoints(trip.stops)
+  const points = order
+    ? [...basePoints].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
+    : basePoints
+
+  function move(index: number, delta: -1 | 1) {
+    const keys = points.map(point => point.key)
+    const target = index + delta
+    if (target < 0 || target >= keys.length) return
+    ;[keys[index], keys[target]] = [keys[target], keys[index]]
+    setOrder(keys)
+  }
 
   function start() {
     const value = parseInt(odometer, 10)
@@ -59,14 +101,31 @@ export default function TripScreen() {
       Alert.alert(
         'KM lebih kecil dari KM terakhir',
         `KM terakhir kendaraan ini ${lastKm.toLocaleString('id-ID')}, yang diisi ${value.toLocaleString('id-ID')}. Pastikan angkanya benar.`,
-        [{ text: 'Periksa Lagi', style: 'cancel' }, { text: 'Tetap Mulai', onPress: () => void beginTrip(value) }],
+        [{ text: 'Periksa Lagi', style: 'cancel' }, { text: 'Tetap Mulai', onPress: () => showPlan(value) }],
       )
       return
     }
-    void beginTrip(value)
+    showPlan(value)
+  }
+
+  /** Pop-up rencana trip: jumlah PSS/SJ, drop point, perkiraan jarak, dan urutannya. */
+  function showPlan(value: number) {
+    const plan = planDistance(points)
+    const route = points.map((point, index) => `${index + 1}. ${point.customer_name ?? '-'} (${point.stops.length} PSS/SJ)`).join('\n')
+    const missing = plan.missing ? `\n(${plan.missing} titik belum punya koordinat, tidak ikut dihitung)` : ''
+    Alert.alert(
+      'Rencana trip',
+      `${trip!.stops.length} PSS/SJ · ${points.length} drop point\nPerkiraan jarak: ±${plan.km.toLocaleString('id-ID')} km (gudang → tujuan → gudang)${missing}\n\nUrutan:\n${route}`,
+      [{ text: 'Ubah Urutan', style: 'cancel' }, { text: 'Mulai Trip', onPress: () => void beginTrip(value) }],
+    )
   }
 
   async function beginTrip(value: number) {
+    // Simpan urutan pengiriman pilihan driver sebelum trip dimulai.
+    const flat = points.flatMap(point => point.stops)
+    if (flat.some((stop, index) => stop.id !== trip!.stops[index]?.id)) {
+      enqueue('sequence', `Urutan tujuan ${tripNo}`, { trip_id: tripNo, updates: flat.map((stop, index) => ({ id: stop.id, delivery_sequence: index + 1 })) })
+    }
     enqueue('trip-start', `Mulai trip ${tripNo}`, { trip_id: tripNo, odometer_start: value })
     notifySaved('Trip dimulai. Hati-hati di jalan.')
     const tracking = await startTracking(tripNo)
@@ -111,7 +170,7 @@ export default function TripScreen() {
         {!started && trip.last_odometer != null ? <InfoRow icon="speedometer-outline" label="KM terakhir" value={`${trip.last_odometer.toLocaleString('id-ID')} KM`} /> : null}
       </Card>
 
-      {!started && <Notice>Periksa kendaraan dan muatan, lalu isi KM awal di bawah untuk memulai trip.</Notice>}
+      {!started && <Notice>Atur urutan tujuan dengan tombol panah, periksa kendaraan dan muatan, lalu isi KM awal untuk memulai trip.</Notice>}
       {started && allDone && <Notice tone="success">Semua tujuan selesai. Isi BBM bila perlu, kembali ke gudang SRU, lalu tutup trip dengan KM akhir.</Notice>}
 
       {started && (
@@ -122,8 +181,14 @@ export default function TripScreen() {
         </View>
       )}
 
-      <SectionTitle hint={started ? 'Ketuk untuk detail' : undefined}>Urutan pengiriman</SectionTitle>
-      <View>
+      <SectionTitle hint={started ? 'Ketuk untuk detail' : `${points.length} drop point · ${trip.stops.length} PSS/SJ`}>Urutan pengiriman</SectionTitle>
+      {!started ? (
+        <View>
+          {points.map((point, index) => (
+            <DropPointRow key={point.key} point={point} index={index} total={points.length} onMove={delta => move(index, delta)} />
+          ))}
+        </View>
+      ) : <View>
         {trip.stops.map((stop, index) => (
           <StopRow
             key={stop.id}
@@ -134,7 +199,7 @@ export default function TripScreen() {
             onPress={() => router.push(`/stop/${stop.id}`)}
           />
         ))}
-      </View>
+      </View>}
     </Screen>
   )
 }
@@ -164,4 +229,10 @@ const styles = StyleSheet.create({
   nextLabel: { fontSize: 11, fontWeight: '800', color: colors.goldDark, textTransform: 'uppercase' },
   stopName: { fontSize: 16, fontWeight: '700', color: colors.text },
   stopFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  dropCard: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dropBody: { flex: 1, gap: 4 },
+  refs: { fontSize: 12, color: colors.textSoft },
+  moveButtons: { gap: 6 },
+  moveButton: { width: 40, height: 40, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  moveDisabled: { opacity: 0.3 },
 })
