@@ -31,6 +31,17 @@ const isSaved = (line: OpnameLine, draft: Draft | undefined) => !draft || (
   (draft.action_plan.trim() || null) === (line.action_plan ?? null) &&
   (draft.line_status || null) === (line.line_status ?? null)
 )
+/** Enter → pindah ke kolom Qty Fisik di baris berikutnya (Shift+Enter → baris sebelumnya). */
+const focusNextQty = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+  event.preventDefault()
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[id^="qty-"]'))
+  const target = inputs[inputs.indexOf(event.currentTarget) + (event.shiftKey ? -1 : 1)]
+  if (!target) return
+  target.focus()
+  target.select()
+  target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
 const backupKey = (sessionId: number) => `scm-opname-draft-${sessionId}`
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -324,7 +335,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
                       <td className="px-3 py-2 whitespace-nowrap text-xs">{fmtDate(line.expiration_date)}</td>
                       <td className="px-3 py-2 text-right font-mono">{num(line.qty_system)}</td>
                       <td className="px-3 py-2">
-                        <input id={`qty-${line.id}`} inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} onChange={e => setDraft(line.id, { qty_physical: formatQtyInput(e.target.value) })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
+                        <input id={`qty-${line.id}`} inputMode="numeric" aria-label={`Qty fisik ${line.no_item} lot ${line.lot_no}`} value={draft.qty_physical} enterKeyHint="next" onKeyDown={focusNextQty} onChange={e => setDraft(line.id, { qty_physical: formatQtyInput(e.target.value) })} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-mono" placeholder="—" />
                       </td>
                       <td className={`px-3 py-2 text-right font-mono font-semibold ${diff == null ? 'text-slate-300' : diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-amber-700'}`}>
                         {diff == null ? '—' : diff === 0 ? 'Sesuai' : (diff > 0 ? '+' : '') + num(diff)}
