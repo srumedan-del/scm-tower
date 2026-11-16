@@ -2,6 +2,8 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
+import * as navDb from '@/lib/nav-import/db'
+import type { PtsUploadRow } from '@/lib/nav-import/map'
 
 export type CrossdockingHeader = {
   id: number
@@ -340,81 +342,12 @@ export async function getPtsRecords(month?: string) {
   })
 }
 
-export type PtsUploadRow = {
-  pts_no: string
-  document_date?: string | null
-  document_created_at?: string | null
-  transfer_order_no?: string | null
-  details: Array<{
-    nav_entry_no?: number | null
-    document_line_no?: number | null
-    item_no?: string | null
-    variant_code?: string | null
-    description?: string | null
-    quantity?: number | null
-    lot_no?: string | null
-    expiration_date?: string | null
-    source_location_code?: string | null
-  }>
-}
-
-// File ILE berisi satu baris per item/lot, jadi satu PTS bisa muncul berkali-kali.
-function mergePtsUploadRows(rows: PtsUploadRow[]) {
-  const merged = new Map<string, Required<PtsUploadRow>>()
-  for (const row of rows) {
-    const ptsNo = String(row.pts_no ?? '').trim().toUpperCase()
-    if (!ptsNo) continue
-    const transferOrderNo = row.transfer_order_no ? String(row.transfer_order_no).trim().toUpperCase() : null
-    const current = merged.get(ptsNo)
-    if (current) {
-      current.document_date ||= row.document_date || null
-      current.document_created_at ||= row.document_created_at || null
-      current.transfer_order_no ||= transferOrderNo
-      current.details.push(...(row.details ?? []))
-    } else {
-      merged.set(ptsNo, {
-        pts_no: ptsNo,
-        document_date: row.document_date || null,
-        document_created_at: row.document_created_at || null,
-        transfer_order_no: transferOrderNo,
-        details: [...(row.details ?? [])],
-      })
-    }
-  }
-  return [...merged.values()]
-}
+// Tipe dan logika upload PTS dipakai bersama dengan scripts/nav-sync (lib/nav-import).
+export type { PtsUploadRow } from '@/lib/nav-import/map'
 
 export async function uploadPtsRecords(rows: PtsUploadRow[], sourceFileName: string) {
   await requireAuthenticatedUser()
-  const uniqueRows = mergePtsUploadRows(rows)
-
-  if (uniqueRows.length === 0) throw new Error('Tidak ditemukan nomor PTS pada file.')
-
-  const ptsNos = uniqueRows.map(row => row.pts_no)
-  const { data: existing, error: existingError } = await supabaseAdmin
-    .from('crossdocking_pts')
-    .select('pts_no')
-    .in('pts_no', ptsNos)
-  if (existingError) throw existingError
-  const existingNos = new Set((existing ?? []).map(row => row.pts_no))
-  const newRows = uniqueRows.filter(row => !existingNos.has(row.pts_no))
-  if (newRows.length === 0) return { inserted: 0, total: uniqueRows.length }
-
-  const { data, error } = await supabaseAdmin
-    .from('crossdocking_pts')
-    .insert(newRows.map(({ details: _details, ...row }) => ({ ...row, source_file_name: sourceFileName })))
-    .select('id, pts_no')
-  if (error) throw error
-  const idByPts = new Map((data ?? []).map(row => [row.pts_no, row.id]))
-  const detailRows = newRows.flatMap(row => row.details.map(detail => ({
-    ...detail,
-    crossdocking_pts_id: idByPts.get(row.pts_no),
-  }))).filter(row => row.crossdocking_pts_id)
-  if (detailRows.length) {
-    const { error: detailError } = await supabaseAdmin.from('crossdocking_pts_detail').insert(detailRows)
-    if (detailError) throw detailError
-  }
-  return { inserted: data?.length ?? 0, total: uniqueRows.length }
+  return navDb.uploadPtsRecords(supabaseAdmin, rows, sourceFileName)
 }
 
 export async function updatePtsDestination(

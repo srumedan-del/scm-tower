@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { mapPtrHeaderRow, validatePtrHeaderRows } from '@/lib/nav-import/map'
 import { useRouter } from 'next/navigation'
 import type * as XLSXModule from 'xlsx'
 import { FileUp, Loader2 } from 'lucide-react'
@@ -247,32 +248,12 @@ export function PtrHeaderUploadButton() {
 
       if (!rows.length) throw new Error('File kosong.')
 
+      // Pemetaan PTR Header dipakai bersama dengan scripts/nav-sync (lib/nav-import/map.ts).
       const cleanRows = rows
-        .map((raw) => {
-          const row = Object.fromEntries(
-            Object.entries(raw).map(([key, value]) => [normalizeKey(key), value])
-          ) as Record<string, any>
-          return toAllowedHeaderRow({
-            ptr_no: pickValue(row, ['ptr_no', 'ptr', 'no', 'document_no', 'ptr_no_1']) ?? null,
-            transfer_order_no: pickValue(row, ['transfer_order_no', 'transfer_order', 'transfer_order_no_1']) ?? null,
-            transfer_from_code: pickValue(row, ['transfer_from_code', 'from_code', 'transfer_from', 'from_warehouse']) ?? null,
-            transfer_to_code: pickValue(row, ['transfer_to_code', 'to_code', 'transfer_to', 'to_warehouse']) ?? null,
-            posting_date: toISODate(pickValue(row, ['posting_date', 'posted_date', 'receipt_date', 'received_date'])),
-            shipment_date: toISODate(pickValue(row, ['shipment_date', 'ship_date', 'delivery_date', 'shipment_dt'])),
-            receipt_date: toISODate(pickValue(row, ['receipt_date', 'received_date', 'date_of_receipt', 'posting_date'])),
-            shipping_agent_code: pickValue(row, ['shipping_agent_code', 'shipping_agent', 'agent_code', 'ship_agent']) ?? null,
-            ship_to_receipt_days: toNumber(pickValue(row, ['ship_to_receipt_days', 'lead_time_days', 'lead_time'])),
-            receipt_to_posting_days: toNumber(pickValue(row, ['receipt_to_posting_days', 'r_p_days', 'posting_days'])),
-            ship_to_posting_days: toNumber(pickValue(row, ['ship_to_posting_days', 'ship_to_posting_days_1'])),
-            source_file: file.name.trim(),
-            import_period: new Date().toISOString().slice(0, 7),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-        })
+        .map((raw) => mapPtrHeaderRow(raw, file.name))
         .filter((r) => r.ptr_no)
 
-      const issues = validateRows(cleanRows)
+      const issues = validatePtrHeaderRows(cleanRows)
       if (issues.length > 0) {
         throw new Error(`Validasi gagal:\n${issues.join('\n')}`)
       }

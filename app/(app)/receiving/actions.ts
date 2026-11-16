@@ -2,75 +2,34 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
+// Logika impor NAV dipakai bersama dengan scripts/nav-sync (lib/nav-import/db.ts).
+import * as navDb from '@/lib/nav-import/db'
 
 export async function getExistingReceivingHeaderPtrs(ptrs: string[]) {
   await requireAuthenticatedUser()
-  if (!ptrs.length) return { data: [], error: null }
-
-  const { data, error } = await supabaseAdmin
-    .from('receiving_header')
-    .select('ptr_no')
-    .in('ptr_no', ptrs)
-
-  return { data: data ?? [], error }
+  return navDb.getExistingReceivingHeaderPtrs(supabaseAdmin, ptrs)
 }
 
 export async function insertReceivingHeaderRows(rows: Record<string, any>[]) {
   await requireAuthenticatedUser()
-  if (!rows.length) return { inserted: 0 }
-
-  const { data, error } = await supabaseAdmin
-    .from('receiving_header')
-    .insert(rows)
-    .select()
-
-  if (error) {
-    throw error
-  }
-
-  return { inserted: data?.length ?? 0 }
+  return navDb.insertReceivingHeaderRows(supabaseAdmin, rows)
 }
 
 /* ── PTR Detail helpers ─────────────────────────────────── */
 
 export async function getReceivingHeadersByPtrs(ptrs: string[]) {
   await requireAuthenticatedUser()
-  if (!ptrs.length) return { data: [], error: null }
-
-  const { data, error } = await supabaseAdmin
-    .from('receiving_header')
-    .select('id, ptr_no')
-    .in('ptr_no', ptrs)
-
-  return { data: data ?? [], error }
+  return navDb.getReceivingHeadersByPtrs(supabaseAdmin, ptrs)
 }
 
 export async function getExistingReceivingDetailKeys(docNos: string[]) {
   await requireAuthenticatedUser()
-  if (!docNos.length) return { data: [], error: null }
-
-  const { data, error } = await supabaseAdmin
-    .from('receiving_detail')
-    .select('document_no, item_no, variant_code, lot_no, serial_no')
-    .in('document_no', docNos)
-
-  return { data: data ?? [], error }
+  return navDb.getExistingReceivingDetailKeys(supabaseAdmin, docNos)
 }
 
 export async function insertReceivingDetailRows(rows: Record<string, any>[]) {
   await requireAuthenticatedUser()
-  if (!rows.length) return { inserted: 0 }
-
-  const { data, error } = await supabaseAdmin
-    .from('receiving_detail')
-    .insert(rows)
-    .select()
-
-  if (error) {
-    throw error
-  }
-
-  return { inserted: data?.length ?? 0 }
+  return navDb.insertReceivingDetailRows(supabaseAdmin, rows)
 }
 
 export async function verifyReceivingData() {
