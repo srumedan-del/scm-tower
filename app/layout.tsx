@@ -23,6 +23,9 @@ const NumericFieldAdapter = dynamic(
 export default function RootLayout({children}:{children:React.ReactNode}){
   return (
     <html lang="id" data-scroll-behavior="smooth" className={inter.variable}>
+      <head>
+        <title>SCM-Tower Medan</title>
+      </head>
       <body>
         <NumericFieldAdapter />
         {children}

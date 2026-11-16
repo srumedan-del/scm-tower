@@ -39,6 +39,9 @@ export default async function OpnamePrintPage({ params, searchParams }: Props) {
         @page {
           size: 297mm 210mm;
           margin: 10mm 10mm 12mm;
+          /* Kotak margin sendiri menggantikan header/footer bawaan browser (judul, alamat vercel.app, tanggal). */
+          @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
+          @bottom-left { content: ""; } @bottom-center { content: ""; }
           @bottom-right { content: "Halaman " counter(page) " dari " counter(pages); font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #333; }
         }
         body { background: #fff !important; }
