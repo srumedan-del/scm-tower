@@ -976,6 +976,8 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
   // PSS yang gagal kirim selalu ditampilkan, apa pun filter bulannya, agar tidak terlupakan.
   const pendingPss = pendingRedeliveries.filter(row => row.source_type !== 'Crossdocking')
   const pendingPssNos = new Set(pendingPss.map(row => String(row.pss_no).trim()))
+  // PSS ongkos kirim (hanya item BIA-...) bukan tugas pengiriman: tidak masuk daftar "belum dikirim" maupun badge sidebar.
+  const chargeOnly = await getChargeOnlyPss(supabaseAdmin, (viewPssRows ?? []).map(row => String(row.pss_no ?? '')))
   const pssRows: any[] = [
     ...pendingPss.map(row => ({
       id: row.outbound_header_id ?? -Number(row.id),
@@ -992,7 +994,7 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
       psi_no: null,
       redelivery: toRedeliveryInfo(row),
     })),
-    ...(viewPssRows ?? []).filter(row => !pendingPssNos.has(String(row.pss_no).trim())),
+    ...(viewPssRows ?? []).filter(row => !pendingPssNos.has(String(row.pss_no).trim()) && !chargeOnly.has(String(row.pss_no).trim())),
   ]
 
   const redeliveryByCrossdocking = new Map(pendingRedeliveries
