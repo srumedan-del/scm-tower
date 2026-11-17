@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { MotionConfig, motion } from 'framer-motion'
 import {
-  ArrowLeftRight, ChartNoAxesCombined, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
+  ArrowLeftRight, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
   LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -30,7 +30,7 @@ const dashboard: NavItem = ['Dashboard', '/dashboard', LayoutDashboard]
 const groups: readonly { label: string; items: readonly NavEntry[] }[] = [
   { label: 'Workspace', items: [['Task Board', '/', CheckSquare], ['Peta & Stok HD', '/peta-stok-hd', MapPin], ['Live Tracking', '/live-tracking', Radio]] },
   { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', PackageOpen], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign]] },
-  { label: 'Monitoring', items: [['Service Level', '/service-level', ChartNoAxesCombined], ['Inventory', '/inventory', Warehouse], stockOpname] },
+  { label: 'Monitoring', items: [['Inventory', '/inventory', Warehouse], stockOpname] },
   { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database]] },
 ]
 
