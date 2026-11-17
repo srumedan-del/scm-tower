@@ -7,6 +7,7 @@ import { useQueue } from '../../src/hooks'
 import { stopTracking } from '../../src/tracker'
 import { Button, Card, Field, Screen, SectionTitle, notifySaved } from '../../src/ui'
 import { colors } from '../../src/theme'
+import { TrackingSetupCard } from '../../src/TrackingSetupCard'
 
 export default function ProfileScreen() {
   const router = useRouter()
@@ -56,6 +57,9 @@ export default function ProfileScreen() {
         <Text style={styles.name}>{driver?.driver_name ?? '-'}</Text>
         <Text style={styles.meta}>{driver?.driver_code} · {driver?.role}</Text>
       </Card>
+
+      <SectionTitle>Pelacakan lokasi</SectionTitle>
+      <TrackingSetupCard always />
 
       <SectionTitle>Printer kantor</SectionTitle>
       <Card>

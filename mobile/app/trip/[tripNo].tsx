@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTrips } from '../../src/hooks'
 import { enqueue } from '../../src/queue'
 import { startTracking } from '../../src/tracker'
+import { promptTrackingSetup } from '../../src/device-check'
 import { dropPoints, isStopDone, nextStop, planDistance, vehicleLabel, type DropPoint, type Stop } from '../../src/trips'
 import { ActionTile, Button, Card, ErrorText, Field, InfoRow, Notice, ProgressBar, Screen, SectionTitle, StatusPill, notifySaved } from '../../src/ui'
 import { colors, radius } from '../../src/theme'
@@ -128,10 +129,10 @@ export default function TripScreen() {
     }
     enqueue('trip-start', `Mulai trip ${tripNo}`, { trip_id: tripNo, odometer_start: value })
     notifySaved('Trip dimulai. Hati-hati di jalan.')
-    const tracking = await startTracking(tripNo)
-    if (!tracking) {
-      Alert.alert('Pelacakan lokasi tidak aktif', 'Izinkan lokasi "Sepanjang waktu" di pengaturan ponsel agar admin bisa memantau trip.')
-    }
+    await startTracking(tripNo)
+    // Izin lokasi, GPS, dan pembatasan baterai: tawarkan membuka pengaturannya langsung.
+    // Jika izin baru diberikan, pelacakan dilanjutkan otomatis saat driver kembali ke beranda.
+    await promptTrackingSetup('Agar admin bisa memantau trip saat layar mati atau aplikasi lain dibuka:')
   }
 
   const started = Boolean(trip.started_at)

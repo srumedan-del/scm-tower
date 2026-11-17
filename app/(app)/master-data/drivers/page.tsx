@@ -7,7 +7,7 @@ import { Plus, UserCheck, UserX, Truck, Users, KeyRound, Smartphone } from 'luci
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 
 /** Versi APK terbaru (mobile/app.json). Driver dengan versi lain ditandai kuning. */
-const LATEST_APP_VERSION = '1.1.0'
+const LATEST_APP_VERSION = '1.2.0'
 
 const roleBadge = (role: string) =>
   role === 'Driver'

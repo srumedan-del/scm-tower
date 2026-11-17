@@ -84,6 +84,22 @@ export async function startTracking(tripNo: string) {
   return true
 }
 
+/**
+ * Lanjutkan pelacakan trip yang sedang berjalan bila Android sempat menghentikannya
+ * (aplikasi ditutup paksa, HP restart). Tanpa dialog izin: hanya jika izin sudah diberikan.
+ */
+export async function resumeTracking(tripNo: string) {
+  try {
+    const background = await Location.getBackgroundPermissionsAsync()
+    if (!background.granted) return
+    const running = await Location.hasStartedLocationUpdatesAsync(TASK_NAME)
+    if (running && getKv<string>(TRIP_KEY) === tripNo) return
+    await startTracking(tripNo)
+  } catch {
+    // Pelacakan opsional; pengiriman tetap bisa berjalan.
+  }
+}
+
 export async function stopTracking() {
   deleteKv(TRIP_KEY)
   deleteKv(LAST_POINT_KEY)

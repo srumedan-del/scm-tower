@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { Alert, AppState, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { getDriver } from '../../src/api'
 import { useTrips } from '../../src/hooks'
 import { consumeGreeting, getCachedTrips, greeting, isStopDone, nextStop, refreshTrips, taskSummary, vehicleLabel, type Trip } from '../../src/trips'
 import { ErrorText, ProgressBar } from '../../src/ui'
+import { resumeTracking } from '../../src/tracker'
+import { TrackingSetupCard } from '../../src/TrackingSetupCard'
 import { colors, radius } from '../../src/theme'
 
 function countStops(trips: Trip[]) {
@@ -95,6 +97,15 @@ export default function TripsScreen() {
   const [driverName, setDriverName] = useState('')
   useEffect(() => { void getDriver().then(driver => setDriverName(driver?.driver_name ?? '')) }, [])
 
+  // Trip berjalan: pastikan pelacakan lokasi aktif lagi bila Android sempat menghentikan aplikasi.
+  const activeTrip = trips.find(trip => trip.started_at)?.trip_no
+  useEffect(() => {
+    if (!activeTrip) return
+    void resumeTracking(activeTrip)
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') void resumeTracking(activeTrip) })
+    return () => subscription.remove()
+  }, [activeTrip])
+
   // Pop-up salam sekali setiap login atau aplikasi dibuka, berisi ringkasan tugas.
   useEffect(() => {
     if (!consumeGreeting()) return
@@ -116,6 +127,7 @@ export default function TripsScreen() {
         <View style={styles.header}>
           <Summary trips={trips} driverName={driverName} onHistory={() => router.push('/history')} />
           {error ? <ErrorText>{error}</ErrorText> : null}
+          {trips.length ? <TrackingSetupCard /> : null}
           {trips.length ? <Text style={styles.heading}>Trip saya ({trips.length})</Text> : null}
         </View>
       }

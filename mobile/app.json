@@ -3,13 +3,13 @@
     "name": "SCM Tower Driver",
     "slug": "scm-tower-driver",
     "scheme": "scmtowerdriver",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.scmtower.driver",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#0D1C33",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,7 +25,8 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
