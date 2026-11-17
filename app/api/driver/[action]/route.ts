@@ -1,6 +1,6 @@
 import { decodeDriverSession, encodeDriverSession, type DriverSession } from '@/lib/driverAuth'
 import {
-  DriverAccessError, DriverInputError, assertTripOwned, authenticateDriver, changeDefaultPin, changeDriverPin, checkEndTripLocation, finishTrip,
+  DriverAccessError, DriverInputError, assertTripOwned, recordAppVersion, authenticateDriver, changeDefaultPin, changeDriverPin, checkEndTripLocation, finishTrip,
   getTripClosingSummary, getTripCostDetails, isDriverActive, listDriverTripHistory, listDriverTrips, pinLockedMessage, recordExpense, recordFuel, saveLocations,
   startTrip, storeDriverImage, submitFailedDelivery, submitPod, updateDeliverySequence,
 } from '@/lib/driver-service'
@@ -22,6 +22,8 @@ async function requireSession(request: Request): Promise<DriverSession> {
   if (!session || !(await isDriverActive(session.id))) {
     throw new DriverAccessError('Sesi berakhir, silakan login ulang')
   }
+  // Catat versi aplikasi (aplikasi lama tanpa header dianggap "< 1.1.0"); kegagalan tidak menghentikan permintaan.
+  try { await recordAppVersion(session.id, request.headers.get('x-app-version')) } catch { /* opsional */ }
   return session
 }
 

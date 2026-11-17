@@ -6,6 +6,9 @@ import DriverEditPanel from '@/components/driver/DriverEditPanel'
 import { Plus, UserCheck, UserX, Truck, Users, KeyRound, Smartphone } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 
+/** Versi APK terbaru (mobile/app.json). Driver dengan versi lain ditandai kuning. */
+const LATEST_APP_VERSION = '1.1.0'
+
 const roleBadge = (role: string) =>
   role === 'Driver'
     ? 'bg-indigo-100 text-indigo-700'
@@ -75,6 +78,7 @@ export default function DriversPage() {
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Nama</th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Role</th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Akun Login APK</th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Versi APK</th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">No. SIM</th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">No. HP</th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">Status</th>
@@ -83,10 +87,10 @@ export default function DriversPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
-              <SkeletonRows cols={8} />
+              <SkeletonRows cols={9} />
             )}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-3 text-sm font-medium text-slate-600">
+              <tr><td colSpan={9} className="px-4 py-3 text-sm font-medium text-slate-600">
                 {rows.length === 0
                   ? 'Belum ada data driver.'
                   : 'Tidak ada kru dengan filter ini.'}
@@ -115,6 +119,16 @@ export default function DriversPage() {
                       {r.pin_is_default ? 'PIN default' : '••••••'}
                     </span>
                   </div>
+                </td>
+                <td className="px-4 py-3 text-sm whitespace-nowrap">
+                  {r.app_version ? (
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-semibold ${r.app_version.startsWith(LATEST_APP_VERSION) ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800'}`}
+                      title={r.app_seen_at ? `Terakhir dipakai ${new Date(r.app_seen_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}` : undefined}
+                    >
+                      {r.app_version}
+                    </span>
+                  ) : <span className="text-xs text-slate-400">-</span>}
                 </td>
                 <td className="px-4 py-3 text-sm font-medium text-slate-600">{r.sim_no ?? '-'}</td>
                 <td className="px-4 py-3 text-sm font-medium text-slate-600">{r.phone ?? '-'}</td>

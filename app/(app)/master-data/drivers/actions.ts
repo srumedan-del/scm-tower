@@ -17,6 +17,9 @@ export type DriverRow = {
   /** Hanya dikirim saat admin mengganti PIN; nilai tersimpan tidak pernah dikembalikan ke browser. */
   pin?: string | null
   pin_is_default?: boolean
+  /** Versi aplikasi Android terakhir yang dipakai (migrasi v58). */
+  app_version?: string | null
+  app_seen_at?: string | null
 }
 
 export async function getDrivers() {
@@ -64,7 +67,8 @@ export async function getNextDriverCode(role: 'Driver' | 'Helper'): Promise<stri
 
 export async function upsertDriver(driver: Partial<DriverRow> & { id?: number }) {
   await requireAuthenticatedUser()
-  const { id, pin, pin_is_default: _pinIsDefault, ...payload } = driver
+  // Versi aplikasi diisi oleh aplikasi driver sendiri, bukan dari form admin.
+  const { id, pin, pin_is_default: _pinIsDefault, app_version: _appVersion, app_seen_at: _appSeenAt, ...payload } = driver
   const newPin = pin?.trim()
   if (newPin) {
     if (!isValidNewPin(newPin)) throw new Error('PIN harus 6 angka dan tidak boleh 123456')

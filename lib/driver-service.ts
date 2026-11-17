@@ -134,6 +134,20 @@ export async function changeDriverPin(driverId: number, currentPin: string, newP
   if (updateError) throw updateError
 }
 
+const appVersionSeen = new Map<number, { version: string; at: number }>()
+
+/**
+ * Simpan versi aplikasi Android driver (header X-App-Version, mis. "1.1.0 (2)").
+ * Ditulis paling sering sekali per 30 menit per driver, kecuali versinya berubah.
+ */
+export async function recordAppVersion(driverId: number, header: string | null) {
+  const version = (header ?? '').trim().slice(0, 40) || 'lama (sebelum 1.1.0)'
+  const last = appVersionSeen.get(driverId)
+  if (last && last.version === version && Date.now() - last.at < 30 * 60_000) return
+  appVersionSeen.set(driverId, { version, at: Date.now() })
+  await supabaseAdmin.from('master_driver').update({ app_version: version, app_seen_at: new Date().toISOString() }).eq('id', driverId)
+}
+
 export async function isDriverActive(driverId: number) {
   const { data, error } = await supabaseAdmin.from('master_driver').select('is_active').eq('id', driverId).maybeSingle()
   if (error) throw error

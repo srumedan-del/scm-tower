@@ -1,7 +1,10 @@
+import Constants from 'expo-constants'
 import { File } from 'expo-file-system'
 import * as SecureStore from 'expo-secure-store'
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '')
+/** Versi aplikasi, dilaporkan ke server agar admin tahu siapa yang belum memasang APK terbaru. */
+const APP_VERSION = `${Constants.expoConfig?.version ?? '?'} (${Constants.expoConfig?.android?.versionCode ?? '?'})`
 const TOKEN_KEY = 'driver_token'
 const DRIVER_KEY = 'driver_profile'
 
@@ -41,6 +44,7 @@ async function send<T>(path: string, init: RequestInit, timeoutMs = REQUEST_TIME
   const token = await getToken()
   const headers = new Headers(init.headers)
   if (token) headers.set('Authorization', `Bearer ${token}`)
+  headers.set('X-App-Version', APP_VERSION)
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
