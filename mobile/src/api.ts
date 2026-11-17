@@ -70,6 +70,9 @@ export async function apiUpload(uri: string) {
   const form = new FormData()
   // fetch bawaan Expo menolak bagian { uri } gaya React Native; File dari expo-file-system adalah Blob.
   form.append('file', new File(uri) as unknown as Blob, 'foto.jpg')
+  // Nama file foto: <waktu ambil ms>-<uuid>.jpg (lihat captureCompressedPhoto).
+  const takenAt = Number(uri.split('/').pop()?.match(/^(\d{13})-/)?.[1])
+  if (takenAt) form.append('taken_at', new Date(takenAt).toISOString())
   const { path } = await send<{ path: string }>('upload', { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS)
   return path
 }

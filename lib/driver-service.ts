@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
 import { isPersonalVehicleType } from '@/lib/personal-vehicle'
+import { formatStampTime, stampPhoto } from '@/lib/photo-stamp'
 import { END_TRIP_LOCATION_MAX_AGE_MINUTES, SRU_DEPOT, distanceFromDepot, formatDistance } from '@/lib/sru-depot'
 import { DEFAULT_DRIVER_PIN, hashPin, isDefaultPin, isHashedPin, isValidNewPin, verifyPin } from '@/lib/driverAuth'
 
@@ -165,13 +166,32 @@ async function getOwnedShipment(shipmentId: number, driverId: number) {
 
 // ── Foto ──────────────────────────────────────────────────────────────────────
 
-export async function storeDriverImage(bytes: Uint8Array, contentType: string, driverId: number) {
+/** Waktu foto diambil dari HP; diabaikan bila tidak masuk akal (masa depan atau > 7 hari lalu). */
+function parseTakenAt(value: string | null | undefined) {
+  const date = value ? new Date(value) : null
+  if (!date || Number.isNaN(date.getTime())) return new Date()
+  const age = Date.now() - date.getTime()
+  return age < -5 * 60_000 || age > 7 * 86_400_000 ? new Date() : date
+}
+
+export async function storeDriverImage(bytes: Uint8Array, contentType: string, driverId: number, takenAtInput?: string | null) {
   if (!contentType.startsWith('image/')) throw new DriverInputError('File harus berupa gambar')
   if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) throw new DriverInputError('Ukuran foto maksimal 8 MB')
 
-  const extension = contentType === 'image/png' ? 'png' : 'jpg'
+  // Tanda waktu dan nama driver (dari sesi login, bukan dari HP) ditempel di foto.
+  let finalBytes = bytes
+  let finalType = contentType
+  try {
+    const { data: driver } = await supabaseAdmin.from('master_driver').select('driver_name').eq('id', driverId).maybeSingle()
+    finalBytes = await stampPhoto(bytes, [formatStampTime(parseTakenAt(takenAtInput)), `Driver: ${driver?.driver_name ?? `#${driverId}`}`])
+    finalType = 'image/jpeg'
+  } catch (error) {
+    console.error('[storeDriverImage] gagal menempel tanda waktu, foto disimpan tanpa tanda', error)
+  }
+
+  const extension = finalType === 'image/png' ? 'png' : 'jpg'
   const path = `driver/${driverId}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`
-  const { error } = await supabaseAdmin.storage.from(POD_BUCKET).upload(path, bytes, { contentType })
+  const { error } = await supabaseAdmin.storage.from(POD_BUCKET).upload(path, finalBytes, { contentType: finalType })
   if (error) throw error
   return path
 }

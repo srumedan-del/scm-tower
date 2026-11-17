@@ -83,7 +83,8 @@ export async function POST(request: Request, context: Context) {
       // Sebagian klien tidak mengirim tipe file; foto dari aplikasi selalu JPEG.
       const untyped = !file.type || file.type === 'application/octet-stream'
       const contentType = untyped ? (/\.png$/i.test(file.name) ? 'image/png' : 'image/jpeg') : file.type
-      const path = await storeDriverImage(new Uint8Array(await file.arrayBuffer()), contentType, session.id)
+      const takenAt = form.get('taken_at')
+      const path = await storeDriverImage(new Uint8Array(await file.arrayBuffer()), contentType, session.id, typeof takenAt === 'string' ? takenAt : null)
       return json({ path })
     }
 

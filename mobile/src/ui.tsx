@@ -176,16 +176,19 @@ async function captureCompressedPhoto() {
   const permission = await ImagePicker.requestCameraPermissionsAsync()
   if (!permission.granted) throw new Error('Izin kamera ditolak. Aktifkan di pengaturan ponsel.')
 
-  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 })
+  // Foto selalu tegak (portrait 3:4): driver memotong bingkai sebelum foto dipakai.
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: true, aspect: [3, 4] })
   if (result.canceled) return null
+  const takenAt = Date.now()
 
-  const rendered = await ImageManipulator.manipulate(result.assets[0].uri).resize({ width: 1280 }).renderAsync()
+  const rendered = await ImageManipulator.manipulate(result.assets[0].uri).resize({ width: 1080 }).renderAsync()
   const saved = await rendered.saveAsync({ compress: 0.7, format: SaveFormat.JPEG })
 
   // Foto disimpan di folder aplikasi supaya tetap ada selama menunggu sinyal.
+  // Waktu pengambilan ada di nama file, dikirim saat unggah untuk tanda waktu di foto.
   const directory = new Directory(Paths.document, 'photos')
   if (!directory.exists) directory.create({ intermediates: true })
-  const target = new File(directory, `${randomUUID()}.jpg`)
+  const target = new File(directory, `${takenAt}-${randomUUID()}.jpg`)
   new File(saved.uri).copy(target)
   return target.uri
 }
