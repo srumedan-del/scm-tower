@@ -25,3 +25,6 @@ PR_BODY.md
 
 # Profil Chrome untuk scripts/nav-sync (pengaturan kolom NAV)
 scripts/nav-sync/.chrome-profile/
+
+# Catatan file yang sudah disalin ke Google Drive (scripts/drive-backup)
+scripts/drive-backup/state.json
