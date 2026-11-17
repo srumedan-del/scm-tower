@@ -297,9 +297,23 @@ async function main() {
   } finally {
     await browser.close()
   }
+  if (!PROBE && db) {
+    try { await noteMissingCustomers(db, from) } catch (error) { log(`Peringatan cek customer: ${formatError(error)}`) }
+  }
   log(failed ? 'Selesai dengan kegagalan. Data bisa di-upload manual seperti biasa.' : 'Selesai.')
   await finishRun(failed ? 'failed' : 'done', failed ? 'Sebagian data gagal diambil' : undefined)
   if (failed) process.exitCode = 1
+}
+
+/** PSS dengan kode customer yang belum ada di master Customer (MTA tidak bisa dihitung). */
+async function noteMissingCustomers(db: ReturnType<typeof createClient<any>>, from: string) {
+  const { data: rows } = await db.from('outbound_header').select('customer_no, customer_name').gte('document_date', from).not('customer_no', 'is', null)
+  const names = new Map<string, string>()
+  for (const row of rows ?? []) names.set(String(row.customer_no), String(row.customer_name ?? row.customer_no))
+  if (!names.size) return
+  const { data: known } = await db.from('customers').select('customer_code').in('customer_code', [...names.keys()])
+  for (const row of known ?? []) names.delete(String(row.customer_code))
+  if (names.size) note(`Customer belum di master: ${[...names.values()].join(', ')}`)
 }
 
 main().catch(async (error) => {

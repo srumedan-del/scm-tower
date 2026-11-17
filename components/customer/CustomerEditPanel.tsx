@@ -40,8 +40,10 @@ function parseCoord(input: string): { lat: number; lng: number } | null {
   return { lat, lng }
 }
 
-export default function CustomerEditPanel({ customer, onClose, onSaved }: {
+export default function CustomerEditPanel({ customer, initial, onClose, onSaved }: {
   customer: Customer | null
+  /** Isian awal untuk customer baru, mis. kode dan nama dari PSS. */
+  initial?: Partial<Omit<Customer, 'id'>>
   onClose: () => void
   onSaved: () => void
 }) {
@@ -63,7 +65,7 @@ export default function CustomerEditPanel({ customer, onClose, onSaved }: {
         safety_buffer_days: customer.safety_buffer_days ?? 2,
       }
     }
-    return { ...empty }
+    return { ...empty, ...initial }
   })
   const [coordInput, setCoordInput] = useState(() => {
     if (customer?.latitude != null && customer?.longitude != null) return `${customer.latitude}, ${customer.longitude}`

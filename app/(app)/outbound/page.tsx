@@ -5,6 +5,7 @@ import {
 } from "@/components/outbound/OutboundUploadButton";
 import PssDetailModal from "@/components/outbound/PssDetailModal";
 import { NavSyncButton } from "@/components/shared/NavSyncButton";
+import { AddCustomerToMasterButton } from "@/components/outbound/AddCustomerToMasterButton";
 import OutboundFilter from "@/components/outbound/OutboundFilter";
 import { Suspense } from "react";
 
@@ -79,6 +80,7 @@ async function getOutboundHeaders(months: string[], customer: string) {
     ...new Set(rows.map((row) => row.customer_no).filter(Boolean)),
   ];
   const regionByCustomer = new Map<string, string>();
+  const knownCustomers = new Set<string>();
 
   if (customerCodes.length) {
     const { data: customers } = await supabase
@@ -87,6 +89,7 @@ async function getOutboundHeaders(months: string[], customer: string) {
       .in("customer_code", customerCodes);
 
     for (const item of customers ?? []) {
+      if (item.customer_code) knownCustomers.add(item.customer_code);
       if (item.customer_code && item.dk_lk)
         regionByCustomer.set(item.customer_code, item.dk_lk);
     }
@@ -141,6 +144,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
     return {
       ...row,
       dk_lk: region,
+      // Kode customer ada tapi belum terdaftar di master: MTA tidak bisa dihitung.
+      missing_master: Boolean(row.customer_no) && !knownCustomers.has(String(row.customer_no)),
       target_lead_time_days: targetLeadTimeDays,
       mta,
       status,
@@ -200,6 +205,13 @@ export default async function OutboundPage({
     typeof sp.customer === "string" ? sp.customer.trim().slice(0, 100) : "";
 
   const rows = await getOutboundHeaders(months, customer);
+  const missingCustomers = [
+    ...new Map(
+      rows
+        .filter((r: any) => r.missing_master)
+        .map((r: any) => [String(r.customer_no), String(r.customer_name ?? r.customer_no)]),
+    ).values(),
+  ];
 
   return (
     <div className="space-y-4">
@@ -214,6 +226,13 @@ export default async function OutboundPage({
 
         </div>
       </header>
+
+      {missingCustomers.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          <strong>{missingCustomers.length} customer belum terdaftar di master Customer</strong>, jadi MTA-nya belum bisa dihitung:{" "}
+          {missingCustomers.join(", ")}. Klik <strong>Tambah ke master</strong> di kolom MTA untuk melengkapinya.
+        </div>
+      )}
 
       <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[980px] whitespace-nowrap text-sm">
@@ -281,7 +300,9 @@ export default async function OutboundPage({
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-600">
-                    {formatDateTime(r.mta)}
+                    {r.missing_master
+                      ? <AddCustomerToMasterButton customerCode={String(r.customer_no)} customerName={r.customer_name ?? null} />
+                      : formatDateTime(r.mta)}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-600">
                     {r.target_lead_time_days !== null && r.target_lead_time_days !== undefined ? (
