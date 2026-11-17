@@ -40,9 +40,16 @@ export default function ShipmentCostTable({
   }
 
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows
+    // Urut Trip ID (terbaru di atas, tanpa trip di bawah), lalu PSS/CD naik dalam satu trip.
+    const ref = (r: ShipmentCostRow) => r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '')
+    const sorted = [...rows].sort((a, b) => {
+      if (!a.trip_id !== !b.trip_id) return a.trip_id ? -1 : 1
+      const byTrip = (b.trip_id ?? '').localeCompare(a.trip_id ?? '')
+      return byTrip || ref(a).localeCompare(ref(b))
+    })
+    if (!search.trim()) return sorted
     const q = search.toLowerCase()
-    return rows.filter((r) => {
+    return sorted.filter((r) => {
       const trip = (r.trip_id ?? '').toLowerCase()
       const pss = (r.pss_no ?? (r.crossdocking_id ? `cd-${r.crossdocking_id}` : '')).toLowerCase()
       const cust = (r.customer_name ?? '').toLowerCase()
@@ -53,7 +60,6 @@ export default function ShipmentCostTable({
   }, [rows, search])
 
   const summary = computeCostSummary(filteredRows)
-  const unbudgetedCount = filteredRows.filter((r) => !(r.total_biaya ?? 0)).length
 
   const vendorBills = selectedVendor
     ? rows.filter((row) => {
@@ -86,7 +92,7 @@ export default function ShipmentCostTable({
           value={subMenu}
           onChange={setSubMenu}
           items={[
-            { value: 'maintain', label: 'Maintain Biaya', icon: Wallet, count: unbudgetedCount, attention: true },
+            { value: 'maintain', label: 'Maintain Biaya', icon: Wallet },
             { value: 'analysis', label: 'Analisa & Laporan', icon: BarChart3 },
           ]}
         />
@@ -126,21 +132,19 @@ export default function ShipmentCostTable({
       </div>
 
       {/* ── Submenu 1: Maintain Biaya ── */}
-      <section aria-label="Ringkasan biaya" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* Ringkasan satu baris: label · nilai · jumlah shipment */}
+      <section aria-label="Ringkasan biaya" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: 'Total biaya', value: summary.totalBiaya, note: `${summary.totalShipment} shipment`, strong: true },
           ...(['Internal', 'Trucking', 'Retail'] as const).map(model => {
             const modelRows = filteredRows.filter(row => (row.cost_model ?? 'Internal') === model)
             return { label: model, value: modelRows.reduce((sum, row) => sum + (row.total_biaya ?? 0), 0), note: `${modelRows.length} shipment`, strong: false }
           }),
-          { label: 'Belum diisi', value: null, note: unbudgetedCount ? 'perlu input biaya' : 'semua sudah diisi', strong: false, count: unbudgetedCount },
         ].map(card => (
-          <div key={card.label} className={`rounded-2xl border p-4 ${card.strong ? 'border-indigo-900 bg-indigo-900 text-white' : 'border-slate-200 bg-white'}`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${card.strong ? 'text-gold-300' : 'text-slate-500'}`}>{card.label}</p>
-            <p className={`mt-1.5 font-mono text-xl font-bold ${card.strong ? 'text-white' : 'count' in card && card.count ? 'text-gold-700' : 'text-slate-900'}`}>
-              {'count' in card ? card.count : rp(card.value)}
-            </p>
-            <p className={`mt-0.5 text-xs ${card.strong ? 'text-slate-300' : 'text-slate-500'}`}>{card.note}</p>
+          <div key={card.label} className={`flex items-baseline gap-2 whitespace-nowrap rounded-xl border px-3.5 py-2.5 ${card.strong ? 'border-indigo-900 bg-indigo-900 text-white' : 'border-slate-200 bg-white'}`}>
+            <span className={`text-[11px] font-semibold uppercase tracking-wider ${card.strong ? 'text-gold-300' : 'text-slate-500'}`}>{card.label}</span>
+            <span className={`font-mono text-base font-bold ${card.strong ? 'text-white' : 'text-slate-900'}`}>{rp(card.value)}</span>
+            <span className={`ml-auto text-xs ${card.strong ? 'text-slate-300' : 'text-slate-500'}`}>{card.note}</span>
           </div>
         ))}
       </section>
