@@ -239,15 +239,16 @@ export default async function OutboundPage({
       )}
 
       <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[980px] whitespace-nowrap text-sm">
+        <table className="w-full min-w-[1100px] whitespace-nowrap text-sm">
           <colgroup>
-            <col className="w-[16%]" />
-            <col className="w-[12%]" />
             <col className="w-[13%]" />
-            <col className="w-[28%]" />
-            <col className="w-[13%]" />
-            <col className="w-[9%]" />
-            <col className="w-[9%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[24%]" />
+            <col className="w-[11%]" />
+            <col className="w-[11%]" />
+            <col className="w-[11%]" />
+            <col className="w-[10%]" />
           </colgroup>
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
@@ -267,7 +268,10 @@ export default async function OutboundPage({
                 MTA
               </th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                LEAD TIME TARGET
+                KIRIM
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
+                TERIMA
               </th>
               <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                 STATUS
@@ -309,28 +313,21 @@ export default async function OutboundPage({
                       : formatDateTime(r.mta)}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-600">
-                    {r.target_lead_time_days !== null && r.target_lead_time_days !== undefined ? (
-                      <span
-                        className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${
-                          r.dk_lk === "DK"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-purple-100 text-purple-700"
-                        }`}
-                      >
-                        {r.target_lead_time_days} HARI
-                      </span>
-                    ) : (
-                      <span className="text-text-muted text-sm">-</span>
-                    )}
-                    {/* Kapan dikirim (keluar gudang) dan diterima; hijau bila diterima sebelum MTA. */}
-                    {r.dispatch_time && (
-                      <div className="mt-1 text-[11px] font-normal text-slate-500">Kirim {formatDateTime(r.dispatch_time)}</div>
-                    )}
-                    {r.delivery_time && (
-                      <div className={`text-[11px] font-semibold ${r.mta && new Date(r.delivery_time) > new Date(r.mta) ? "text-red-600" : "text-green-700"}`}>
-                        Terima {formatDateTime(r.delivery_time)}
-                      </div>
-                    )}
+                    {/* Waktu keluar gudang (Mulai Trip). */}
+                    {formatDateTime(r.dispatch_time)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-sm font-semibold ${
+                      !r.delivery_time
+                        ? "font-medium text-slate-600"
+                        : r.mta && new Date(r.delivery_time) > new Date(r.mta)
+                          ? "text-red-600"
+                          : "text-green-700"
+                    }`}
+                    title={r.delivery_time && r.mta ? (new Date(r.delivery_time) > new Date(r.mta) ? "Diterima setelah MTA (terlambat)" : "Diterima sebelum MTA") : undefined}
+                  >
+                    {/* Waktu diterima customer (POD); hijau sebelum MTA, merah terlambat. */}
+                    {formatDateTime(r.delivery_time)}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-600">
                     <span
