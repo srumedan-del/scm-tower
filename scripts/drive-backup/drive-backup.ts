@@ -1,6 +1,6 @@
 /**
- * Salin foto POD dan BBM dari Supabase Storage ke folder Google Drive di komputer kantor
- * (Google Drive for Desktop), dengan nama yang mudah dicari:
+ * Salin foto POD dan BBM dari Supabase Storage ke folder di komputer kantor (D:\srgjaya),
+ * dengan nama yang mudah dicari:
  *
  *   <DRIVE>\POD\2026-11\PSS-2611-1840_POD1.jpg      foto Surat Jalan bertanda tangan
  *   <DRIVE>\POD\2026-11\PSS-2611-1840_POD2.jpg      tanda tangan (bila ada)
@@ -30,7 +30,8 @@ function readEnv(file: string): Record<string, string> {
     .map((line) => { const i = line.indexOf('='); return [line.slice(0, i).trim(), line.slice(i + 1).trim().replace(/^"|"$/g, '')] }))
 }
 const env = { ...readEnv(path.join(ROOT, '.env.local')), ...readEnv(path.join(__dirname, '.env')) }
-const DRIVE_DIR = env.DRIVE_BACKUP_DIR || 'H:\\My Drive'
+// Folder tujuan: D:\srgjaya (disinkron Nextcloud) → D:\srgjaya\POD\<bulan>\ dan D:\srgjaya\BBM\<bulan>\.
+const DRIVE_DIR = env.DRIVE_BACKUP_DIR || 'D:\\srgjaya'
 const db = createClient<any>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 
 function log(message: string) {
