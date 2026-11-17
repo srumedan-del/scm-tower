@@ -300,10 +300,7 @@ export default async function OutboundPage({
                     {String(r.order_no ?? "-").toUpperCase()}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-600">
-                    <div className="truncate font-medium text-text">
-                      <span className="mr-1.5 text-[10px] font-normal text-text-muted">
-                        {r.customer_no ?? ""}
-                      </span>
+                    <div className="truncate font-medium text-text" title={String(r.customer_name ?? "")}>
                       {String(r.customer_name ?? "-")}
                     </div>
                   </td>
