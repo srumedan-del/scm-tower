@@ -1050,17 +1050,18 @@ a.bg-indigo-600:hover {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 40px;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.625rem;
-  font-size: 0.9375rem;
+  /* Dirapatkan agar semua menu muat tanpa banyak menggulir. */
+  min-height: 32px;
+  padding: 0.3125rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
   color: #4A4843;
   transition: color 180ms ease, background-color 180ms ease;
 }
 
 /* Sub menu (mis. Stock Opname → Harian/Mingguan/Bulanan): menjorok sejajar teks induk. */
 .lux-nav-link.lux-nav-sub {
-  min-height: 34px;
+  min-height: 28px;
   padding-left: 2.625rem;
   font-size: 0.875rem;
 }
@@ -1092,13 +1093,13 @@ a.bg-indigo-600:hover {
 .lux-nav-active {
   position: absolute;
   inset: 0;
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
   background: #FFFFFF;
   box-shadow: inset 3px 0 0 var(--color-gold-500), 0 1px 2px rgba(31, 30, 29, 0.06);
 }
 
 .lux-nav-heading {
-  padding: 1rem 0.75rem 0.4rem;
+  padding: 0.625rem 0.75rem 0.25rem;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;

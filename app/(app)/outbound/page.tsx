@@ -102,12 +102,12 @@ async function getOutboundHeaders(months: string[], customer: string) {
         .filter(Boolean),
     ),
   ];
-  const trackingByPss = new Map<string, { status: string; trip_id: string | null }>();
+  const trackingByPss = new Map<string, { status: string; trip_id: string | null; dispatch_time: string | null; delivery_time: string | null }>();
 
   if (pssNos.length) {
     const { data: trackings } = await supabase
       .from("shipment_tracking")
-      .select("pss_no, status, trip_id")
+      .select("pss_no, status, trip_id, dispatch_time, delivery_time")
       .in("pss_no", pssNos);
 
     for (const t of trackings ?? []) {
@@ -117,6 +117,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
         trackingByPss.set(String(t.pss_no).trim(), {
           status: t.status,
           trip_id: t.trip_id ?? null,
+          dispatch_time: t.dispatch_time ?? null,
+          delivery_time: t.delivery_time ?? null,
         });
       }
     }
@@ -150,6 +152,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
       mta,
       status,
       trip_id: tracking?.trip_id ?? null,
+      dispatch_time: tracking?.dispatch_time ?? null,
+      delivery_time: status === "Delivered" ? tracking?.delivery_time ?? null : null,
     };
   });
 }
@@ -317,6 +321,15 @@ export default async function OutboundPage({
                       </span>
                     ) : (
                       <span className="text-text-muted text-sm">-</span>
+                    )}
+                    {/* Kapan dikirim (keluar gudang) dan diterima; hijau bila diterima sebelum MTA. */}
+                    {r.dispatch_time && (
+                      <div className="mt-1 text-[11px] font-normal text-slate-500">Kirim {formatDateTime(r.dispatch_time)}</div>
+                    )}
+                    {r.delivery_time && (
+                      <div className={`text-[11px] font-semibold ${r.mta && new Date(r.delivery_time) > new Date(r.mta) ? "text-red-600" : "text-green-700"}`}>
+                        Terima {formatDateTime(r.delivery_time)}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-600">
