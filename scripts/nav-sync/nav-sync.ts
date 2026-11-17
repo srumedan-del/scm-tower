@@ -47,7 +47,9 @@ const DAYS = Number(option('days') ?? env.NAV_DAYS ?? 7)
 const BASE = (env.NAV_BASE_URL || 'http://10.10.20.166:8080/dynamicsnav110/WebClient/').replace(/\/?$/, '/')
 const COMPANY = env.NAV_COMPANY || 'PT. SINAR RODA UTAMA'
 const ARCHIVE = env.NAV_ARCHIVE_DIR || 'D:/nav'
-const ONLY = new Set((option('only') ?? 'pss,ptr,ile').split(',').map((s) => s.trim().toLowerCase()))
+// --doc=PSS-2611-2186: ambil ILE satu dokumen saja, tanpa filter tanggal/lokasi (untuk menelusuri detail yang hilang).
+const DOC = option('doc')?.trim().toUpperCase() || null
+const ONLY = new Set(DOC ? ['ile'] : (option('only') ?? 'pss,ptr,ile').split(',').map((s) => s.trim().toLowerCase()))
 
 // Halaman NAV dan field tanggal untuk filter. Bisa diganti lewat .env bila nomor halaman berbeda.
 // Hanya gudang Medan (SCM Tower berisi lokasi MDN-PAR saja): PSS & ILE per Location Code, PTR per Transfer-to Code.
@@ -72,8 +74,13 @@ const jakartaDate = (offsetDays = 0) =>
 /** Format tanggal filter NAV sesuai tampilan web client (bulan/tanggal/tahun). */
 const navDate = (iso: string) => { const [y, m, d] = iso.split('-'); return `${m}/${d}/${y}` }
 
+/** Dokumen yang sedang diambil per nomor (--doc, atau susulan PSS tanpa detail); null = filter tanggal + lokasi. */
+let docFilter: string | null = DOC
+
 function pageUrl(page: string, dateField: string, locationField: string, from: string, to: string) {
-  const filter = `'${dateField}' IS '${navDate(from)}..${navDate(to)}' AND '${locationField}' IS '${LOCATION}'`
+  const filter = docFilter
+    ? `'Document No.' IS '${docFilter}'`
+    : `'${dateField}' IS '${navDate(from)}..${navDate(to)}' AND '${locationField}' IS '${LOCATION}'`
   return `${BASE}?company=${encodeURIComponent(COMPANY)}&page=${page}&filter=${encodeURIComponent(filter)}`
 }
 
@@ -158,9 +165,22 @@ async function probe(page: Page, frame: Frame, source: (typeof SOURCES)[number],
 async function download(page: Page, frame: Frame, source: (typeof SOURCES)[number], dir: string) {
   const button = await openInExcelButton(frame)
   const [file] = await Promise.all([page.waitForEvent('download', { timeout: 120_000 }), button.click()])
-  const target = path.join(dir, `${source.key}-${jakartaDate()}.xlsx`)
+  const target = path.join(dir, docFilter ? `${source.key}-${docFilter}.xlsx` : `${source.key}-${jakartaDate()}.xlsx`)
   await file.saveAs(target)
   return target
+}
+
+/**
+ * Buang baris lokasi lain (pengaman bila filter lokasi di alamat NAV tidak diterapkan).
+ * Saat mengambil per dokumen, baris tanpa lokasi juga disimpan: item biaya/non-stok (mis. BIA-...) tidak punya lokasi.
+ */
+function keepLocation(rows: Record<string, any>[], locationField: string) {
+  const locationKey = normalizeKey(locationField)
+  return rows.filter((row) => {
+    const entry = Object.entries(row).find(([k]) => normalizeKey(k) === locationKey)
+    const value = String(entry?.[1] ?? '').trim().toUpperCase()
+    return !entry || value === LOCATION || (docFilter != null && value === '')
+  })
 }
 
 function readRows(file: string): Record<string, any>[] {
@@ -267,12 +287,15 @@ async function main() {
         const file = await download(page, frame, source, dir)
         const downloaded = readRows(file)
         // Pengaman bila filter lokasi di alamat NAV tidak diterapkan: buang baris lokasi lain.
-        const locationKey = normalizeKey(source.locationField)
-        const rows = downloaded.filter((row) => {
-          const entry = Object.entries(row).find(([k]) => normalizeKey(k) === locationKey)
-          return !entry || String(entry[1] ?? '').trim().toUpperCase() === LOCATION
-        })
+        const rows = keepLocation(downloaded, source.locationField)
         log(`${source.label}: ${downloaded.length} baris diunduh, ${rows.length} baris ${LOCATION} → ${file}`)
+        if (DOC) {
+          // Tampilkan apa yang ada di NAV untuk dokumen ini, termasuk lokasi/tanggal yang tersaring.
+          for (const row of downloaded.slice(0, 30)) {
+            const pick = (key: string) => String(Object.entries(row).find(([k]) => normalizeKey(k) === normalizeKey(key))?.[1] ?? '')
+            log(`  ${pick('Posting Date')} | ${pick('Document Type')} | ${pick('Item No.')} | lokasi ${pick('Location Code')} | qty ${pick('Quantity')} | entry ${pick('Entry No.')}`)
+          }
+        }
         const name = path.basename(file)
         if (source.key === 'pss') note(`PSS Header: ${summary(await ingestPssHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
         if (source.key === 'ptr') note(`PTR Header: ${summary(await ingestPtrHeader(db!, rows, name, { dryRun: DRY_RUN }))}`)
@@ -294,6 +317,11 @@ async function main() {
         if (source.key === 'ptr') skipIle.add('receiving')
       }
     }
+
+    // Susulan: PSS MDN-PAR yang belum punya detail (mis. hanya berisi item biaya tanpa lokasi) diambil per dokumen.
+    if (!DOC && !PROBE && db && ONLY.has('ile') && !skipIle.has('outbound')) {
+      try { await fillMissingPssDetails(page, db, from, to, dir) } catch (error) { log(`Peringatan susulan detail PSS: ${formatError(error)}`) }
+    }
   } finally {
     await browser.close()
   }
@@ -303,6 +331,39 @@ async function main() {
   log(failed ? 'Selesai dengan kegagalan. Data bisa di-upload manual seperti biasa.' : 'Selesai.')
   await finishRun(failed ? 'failed' : 'done', failed ? 'Sebagian data gagal diambil' : undefined)
   if (failed) process.exitCode = 1
+}
+
+const MAX_FILL_DOCS = 10
+
+async function fillMissingPssDetails(page: Page, db: ReturnType<typeof createClient<any>>, from: string, to: string, dir: string) {
+  const { data: headers } = await db.from('outbound_header').select('pss_no').gte('document_date', from).not('pss_no', 'is', null)
+  const pssNos = [...new Set((headers ?? []).map((row: any) => String(row.pss_no).trim()))]
+  if (!pssNos.length) return
+  const { data: details } = await db.from('outbound_detail').select('document_no').in('document_no', pssNos)
+  const withDetail = new Set((details ?? []).map((row: any) => String(row.document_no).trim()))
+  const missing = pssNos.filter((no) => !withDetail.has(no)).slice(0, MAX_FILL_DOCS)
+  if (!missing.length) return
+
+  const ile = SOURCES.find((source) => source.key === 'ile')!
+  const filled: string[] = []
+  const empty: string[] = []
+  for (const pss of missing) {
+    docFilter = pss
+    try {
+      const frame = await openSource(page, ile, from, to)
+      const file = await download(page, frame, ile, dir)
+      const rows = keepLocation(readRows(file), ile.locationField)
+      const result = await ingestIle(db, rows, path.basename(file), { dryRun: DRY_RUN })
+      if ((result.outbound?.inserted ?? 0) > 0) filled.push(pss)
+      else empty.push(pss)
+    } catch (error) {
+      log(`Susulan ${pss} gagal: ${formatError(error).split('\n')[0]}`)
+    } finally {
+      docFilter = null
+    }
+  }
+  if (filled.length) note(`Detail PSS susulan (item tanpa lokasi): ${filled.join(', ')}`)
+  if (empty.length) log(`PSS tanpa ILE di NAV: ${empty.join(', ')}`)
 }
 
 /** PSS dengan kode customer yang belum ada di master Customer (MTA tidak bisa dihitung). */

@@ -6,6 +6,7 @@ import {
 import PssDetailModal from "@/components/outbound/PssDetailModal";
 import { NavSyncButton } from "@/components/shared/NavSyncButton";
 import { AddCustomerToMasterButton } from "@/components/outbound/AddCustomerToMasterButton";
+import { getChargeOnlyPss } from "@/lib/charge-only-pss";
 import OutboundFilter from "@/components/outbound/OutboundFilter";
 import { Suspense } from "react";
 
@@ -208,7 +209,11 @@ export default async function OutboundPage({
   const customer =
     typeof sp.customer === "string" ? sp.customer.trim().slice(0, 100) : "";
 
-  const rows = await getOutboundHeaders(months, customer);
+  const allRows = await getOutboundHeaders(months, customer);
+  // PSS ongkos kirim (hanya item biaya BIA-...) bukan tugas pengiriman: disembunyikan, cukup disebut di keterangan.
+  const chargeOnly = await getChargeOnlyPss(supabase, allRows.map((r: any) => String(r.pss_no ?? r.shipment_no ?? "")));
+  const rows = allRows.filter((r: any) => !chargeOnly.has(String(r.pss_no ?? r.shipment_no ?? "").trim()));
+  const hiddenCharges = [...chargeOnly].sort();
   const missingCustomers = [
     ...new Map(
       rows
@@ -236,6 +241,12 @@ export default async function OutboundPage({
           <strong>{missingCustomers.length} customer belum terdaftar di master Customer</strong>, jadi MTA-nya belum bisa dihitung:{" "}
           {missingCustomers.join(", ")}. Klik <strong>Tambah ke master</strong> di kolom MTA untuk melengkapinya.
         </div>
+      )}
+
+      {hiddenCharges.length > 0 && (
+        <p className="text-xs text-slate-500">
+          {hiddenCharges.length} PSS ongkos kirim tidak ditampilkan karena bukan barang yang dikirim: {hiddenCharges.join(", ")}.
+        </p>
       )}
 
       <div className="receiving-table-scroll data-list-scroll max-h-[calc(100vh-7.5rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">

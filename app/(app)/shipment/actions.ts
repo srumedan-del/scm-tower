@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
 import { inferDkLk, ensureCustomerMaster } from '@/lib/dklk'
 import { PERSONAL_VEHICLE_TYPE } from '@/lib/personal-vehicle'
+import { getChargeOnlyPss } from '@/lib/charge-only-pss'
 
 export type ShipmentTrackingRow = {
   id: number
@@ -1347,8 +1348,10 @@ export async function getShipmentTMSOptions() {
 
   // Exclude PSS yang sudah punya tracking dari dropdown, inject dk_lk
   const trackedSet = new Set((tracked.data ?? []).map((r: any) => r.pss_no as string))
+  // PSS ongkos kirim (hanya item biaya BIA-...) tidak perlu dikirim.
+  const chargeOnly = await getChargeOnlyPss(supabaseAdmin, (pss.data ?? []).map((r: any) => String(r.pss_no ?? '')))
   const pssOptions = (pss.data ?? [])
-    .filter((r: any) => !trackedSet.has(r.pss_no))
+    .filter((r: any) => !trackedSet.has(r.pss_no) && !chargeOnly.has(String(r.pss_no ?? '').trim()))
     .map((r: any) => ({ ...r, dk_lk: customerDkLkMap[r.customer_no] ?? inferDkLk(r.destination_city) }))
 
   return {

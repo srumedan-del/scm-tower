@@ -6,6 +6,7 @@ import { getPendingPts } from '@/app/(app)/crossdocking/actions'
 import { CountUp } from '@/components/ui/CountUp'
 import { AlertTriangle, ArrowLeftRight, Bell, CheckCircle2, Clock3, Minus, Package, PackageCheck, TrendingDown, TrendingUp, Truck, Warehouse } from 'lucide-react'
 import { statusClass } from '@/lib/status-style'
+import { getChargeOnlyPss } from '@/lib/charge-only-pss'
 
 export const dynamic = 'force-dynamic'
 
@@ -143,9 +144,11 @@ async function getDashboardData(period: string) {
       .filter(s => s.pss_no && s.status !== 'Failed Delivery' && s.document_date >= from && s.document_date < to)
       .map(s => String(s.pss_no).trim())
   )
+  // PSS ongkos kirim (hanya item biaya BIA-...) tidak dihitung sebagai belum dikirim.
+  const chargeOnlyPss = await getChargeOnlyPss(supabase, (outboundRows ?? []).map((r: any) => String(r.pss_no ?? r.shipment_no ?? '')))
   const untrackedCount = (outboundRows ?? []).filter((r: any) => {
     const key = String(r.pss_no ?? r.shipment_no ?? '').trim()
-    return key && !trackedPssSet.has(key)
+    return key && !trackedPssSet.has(key) && !chargeOnlyPss.has(key)
   }).length
 
   // OTD bulan ini
