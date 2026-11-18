@@ -109,6 +109,15 @@ export type TripSiblingItem = {
   misc_cost_notes: string | null
 }
 
+/** Status kembali ke gudang (End Trip) untuk Surat Tugas: Kembali, Jam In, KM Akhir, dan FCR. */
+export async function getTripReturnStatus(tripNo: string): Promise<{ ended: boolean; odometerEnd: number | null } | null> {
+  await requireAuthenticatedUser()
+  if (!tripNo) return null
+  const { data, error } = await supabaseAdmin.from('trip').select('completed_at, odometer_end').eq('trip_no', tripNo).maybeSingle()
+  if (error || !data) return null
+  return { ended: Boolean(data.completed_at), odometerEnd: data.odometer_end == null ? null : Number(data.odometer_end) }
+}
+
 export async function getShipmentCostTripItems(tripId: string): Promise<TripSiblingItem[]> {
   await requireAuthenticatedUser()
   if (!tripId) return []

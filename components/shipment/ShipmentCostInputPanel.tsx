@@ -7,6 +7,7 @@ import {
   type TripTruckingCharge,
   upsertShipmentCost,
   getShipmentCostTripItems,
+  getTripReturnStatus,
   type ShipmentCostRow,
   type TripSiblingItem,
 } from '@/app/(app)/shipment-cost/actions'
@@ -127,6 +128,15 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
   const [tkbmEntries, setTkbmEntries] = useState<TkbmEntry[]>([])
   const [loadingTripItems, setLoadingTripItems] = useState(false)
   const [anchorPss, setAnchorPss] = useState<string | null>(null)
+  // Surat Tugas butuh End Trip (kembali ke gudang): tanpa itu Kembali, Jam In, KM Akhir, dan FCR kosong.
+  const [tripReturn, setTripReturn] = useState<{ ended: boolean; odometerEnd: number | null } | null>(null)
+  useEffect(() => {
+    if (!row.trip_id || (model !== 'Internal' && model)) return
+    let active = true
+    getTripReturnStatus(row.trip_id).then((status) => { if (active) setTripReturn(status) }).catch(() => {})
+    return () => { active = false }
+  }, [row.trip_id, model])
+  const missingReturn = tripReturn && (!tripReturn.ended || tripReturn.odometerEnd == null)
 
   // Inisialisasi BBM dan TKBM dari data yang ada
   useEffect(() => {
@@ -950,6 +960,13 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
             </div>
           )}
 
+          {missingReturn && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+              <strong>{row.trip_id} belum End Trip{tripReturn?.ended ? ' dengan KM akhir' : ''}.</strong>{' '}
+              Di Surat Tugas, Kembali Hari/Tgl, Jam In, KM Akhir, Jarak Tempuh, dan FCR masih kosong. Minta driver menekan
+              <strong> Tutup Trip &amp; Isi KM Akhir</strong> di aplikasi saat tiba di gudang, atau admin End Trip dari Live Tracking.
+            </div>
+          )}
           {err && <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 font-medium">{err}</div>}
         </div>
 
