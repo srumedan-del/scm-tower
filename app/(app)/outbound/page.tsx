@@ -5,6 +5,7 @@ import { AddCustomerToMasterButton } from "@/components/outbound/AddCustomerToMa
 import { getChargeOnlyPss } from "@/lib/charge-only-pss";
 import OutboundFilter from "@/components/outbound/OutboundFilter";
 import { Suspense } from "react";
+import { parseWib } from "@/lib/wib-time";
 
 export const dynamic = "force-dynamic";
 
@@ -127,10 +128,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
       : null;
     const targetLeadTimeDays = region === "DK" ? 1 : region === "LK" ? 5 : null;
     const hours = targetLeadTimeDays !== null ? targetLeadTimeDays * 24 : null;
-    const dateSource = row.document_created_at || (row.document_date ? `${row.document_date}T00:00:00+07:00` : null);
-    const createdAt = dateSource
-      ? new Date(dateSource).getTime()
-      : NaN;
+    // document_created_at = jam WIB dari NAV tanpa zona waktu; dibaca sebagai WIB (lib/wib-time).
+    const createdAt = parseWib(row.document_created_at || row.document_date)?.getTime() ?? NaN;
     const mta =
       hours !== null && Number.isFinite(createdAt)
         ? new Date(createdAt + hours * 60 * 60 * 1000).toISOString()
@@ -156,9 +155,8 @@ async function getOutboundHeaders(months: string[], customer: string) {
 }
 
 function formatDateTime(value: string | null, includeTime = true) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  const date = parseWib(value);
+  if (!date) return "-";
   const parts = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "2-digit",
