@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View, type KeyboardTypeOptions } from 'react-native'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Image, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View, type KeyboardTypeOptions } from 'react-native'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
@@ -23,9 +23,21 @@ export function Screen({ children, scroll = true, footer }: { children: ReactNod
 
 export function ProgressBar({ done, total, light }: { done: number; total: number; light?: boolean }) {
   const ratio = total > 0 ? Math.min(1, done / total) : 0
+  // Bar memanjang halus (200 ms) saat ada pengiriman selesai; tanpa animasi saat pertama tampil.
+  const fill = useRef(new Animated.Value(ratio)).current
+  useEffect(() => {
+    let cancelled = false
+    void AccessibilityInfo.isReduceMotionEnabled().then(reduce => {
+      if (cancelled) return
+      if (reduce) { fill.setValue(ratio); return }
+      Animated.timing(fill, { toValue: ratio, duration: 200, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: false }).start()
+    })
+    return () => { cancelled = true }
+  }, [fill, ratio])
+  const width = fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
   return (
     <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: done }} style={[styles.progressTrack, light && styles.progressTrackLight]}>
-      <View style={[styles.progressFill, { width: `${Math.round(ratio * 100)}%` }]} />
+      <Animated.View style={[styles.progressFill, { width }]} />
     </View>
   )
 }
@@ -244,11 +256,25 @@ export function OfflineBanner({ pending }: { pending: number }) {
     return () => subscription.remove()
   }, [])
 
-  if (online && pending === 0) return null
+  // Banner masuk/keluar dengan LayoutAnimation (200 ms), agar isi layar tidak melompat saat sinyal berubah.
+  const visible = !(online && pending === 0)
+  const [shown, setShown] = useState(visible)
+  useEffect(() => {
+    if (visible === shown) return
+    let cancelled = false
+    void AccessibilityInfo.isReduceMotionEnabled().then(reduce => {
+      if (cancelled) return
+      if (!reduce) LayoutAnimation.configureNext(LayoutAnimation.create(200, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity))
+      setShown(visible)
+    })
+    return () => { cancelled = true }
+  }, [visible, shown])
+
+  if (!shown) return null
   return (
     <View accessibilityRole="alert" style={[styles.banner, !online && styles.bannerOffline]}>
       <Text style={styles.bannerText}>
-        {online ? `Mengirim ${pending} data...` : `Offline. ${pending} data menunggu sinyal.`}
+        {!online ? `Offline. ${pending} data menunggu sinyal.` : pending ? `Mengirim ${pending} data...` : 'Semua data terkirim'}
       </Text>
     </View>
   )

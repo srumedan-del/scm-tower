@@ -3,13 +3,13 @@
     "name": "SCM Tower Driver",
     "slug": "scm-tower-driver",
     "scheme": "scmtowerdriver",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.scmtower.driver",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#0D1C33",
         "foregroundImage": "./assets/android-icon-foreground.png",

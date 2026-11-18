@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { LayoutGroup, MotionConfig, motion } from 'framer-motion'
 import {
   Plus,
   AlertTriangle,
@@ -69,6 +70,8 @@ export function ScmKanbanBoard({
   }
 
   return (
+    <MotionConfig reducedMotion="user">
+    <LayoutGroup>
     <div className="h-full w-full flex flex-col min-h-0">
       {/* Kanban Board Columns Horizontal Scroll */}
       <div className="flex-1 min-h-0 flex gap-3.5 overflow-x-auto pb-3 pt-1 snap-x scrollbar-thin">
@@ -174,9 +177,13 @@ export function ScmKanbanBoard({
                     const displayId = t.id.replace('t-', '').slice(0, 6)
 
                     return (
-                      <div
+                      // layoutId: saat status berubah, kartu meluncur dari kolom lama ke kolom baru.
+                      <motion.div
                         key={t.id}
-                        className={`group relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:border-slate-300 hover:shadow-md ${
+                        layoutId={`task-${t.id}`}
+                        layout="position"
+                        transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
+                        className={`group relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition-[border-color,box-shadow] hover:border-slate-300 hover:shadow-md ${
                           t.status === 'BLOCKED' ? 'border-l-4 border-l-red-500' : ''
                         }`}
                       >
@@ -278,7 +285,7 @@ export function ScmKanbanBoard({
                             </button>
                           ) : <div />}
                         </div>
-                      </div>
+                      </motion.div>
                     )
                   })
                 )}
@@ -288,5 +295,7 @@ export function ScmKanbanBoard({
         })}
       </div>
     </div>
+    </LayoutGroup>
+    </MotionConfig>
   )
 }

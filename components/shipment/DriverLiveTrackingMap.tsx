@@ -13,6 +13,7 @@ import {
 import type { RoutePoint } from './TripRouteMap'
 import { smoothRoute } from './route-smoothing'
 import { AdminEndTripButton } from './AdminEndTripButton'
+import { useAnimatedClose } from '@/components/ui/FormDialog'
 
 const TripRouteMap = dynamic(() => import('./TripRouteMap'), {
   ssr: false,
@@ -135,6 +136,11 @@ export default function DriverLiveTrackingMap() {
   }, [])
 
   const [podModal, setPodModal] = useState<TripPodPhoto[] | null>(null)
+  // Modal POD dan BBM memudar 150 ms saat ditutup, sama seperti modal lain.
+  const podClose = useAnimatedClose()
+  const fuelClose = useAnimatedClose()
+  const closePod = () => podClose.close(() => setPodModal(null))
+  const closeFuel = () => fuelClose.close(() => setFuelModalLogs(null))
   const [podLoading, setPodLoading] = useState(false)
   function viewPods(tripId: string) {
     setPodLoading(true)
@@ -318,14 +324,14 @@ export default function DriverLiveTrackingMap() {
 
       {/* MODAL FOTO POD PER TUJUAN */}
       {podModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs" onClick={() => setPodModal(null)}>
+        <div data-closing={podClose.closing || undefined} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs" onClick={closePod}>
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl space-y-4" onClick={event => event.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
                 <Camera className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-base font-bold text-slate-900">Bukti terima (POD) · {selectedTrip?.trip_id}</h3>
               </div>
-              <button onClick={() => setPodModal(null)} className="text-xl font-bold text-slate-400 hover:text-slate-600" aria-label="Tutup">×</button>
+              <button onClick={closePod} className="text-xl font-bold text-slate-400 hover:text-slate-600" aria-label="Tutup">×</button>
             </div>
             {podLoading ? (
               <p className="py-8 text-center text-sm text-slate-500">Memuat foto POD...</p>
@@ -369,7 +375,7 @@ export default function DriverLiveTrackingMap() {
 
       {/* MODAL AUDIT FOTO BBM (ODOMETER & STRUK SPBU) */}
       {fuelModalLogs && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+        <div data-closing={fuelClose.closing || undefined} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
@@ -379,7 +385,7 @@ export default function DriverLiveTrackingMap() {
                 </h3>
               </div>
               <button
-                onClick={() => setFuelModalLogs(null)}
+                onClick={closeFuel}
                 className="text-slate-400 hover:text-slate-600 text-xl font-bold"
               >
                 ×
@@ -478,7 +484,7 @@ export default function DriverLiveTrackingMap() {
 
             <div className="flex justify-end border-t border-slate-200 pt-3">
               <button
-                onClick={() => setFuelModalLogs(null)}
+                onClick={closeFuel}
                 className="rounded-xl bg-slate-800 px-5 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
               >
                 Tutup Audit

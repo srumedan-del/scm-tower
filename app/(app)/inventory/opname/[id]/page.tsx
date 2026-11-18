@@ -260,7 +260,7 @@ export default function OpnameSessionPage({ params }: { params: Promise<{ id: st
           {lines.length > 0 ? (
             <div className="flex items-center gap-3 whitespace-nowrap text-sm" aria-label="Progres pengisian">
               <div className="h-2 w-40 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin={0} aria-valuemax={lines.length} aria-valuenow={summary.counted}>
-                <div className={`h-full rounded-full ${complete ? 'bg-green-600' : 'bg-amber-500'}`} style={{ width: `${Math.round((summary.counted / lines.length) * 100)}%` }} />
+                <div className={`h-full rounded-full transition-[width,background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${complete ? 'bg-green-600' : 'bg-amber-500'}`} style={{ width: `${Math.round((summary.counted / lines.length) * 100)}%` }} />
               </div>
               <span className="font-semibold text-slate-800">{summary.counted} dari {lines.length} lines terisi</span>
               {complete

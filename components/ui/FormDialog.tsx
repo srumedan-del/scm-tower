@@ -37,6 +37,27 @@ type DialogContextValue = {
 }
 const DialogContext = createContext<DialogContextValue>({ titleId: '', requestClose: () => {}, closeAnimated: done => done() })
 
+/**
+ * Animasi tutup untuk overlay buatan sendiri (bukan DialogShell): pasang `data-closing={closing || undefined}`
+ * pada elemen `fixed inset-0`, lalu panggil `close(done)`; `done` dijalankan setelah animasi 150 ms.
+ */
+export function useAnimatedClose() {
+  const [closing, setClosing] = useState(false)
+  const closingRef = useRef(false)
+  function close(done: () => void) {
+    if (closingRef.current) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { done(); return }
+    closingRef.current = true
+    setClosing(true)
+    window.setTimeout(() => {
+      closingRef.current = false
+      setClosing(false)
+      done()
+    }, CLOSE_MS)
+  }
+  return { closing, close }
+}
+
 export function DialogShell({
   onClose, size = '2xl', guardDirty = true, children,
 }: {
