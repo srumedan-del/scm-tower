@@ -26,7 +26,12 @@ export function AdminEndTripButton({ tripNo, odometerStart, onDone, compact }: P
   function submit() {
     const digits = km.replace(/\D/g, '')
     const odometerEnd = digits ? Number(digits) : null
-    if (odometerEnd != null && odometerStart != null && odometerEnd < odometerStart) {
+    // KM akhir wajib: dipakai untuk jarak tempuh dan FCR (Surat Tugas, Shipment Cost).
+    if (odometerEnd == null) {
+      setError('KM akhir wajib diisi (lihat odometer kendaraan saat tiba di gudang)')
+      return
+    }
+    if (odometerStart != null && odometerEnd < odometerStart) {
       setError(`KM akhir lebih kecil dari KM awal (${odometerStart.toLocaleString('id-ID')})`)
       return
     }
@@ -63,13 +68,15 @@ export function AdminEndTripButton({ tripNo, odometerStart, onDone, compact }: P
           <DialogHeader title={`End trip ${tripNo}`} icon={Flag} subtitle="Untuk driver yang lupa menutup trip. Semua pengiriman harus sudah selesai." />
           <div className="space-y-4 p-5">
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700">KM akhir <span className="font-normal text-slate-400">(opsional)</span></span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">KM akhir <span className="text-red-600">*</span></span>
               <input
                 value={km}
                 inputMode="numeric"
                 onChange={e => { const d = e.target.value.replace(/\D/g, ''); setKm(d ? Number(d).toLocaleString('id-ID') : '') }}
                 className="inp font-mono"
-                placeholder={odometerStart != null ? `KM awal ${odometerStart.toLocaleString('id-ID')}` : 'Isi bila diketahui'}
+                placeholder={odometerStart != null ? `Minimal ${odometerStart.toLocaleString('id-ID')} (KM awal)` : 'KM odometer saat tiba di gudang'}
+                required
+                aria-required="true"
               />
             </label>
             <label className="block">

@@ -112,6 +112,14 @@ export function nextStop(trip: Trip) {
   return trip.stops.find(stop => !isStopDone(stop)) ?? null
 }
 
+/** Pengingat setelah tujuan terakhir selesai: isi BBM di SPBU terakhir sebelum kembali ke gudang. */
+export const LAST_STOP_TITLE = 'Pengingat: isi BBM sebelum kembali'
+export const LAST_STOP_MESSAGE = [
+  'Semua pengiriman sudah selesai.',
+  'Sebelum kembali ke gudang SRU, wajib mampir ke SPBU terakhir untuk isi BBM. Saat di SPBU, buka trip ini dan tekan Catat BBM (atau tab BBM & Biaya).',
+  'Setelah tiba di gudang SRU, tekan Tutup Trip & Isi KM Akhir.',
+].join(String.fromCharCode(10, 10))
+
 /** True jika stop ini adalah tujuan terakhir yang belum selesai di trip-nya. */
 export function isLastOpenStop(trip: Trip, stopId: number) {
   return trip.stops.every(stop => stop.id === stopId || isStopDone(stop))

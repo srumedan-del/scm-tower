@@ -172,7 +172,7 @@ export default function TripScreen() {
       </Card>
 
       {!started && <Notice>Atur urutan tujuan dengan tombol panah, periksa kendaraan dan muatan, lalu isi KM awal untuk memulai trip.</Notice>}
-      {started && allDone && <Notice tone="success">Semua tujuan selesai. Isi BBM bila perlu, kembali ke gudang SRU, lalu tutup trip dengan KM akhir.</Notice>}
+      {started && allDone && <Notice tone="success">Semua tujuan selesai. Mampir ke SPBU terakhir untuk isi BBM dan tekan Catat BBM di SPBU, lalu kembali ke gudang SRU dan tutup trip dengan KM akhir.</Notice>}
 
       {started && (
         <View style={styles.actions}>

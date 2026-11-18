@@ -3,7 +3,7 @@ import { Alert, StyleSheet, Text } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { enqueue } from '../../src/queue'
 import { currentPosition, distanceMeters } from '../../src/tracker'
-import { findStop, isLastOpenStop } from '../../src/trips'
+import { LAST_STOP_MESSAGE, LAST_STOP_TITLE, findStop, isLastOpenStop } from '../../src/trips'
 import { Button, Card, ChoiceRow, ErrorText, Field, Notice, PhotoField, Screen, notifySaved } from '../../src/ui'
 import { colors } from '../../src/theme'
 
@@ -45,13 +45,12 @@ export default function PodScreen() {
     })
     notifySaved(`POD ${stop.reference_no} tersimpan`)
     if (isLastOpenStop(trip, stop.id)) {
+      // Hanya pengingat: driver belum tentu di SPBU, jadi tidak langsung membuka form BBM.
       Alert.alert(
-        'Semua pengiriman selesai',
-        'Jangan lupa isi BBM sebelum kembali ke gudang, lalu catat pengisiannya di aplikasi.\n\nSetelah tiba di gudang SRU, tekan Tutup Trip dan isi KM akhir.',
-        [
-          { text: 'Nanti', style: 'cancel', onPress: () => router.back() },
-          { text: 'Catat BBM', onPress: () => router.replace(`/fuel?tripNo=${encodeURIComponent(trip.trip_no)}`) },
-        ],
+        LAST_STOP_TITLE,
+        LAST_STOP_MESSAGE,
+        [{ text: 'Mengerti', onPress: () => router.back() }],
+        { cancelable: true, onDismiss: () => router.back() },
       )
       return
     }

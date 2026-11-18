@@ -17,6 +17,8 @@ const POD_BUCKET = 'pod-documents'
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 const ACTIVE_WINDOW_DAYS = 45
 const FINISHED_STATUSES = ['Delivered', 'Failed Delivery', 'Closed']
+/** Trip yang semua PSS-nya selesai tapi belum End Trip tetap tampil di aplikasi selama ini. */
+const UNCLOSED_TRIP_VISIBLE_DAYS = 3
 
 export class DriverAccessError extends Error {}
 export class DriverInputError extends Error {}
@@ -238,7 +240,22 @@ export async function listDriverTrips(driverId: number) {
     .order('id', { ascending: true })
   if (error) throw error
 
-  const openTripNos = [...new Set((data ?? []).filter(row => !FINISHED_STATUSES.includes(row.status)).map(row => String(row.trip_id)))]
+  // Trip tetap tampil sampai End Trip, walau semua PSS sudah selesai: driver masih perlu mencatat BBM
+  // dan menutup trip di gudang. Trip yang semuanya selesai tapi sudah lama tidak ditutup tidak ditampilkan
+  // lagi (ditutup admin dari Live Tracking), agar beranda driver tidak penuh trip lama.
+  const allTripNos = [...new Set((data ?? []).map(row => String(row.trip_id)))]
+  if (!allTripNos.length) return []
+  const { data: tripStates, error: tripStateError } = await supabaseAdmin.from('trip').select('trip_no, started_at, completed_at').in('trip_no', allTripNos)
+  if (tripStateError) throw tripStateError
+  const stateByNo = new Map((tripStates ?? []).map(row => [String(row.trip_no), row]))
+  const recentSince = Date.now() - UNCLOSED_TRIP_VISIBLE_DAYS * 86_400_000
+  const openTripNos = allTripNos.filter(tripNo => {
+    const state = stateByNo.get(tripNo)
+    const pending = (data ?? []).some(row => String(row.trip_id) === tripNo && !FINISHED_STATUSES.includes(row.status))
+    if (pending) return true
+    if (!state || state.completed_at || !state.started_at) return false
+    return new Date(state.started_at).getTime() >= recentSince
+  })
   if (!openTripNos.length) return []
 
   const stops = (data ?? []).filter(row => openTripNos.includes(String(row.trip_id)))

@@ -83,10 +83,10 @@ export async function adminFinishTrip(tripNo: string, odometerEnd: number | null
   if (error) throw new Error(error.message)
   if (!trip) throw new Error(`Trip ${tripNo} tidak ditemukan`)
   if (trip.completed_at) throw new Error(`Trip ${tripNo} sudah selesai`)
-  if (odometerEnd != null) {
-    if (!Number.isInteger(odometerEnd) || odometerEnd < 0) throw new Error('KM akhir tidak valid')
-    if (trip.odometer_start != null && odometerEnd < trip.odometer_start) throw new Error(`KM akhir lebih kecil dari KM awal (${Number(trip.odometer_start).toLocaleString('id-ID')})`)
-  }
+  // KM akhir wajib, sama seperti End Trip dari aplikasi driver (untuk jarak tempuh dan FCR).
+  if (odometerEnd == null) throw new Error('KM akhir wajib diisi')
+  if (!Number.isInteger(odometerEnd) || odometerEnd < 0) throw new Error('KM akhir tidak valid')
+  if (trip.odometer_start != null && odometerEnd < trip.odometer_start) throw new Error(`KM akhir lebih kecil dari KM awal (${Number(trip.odometer_start).toLocaleString('id-ID')})`)
 
   const { data: shipments } = await supabaseAdmin.from('shipment_tracking').select('status').eq('trip_id', tripNo)
   const pending = (shipments ?? []).filter((row: any) => !FINISHED_SHIPMENT_STATUSES.includes(row.status)).length
