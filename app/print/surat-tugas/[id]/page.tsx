@@ -202,10 +202,10 @@ export default async function SuratTugasPrintPage({ params }: Props) {
   return (
     <div className="st-print">
       <style>{`
-        /* A4 tegak, dua salinan Surat Tugas per lembar (sama dengan form kertas). */
+        /* Kertas 1/2 A4 mendatar (210 x 148,5 mm), satu Surat Tugas per lembar. */
         @page {
-          size: 210mm 297mm;
-          margin: 8mm 10mm;
+          size: 210mm 148.5mm;
+          margin: 6mm 10mm;
           @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
           @bottom-left { content: ""; } @bottom-center { content: ""; } @bottom-right { content: ""; }
         }
@@ -214,8 +214,7 @@ export default async function SuratTugasPrintPage({ params }: Props) {
         .st-print .toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
         .st-print .toolbar button { font: inherit; font-size: 10pt; padding: 6px 14px; border-radius: 8px; border: 1px solid #999; background: #fff; cursor: pointer; }
         .st { width: 190mm; height: 136mm; box-sizing: border-box; display: flex; flex-direction: column; gap: 1.2mm; overflow: hidden; }
-        .st + .st { margin-top: 3mm; padding-top: 3mm; border-top: 1px dashed #999; }
-        .st table { border-collapse: collapse; }
+                .st table { border-collapse: collapse; }
         .st-head { display: flex; justify-content: space-between; gap: 6mm; }
         .st-brand { line-height: 1.25; }
         .st-logo-row { display: flex; align-items: center; gap: 10mm; margin-left: 12mm; }
@@ -257,7 +256,6 @@ export default async function SuratTugasPrintPage({ params }: Props) {
         @media print { .st-print .toolbar { display: none; } .st-print { padding: 0; } }
       `}</style>
       <PrintOnLoad />
-      {copy}
       {copy}
     </div>
   )

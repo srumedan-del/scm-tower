@@ -415,7 +415,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       .finally(() => setRateLoading(false))
   }, [model, row.id, row.trip_id, row.destination_city, row.vehicle_type, row.transporter_name])
 
-  /** printAfter: simpan dulu, lalu buka Surat Tugas (A4, 2 salinan) di tab baru dengan angka yang baru disimpan. */
+  /** printAfter: simpan dulu, lalu buka Surat Tugas (kertas 1/2 A4) di tab baru dengan angka yang baru disimpan. */
   function save(printAfter = false) {
     // Tab dibuka langsung saat klik (sebelum proses async) agar tidak diblokir browser.
     const printWindow = printAfter ? window.open('about:blank', '_blank') : null
@@ -971,7 +971,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                 onClick={() => save(true)}
                 disabled={saving}
                 className={dialogCancelClass}
-                title="Simpan biaya lalu cetak Surat Tugas (A4, 2 salinan)"
+                title="Simpan biaya lalu cetak Surat Tugas (kertas 1/2 A4)"
               >
                 <span className="inline-flex items-center gap-2"><Printer className="h-4 w-4" aria-hidden="true" /> Simpan &amp; Cetak Surat Tugas</span>
               </button>
