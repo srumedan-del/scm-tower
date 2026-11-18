@@ -594,8 +594,38 @@ export async function updateShipmentRetailCost(input: {
   if (!data) throw new Error(`Shipment dengan ID ${input.id} tidak ditemukan`)
 }
 
-export async function deleteShipmentTracking(id: number) {
-  await requireAuthenticatedUser()
+export type TripRemovalReason = 'Pindah Trip' | 'Perubahan muatan' | 'Batal kirim'
+export type TripRemovalInfo = { reason: TripRemovalReason; trip_id: string | null; notes: string | null; removed_at: string }
+const TRIP_REMOVAL_REASONS: TripRemovalReason[] = ['Pindah Trip', 'Perubahan muatan', 'Batal kirim']
+
+/**
+ * Hapus shipment; PSS kembali ke For Transport Planning. Jika shipment ada di trip, alasan dikeluarkan
+ * dari trip wajib dan dicatat di shipment_trip_removal (migrasi v59).
+ */
+export async function deleteShipmentTracking(id: number, removal?: { reason: TripRemovalReason; notes?: string | null }) {
+  const user = await requireAuthenticatedUser()
+  const { data: current, error: currentError } = await supabaseAdmin
+    .from('shipment_tracking')
+    .select('source_type, pss_no, crossdocking_id, trip_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (currentError) throw currentError
+  if (current?.trip_id) {
+    if (!removal || !TRIP_REMOVAL_REASONS.includes(removal.reason)) throw new Error('Pilih alasan PSS dikeluarkan dari trip')
+    const { error: logError } = await supabaseAdmin.from('shipment_trip_removal').insert({
+      source_type: current.source_type ?? 'PSS',
+      pss_no: current.pss_no ?? null,
+      crossdocking_id: current.crossdocking_id ?? null,
+      trip_id: current.trip_id,
+      reason: removal.reason,
+      notes: removal.notes?.trim() || null,
+      removed_by: String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'admin'),
+    })
+    if (logError) {
+      if (/shipment_trip_removal/.test(logError.message)) throw new Error('Jalankan migrasi v59 dulu untuk mencatat alasan keluar trip')
+      throw logError
+    }
+  }
   // Hapus POD dulu jika ada (FK ON DELETE CASCADE harusnya handle ini,
   // tapi kalau constraint belum benar, hapus manual)
   await supabaseAdmin.from('delivery_pod').delete().eq('tracking_id', id)
@@ -726,6 +756,8 @@ export type RedeliveryInfo = {
 export type UntrackedPssRow = {
   /** Terisi bila PSS ini pernah gagal kirim dan perlu dijadwalkan ulang. */
   redelivery?: RedeliveryInfo | null
+  /** Alasan terakhir PSS dikeluarkan dari trip (Pindah Trip, Perubahan muatan, Batal kirim). */
+  removal?: TripRemovalInfo | null
   id: number
   source_type: 'PSS' | 'Crossdocking'
   pss_no: string
@@ -1275,7 +1307,27 @@ export async function getUntrackedPss(month?: string): Promise<UntrackedPssRow[]
     products: summaryByPss.get(String(row.pss_no).trim())?.products ?? [],
   }))
 
-  return [...pssWithLoad, ...untrackedCrossdockings]
+  // Alasan terakhir PSS dikeluarkan dari trip (migrasi v59), sebagai label di daftar perencanaan.
+  const removalByKey = new Map<string, TripRemovalInfo>()
+  {
+    const pssKeys = pssWithLoad.map(row => String(row.pss_no ?? '').trim()).filter(Boolean)
+    const cdKeys = untrackedCrossdockings.map(row => Number(row.id))
+    const [pssRemoval, cdRemoval] = await Promise.all([
+      pssKeys.length ? supabaseAdmin.from('shipment_trip_removal').select('pss_no, crossdocking_id, trip_id, reason, notes, removed_at').in('pss_no', pssKeys).order('removed_at', { ascending: false }) : Promise.resolve({ data: [], error: null }),
+      cdKeys.length ? supabaseAdmin.from('shipment_trip_removal').select('pss_no, crossdocking_id, trip_id, reason, notes, removed_at').in('crossdocking_id', cdKeys).order('removed_at', { ascending: false }) : Promise.resolve({ data: [], error: null }),
+    ])
+    // Tabel belum ada (migrasi v59 belum dijalankan): lewati tanpa label.
+    for (const row of [...((pssRemoval.error ? [] : pssRemoval.data) ?? []), ...((cdRemoval.error ? [] : cdRemoval.data) ?? [])] as any[]) {
+      const key = row.crossdocking_id != null ? `CD:${row.crossdocking_id}` : `PSS:${String(row.pss_no ?? '').trim()}`
+      if (!removalByKey.has(key)) removalByKey.set(key, { reason: row.reason, trip_id: row.trip_id ?? null, notes: row.notes ?? null, removed_at: row.removed_at })
+    }
+  }
+  const withRemoval = (row: UntrackedPssRow) => ({
+    ...row,
+    removal: removalByKey.get(row.source_type === 'Crossdocking' ? `CD:${row.id}` : `PSS:${String(row.pss_no ?? '').trim()}`) ?? null,
+  })
+
+  return [...pssWithLoad.map(withRemoval), ...untrackedCrossdockings.map(withRemoval)]
     .sort((a, b) => {
       const redeliveryOrder = Number(Boolean(b.redelivery)) - Number(Boolean(a.redelivery))
       if (redeliveryOrder !== 0) return redeliveryOrder
@@ -1622,7 +1674,8 @@ export async function bulkCreateShipments(payload: BulkShipmentPayload): Promise
     cost_model:             /indah\s+logistik/i.test(payload.vendor_name ?? '') ? 'Retail' : payload.cost_model,
     // Estimasi disimpan terpisah agar tidak terhitung sebagai realisasi biaya.
     estimated_bbm_rupiah:      estimatedBbmPerShipment,
-    estimated_overhead_rupiah: estimatedOverheadPerShipment,    dispatch_time:          processTime,
+    estimated_overhead_rupiah: estimatedOverheadPerShipment,
+    dispatch_time:          processTime,
     // Simpan info vendor & kendaraan eksternal di notes
     notes: [
       pss.redelivery ? `Kirim ulang dari ${pss.redelivery.trip_id ?? 'pengiriman sebelumnya'}${pss.redelivery.failure_reason ? ` (${pss.redelivery.failure_reason})` : ''}` : null,

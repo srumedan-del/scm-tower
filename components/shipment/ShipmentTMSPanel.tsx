@@ -4,7 +4,7 @@ import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCa
 import { Truck } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import {
-  upsertShipmentTracking, deleteShipmentTracking, markShipmentFailed, undoShipmentFailed,
+  upsertShipmentTracking, deleteShipmentTracking, type TripRemovalReason, markShipmentFailed, undoShipmentFailed,
   updateShipmentRetailCost,
   getShipmentTMSOptions, lookupCustomerDkLk,
   getVendorVehicleTypes, logVehicleTypeChange,
@@ -13,6 +13,7 @@ import {
   type DriverOption, type RouteOption,
 } from '@/app/(app)/shipment/actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
+import { RemoveFromTripDialog } from './RemoveFromTripDialog'
 import { vehicleOptionLabel } from '@/lib/personal-vehicle'
 import { confirmAction, showSuccess } from '@/lib/feedback'
 
@@ -222,12 +223,28 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     up('transporter_id', noteTransporter.id)
   }, [form.transporter_id, noteTransporter?.id])
 
+  // PSS di dalam trip: tanya alasan keluar trip (Pindah Trip, Perubahan muatan, Batal kirim).
+  const [removing, setRemoving] = useState(false)
+
   async function del() {
     if (!shipment) return
+    if (shipment.trip_id) { setRemoving(true); return }
     if (!(await confirmAction({ title: 'Hapus shipment?', message: `Shipment ${shipment.pss_no ?? 'ini'} beserta data POD-nya akan dihapus.` }))) return
     startDeleting(async () => {
       try { await deleteShipmentTracking(shipment.id); onClose(); void showSuccess({ title: 'Shipment dihapus' }).then(onSaved) }
       catch (e: any) { setErr(e.message) }
+    })
+  }
+
+  function removeFromTrip(reason: TripRemovalReason, notes: string) {
+    if (!shipment) return
+    startDeleting(async () => {
+      try {
+        await deleteShipmentTracking(shipment.id, { reason, notes })
+        setRemoving(false)
+        onClose()
+        void showSuccess({ title: 'Dikeluarkan dari trip', message: `${shipment.pss_no ?? 'Shipment'}: ${reason}` }).then(onSaved)
+      } catch (e: any) { setRemoving(false); setErr(e.message) }
     })
   }
 
@@ -512,7 +529,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
             {shipment && (
               <button onClick={del} disabled={deleting}
                 className={dialogDangerClass}>
-                {deleting ? 'Menghapus…' : 'Hapus'}
+                {deleting ? 'Menghapus…' : shipment.trip_id ? 'Keluarkan dari Trip' : 'Hapus'}
               </button>
             )}
           </div>
@@ -525,6 +542,15 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
           </div>
         </div>
 
+      {removing && shipment?.trip_id && (
+        <RemoveFromTripDialog
+          pssNo={shipment.pss_no ?? (shipment.crossdocking_id != null ? `CD-${shipment.crossdocking_id}` : 'Shipment')}
+          tripId={shipment.trip_id}
+          busy={deleting}
+          onConfirm={removeFromTrip}
+          onClose={() => setRemoving(false)}
+        />
+      )}
     </DialogShell>
   )
 }

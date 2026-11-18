@@ -311,6 +311,12 @@ export default function ShipmentPage() {
                             <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">PERLU KIRIM ULANG</span>
                             <div className="mt-1 text-xs text-slate-500">{[r.redelivery.failure_reason, r.redelivery.trip_id].filter(Boolean).join(' · ')}</div>
                           </>
+                        ) : r.removal ? (
+                          // Dikeluarkan dari trip: tampilkan alasannya (Pindah Trip, Perubahan muatan, Batal kirim).
+                          <>
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold uppercase ${r.removal.reason === 'Batal kirim' ? 'bg-slate-200 text-slate-700' : 'bg-amber-100 text-amber-800'}`}>{r.removal.reason}</span>
+                            <div className="mt-1 text-xs text-slate-500" title={r.removal.notes ?? undefined}>{['dari ' + (r.removal.trip_id ?? '-'), r.removal.notes].filter(Boolean).join(' · ')}</div>
+                          </>
                         ) : (
                           <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">BELUM DIBUAT SHIPMENT</span>
                         )}
