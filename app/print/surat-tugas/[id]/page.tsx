@@ -184,9 +184,9 @@ export default async function SuratTugasPrintPage({ params }: Props) {
   return (
     <div className="st-print">
       <style>{`
-        /* Kertas 1/2 A4 mendatar (210 x 148,5 mm), satu Surat Tugas per lembar. */
+        /* Kertas A4 tegak; Surat Tugas hanya memakai setengah bagian atas (210 x 148,5 mm). */
         @page {
-          size: 210mm 148.5mm;
+          size: 210mm 297mm;
           margin: 6mm 10mm;
           @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
           @bottom-left { content: ""; } @bottom-center { content: ""; } @bottom-right { content: ""; }

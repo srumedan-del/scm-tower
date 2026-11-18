@@ -988,7 +988,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                 onClick={() => save(true)}
                 disabled={saving}
                 className={dialogCancelClass}
-                title="Simpan biaya lalu cetak Surat Tugas (kertas 1/2 A4)"
+                title="Simpan biaya lalu cetak Surat Tugas (A4 tegak, setengah halaman atas)"
               >
                 <span className="inline-flex items-center gap-2"><Printer className="h-4 w-4" aria-hidden="true" /> Simpan &amp; Cetak Surat Tugas</span>
               </button>
