@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { MotionConfig, motion } from 'framer-motion'
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
   ArrowLeftRight, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
   LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, X,
@@ -116,13 +116,24 @@ function NavParentLink({ parent, activeHref, indicatorId, collapsed, onNavigate 
         <span className="relative flex-1 truncate text-left">{parent.label}</span>
         <ChevronDown size={16} aria-hidden="true" className={`relative transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && (
-        <div className="space-y-0.5">
-          {parent.children.map(child => (
-            <NavLink key={child[1]} item={child} activeHref={activeHref} indicatorId={indicatorId} collapsed={false} onNavigate={onNavigate} nested />
-          ))}
-        </div>
-      )}
+      {/* Sub menu membuka/menutup dengan tinggi + opacity; tanpa animasi saat render pertama. */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="children"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ height: 0, opacity: 0, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-0.5">
+              {parent.children.map(child => (
+                <NavLink key={child[1]} item={child} activeHref={activeHref} indicatorId={indicatorId} collapsed={false} onNavigate={onNavigate} nested />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

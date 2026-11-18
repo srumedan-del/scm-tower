@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, dialogDangerClass } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, dialogDangerClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertSnapshot, deleteSnapshot, getSnapshotOptions,
@@ -206,7 +206,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
             )}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button onClick={save} disabled={saving || optLoading}
               className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan Snapshot'}

@@ -4,8 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ClipboardList, FileUp, Settings2, Trash2 } from 'lucide-react'
 import {
-  DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, formControlClass, FormField,
-} from '@/components/ui/FormDialog'
+  DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, formControlClass, FormField, DialogCancelButton } from '@/components/ui/FormDialog'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { confirmAction, notify, showSuccess } from '@/lib/feedback'
 import { jakartaToday } from '@/lib/sla'
@@ -202,7 +201,7 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
       <div className={dialogFooterClass}>
         <span />
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button type="button" onClick={save} disabled={saving} data-busy={saving} className={dialogPrimaryClass}>{saving ? 'Memproses…' : 'Buat Opname'}</button>
         </div>
       </div>
@@ -254,7 +253,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       <div className={dialogFooterClass}>
         <span />
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button type="button" onClick={save} disabled={saving || !settings} data-busy={saving} className={dialogPrimaryClass}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
         </div>
       </div>

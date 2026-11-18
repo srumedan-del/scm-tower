@@ -4,8 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { KeyRound, Plus, UserCog, UserPlus } from 'lucide-react'
 import {
   DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass,
-  formControlClass, FormField,
-} from '@/components/ui/FormDialog'
+  formControlClass, FormField, DialogCancelButton } from '@/components/ui/FormDialog'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { confirmAction, notify, showSuccess } from '@/lib/feedback'
 import {
@@ -178,7 +177,7 @@ function AddUserDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () 
       <div className={dialogFooterClass}>
         <span />
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button type="button" onClick={save} disabled={saving} data-busy={saving} className={dialogPrimaryClass}>
             {saving ? 'Menyimpan…' : 'Tambah Pengguna'}
           </button>
@@ -219,7 +218,7 @@ function EditNameDialog({ user, onClose, onSaved }: { user: AppUser; onClose: ()
       <div className={dialogFooterClass}>
         <span />
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button type="button" onClick={save} disabled={saving} data-busy={saving} className={dialogPrimaryClass}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
         </div>
       </div>
@@ -259,7 +258,7 @@ function ResetPasswordDialog({ user, onClose }: { user: AppUser; onClose: () => 
       <div className={dialogFooterClass}>
         <span />
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button type="button" onClick={save} disabled={saving} data-busy={saving} className={dialogPrimaryClass}>{saving ? 'Menyimpan…' : 'Reset Password'}</button>
         </div>
       </div>

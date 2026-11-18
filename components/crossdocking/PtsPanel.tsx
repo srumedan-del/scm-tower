@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogCancelClass } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogCancelClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { Loader2, Package, Undo2, Shuffle, Truck } from 'lucide-react'
 import {
@@ -378,13 +378,7 @@ function PtsDetailModal({ record, onClose }: { record: PtsRecord; onClose: () =>
 
         {/* Footer */}
         <div className="border-t border-slate-200 bg-slate-50/80 px-6 py-3.5 flex justify-end shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className={dialogCancelClass}
-          >
-            Tutup
-          </button>
+          <DialogCancelButton onClose={onClose} label="Tutup" />
         </div>
     </DialogShell>
   )

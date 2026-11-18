@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { X, type LucideIcon } from 'lucide-react'
 import { confirmAction } from '@/lib/feedback'
 
@@ -12,6 +12,9 @@ export const dialogFooterClass = 'flex shrink-0 flex-wrap items-center justify-b
 export const dialogCancelClass = 'min-h-11 rounded-xl border border-gray-300 bg-white px-5 text-sm font-medium text-slate-700 transition-colors hover:bg-gray-100 disabled:opacity-50'
 export const dialogPrimaryClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60'
 export const dialogDangerClass = 'inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50'
+
+/** Durasi animasi tutup modal; sama dengan lux-modal-out di globals.css. */
+const CLOSE_MS = 150
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
 
@@ -26,8 +29,13 @@ const SIZE_CLASS = {
   '6xl': 'max-w-6xl',
 }
 
-type DialogContextValue = { titleId: string; requestClose: () => void }
-const DialogContext = createContext<DialogContextValue>({ titleId: '', requestClose: () => {} })
+type DialogContextValue = {
+  titleId: string
+  requestClose: () => void
+  /** Jalankan `done` setelah animasi tutup; di luar DialogShell langsung dijalankan. */
+  closeAnimated: (done: () => void) => void
+}
+const DialogContext = createContext<DialogContextValue>({ titleId: '', requestClose: () => {}, closeAnimated: done => done() })
 
 export function DialogShell({
   onClose, size = '2xl', guardDirty = true, children,
@@ -42,14 +50,26 @@ export function DialogShell({
   const dirtyRef = useRef(false)
   const requestCloseRef = useRef<() => void>(() => {})
   const titleId = useId()
+  const [closing, setClosing] = useState(false)
+  const closingRef = useRef(false)
 
   async function requestClose() {
+    if (closingRef.current) return
     if (guardDirty && dirtyRef.current && !(await confirmAction({
       title: 'Buang perubahan?',
       message: 'Data yang sudah diisi belum tersimpan.',
       confirmLabel: 'Ya, Buang',
     }))) return
-    onClose()
+    closeAnimated(onClose)
+  }
+
+  /** Modal memudar 150 ms (lihat .fixed.inset-0[data-closing] di globals.css), lalu `done` dijalankan. */
+  function closeAnimated(done: () => void) {
+    if (closingRef.current) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { done(); return }
+    closingRef.current = true
+    setClosing(true)
+    window.setTimeout(done, CLOSE_MS)
   }
 
   useEffect(() => { requestCloseRef.current = requestClose })
@@ -89,7 +109,7 @@ export function DialogShell({
   const markDirty = () => { dirtyRef.current = true }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div data-closing={closing || undefined} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
         ref={dialogRef}
         role="dialog"
@@ -100,12 +120,18 @@ export function DialogShell({
         onChange={markDirty}
         className={`flex max-h-[calc(100dvh-2rem)] w-full ${SIZE_CLASS[size]} flex-col overflow-hidden rounded-2xl bg-white font-sans text-sm outline-none`}
       >
-        <DialogContext.Provider value={{ titleId, requestClose: () => requestCloseRef.current() }}>
+        <DialogContext.Provider value={{ titleId, requestClose: () => requestCloseRef.current(), closeAnimated }}>
           {children}
         </DialogContext.Provider>
       </div>
     </div>
   )
+}
+
+/** Tombol Batal standar: menutup modal dengan animasi tutup (tanpa tanya buang perubahan, sama seperti sebelumnya). */
+export function DialogCancelButton({ onClose, label = 'Batal' }: { onClose: () => void; label?: string }) {
+  const { closeAnimated } = useContext(DialogContext)
+  return <button type="button" onClick={() => closeAnimated(onClose)} className={dialogCancelClass}>{label}</button>
 }
 
 export function DialogHeader({

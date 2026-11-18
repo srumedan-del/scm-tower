@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Truck } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import {
@@ -146,7 +146,7 @@ export default function TransporterEditPanel({
             )}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button onClick={save} disabled={saving}
               className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan'}

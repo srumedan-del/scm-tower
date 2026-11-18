@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertBudgetRequest, deleteBudgetRequest,
@@ -408,7 +408,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
             )}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button onClick={save} disabled={saving}
               className={dialogPrimaryClass} data-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan Pengajuan'}

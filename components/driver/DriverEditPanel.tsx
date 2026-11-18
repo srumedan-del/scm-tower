@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useEffect, useState, useTransition } from 'react'
 import { upsertDriver, deleteDriver, getNextDriverCode, type DriverRow } from '@/app/(app)/master-data/drivers/actions'
 import { Sparkles, RefreshCw, KeyRound, Smartphone, UserRound } from 'lucide-react'
@@ -284,12 +284,7 @@ export default function DriverEditPanel({
             )}
           </div>
           <div className="flex gap-2.5">
-            <button
-              onClick={onClose}
-              className={dialogCancelClass}
-            >
-              Batal
-            </button>
+            <DialogCancelButton onClose={onClose} />
             <button
               onClick={save}
               disabled={saving || generatingCode}

@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import { Plus, Trash2, ArrowRightLeft, Loader2, AlertCircle, X } from 'lucide-react'
 import {
@@ -586,13 +586,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className={dialogCancelClass}
-            >
-              Batal
-            </button>
+            <DialogCancelButton onClose={onClose} />
             <button
               type="button"
               onClick={save}

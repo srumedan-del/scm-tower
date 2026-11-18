@@ -1,5 +1,5 @@
 'use client'
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Route } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import { upsertRoute, deleteRoute, generateRouteCode } from '@/app/(app)/master-data/routes/actions'
@@ -182,7 +182,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
             )}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button
               onClick={save}
               disabled={saving || generating || !form.dk_lk || !form.destination.trim()}

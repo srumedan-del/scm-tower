@@ -1,5 +1,5 @@
 'use client'
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Truck } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import { supabase as supabaseRaw } from '@/lib/supabase'
@@ -265,7 +265,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
         <div className={dialogFooterClass}>
           <div>{shipment && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting?'Menghapus…':'Hapus'}</button>}</div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button onClick={save} disabled={saving} className={dialogPrimaryClass} data-busy={saving}>{saving?'Menyimpan…':'Simpan'}</button>
           </div>
         </div>

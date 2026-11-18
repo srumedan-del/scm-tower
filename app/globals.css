@@ -906,6 +906,53 @@ a.bg-indigo-600:hover {
   animation: lux-modal 300ms var(--ease-out-soft) backwards;
 }
 
+/* Popover filter: membesar halus dari tombol pemicunya (pojok kiri atas). */
+.lux-popover {
+  transform-origin: top left;
+  transition: opacity 150ms var(--ease-out-soft), transform 150ms var(--ease-out-soft);
+}
+
+@starting-style {
+  .lux-popover {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @starting-style {
+    .lux-popover {
+      transform: none;
+    }
+  }
+}
+
+/* Modal ditutup: memudar dan sedikit mengecil, lebih cepat dari saat dibuka. */
+.fixed.inset-0[data-closing='true'] {
+  animation: lux-fade-out 150ms ease forwards;
+  pointer-events: none;
+}
+
+.fixed.inset-0[data-closing='true'] > :not(style) {
+  animation: lux-modal-out 150ms var(--ease-out-soft) forwards;
+}
+
+@keyframes lux-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes lux-modal-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fixed.inset-0[data-closing='true'] > :not(style) {
+    animation-name: lux-fade-out;
+  }
+}
+
 /* Pin lokasi rumah sakit di Peta & Stok HD */
 .hospital-marker-wrap {
   background: transparent;

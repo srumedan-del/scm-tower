@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { showSuccess } from '@/lib/feedback'
 import React, { useState, useEffect } from 'react'
 import { Calendar, User, Clock, AlertCircle, Trash2, Tag, CheckSquare } from 'lucide-react'
@@ -235,13 +235,7 @@ export function TaskModal({
               ) : <div />}
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className={dialogCancelClass}
-                >
-                  Batal
-                </button>
+                <DialogCancelButton onClose={onClose} />
                 <button
                   type="submit"
                   className={dialogPrimaryClass}

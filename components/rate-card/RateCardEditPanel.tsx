@@ -1,5 +1,5 @@
 'use client'
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Receipt } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import SearchableSelect from '@/components/ui/SearchableSelect'
@@ -308,7 +308,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
         <div className={dialogFooterClass}>
           <div>{rate && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting ? 'Menghapus…' : 'Hapus'}</button>}</div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button onClick={save} disabled={saving || !form.rate_code || !form.origin || !form.destination} className={dialogPrimaryClass} data-busy={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
           </div>
         </div>

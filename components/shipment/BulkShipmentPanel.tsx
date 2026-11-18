@@ -1,5 +1,5 @@
 'use client'
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
   bulkCreateShipments, generateTripId, getShipmentTMSOptions,
@@ -324,7 +324,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
             Akan membuat <strong>{selectedPss.length}</strong> shipment sekaligus
           </p>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button
               onClick={save}
               disabled={saving}

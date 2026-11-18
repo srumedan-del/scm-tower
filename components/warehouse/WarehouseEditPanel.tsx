@@ -1,5 +1,5 @@
 'use client'
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Warehouse } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { upsertWarehouse, deleteWarehouse } from '@/app/(app)/master-data/warehouses/actions'
@@ -76,7 +76,7 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
         <div className={dialogFooterClass}>
           <div>{wh && <button onClick={del} disabled={deleting} className={dialogDangerClass}>{deleting ? 'Menghapus…' : 'Hapus'}</button>}</div>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+            <DialogCancelButton onClose={onClose} />
             <button onClick={save} disabled={saving || !form.warehouse_code} className={dialogPrimaryClass} data-busy={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
           </div>
         </div>

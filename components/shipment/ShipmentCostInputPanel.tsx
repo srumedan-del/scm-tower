@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useEffect, useState, useTransition } from 'react'
 import {
   getTripTruckingRate,
@@ -954,13 +954,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className={dialogCancelClass}
-            >
-              Batal
-            </button>
+            <DialogCancelButton onClose={onClose} />
             <button
               type="button"
               onClick={save}

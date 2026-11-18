@@ -74,7 +74,7 @@ export default function MonthFilter({
       {open && (
         <div
           ref={popoverRef}
-          className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl"
+          className="lux-popover fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl"
           style={{
             top: `${(triggerRef.current?.getBoundingClientRect().bottom ?? 0) + window.scrollY + 4}px`,
             left: `${(triggerRef.current?.getBoundingClientRect().left ?? 0) + window.scrollX}px`,

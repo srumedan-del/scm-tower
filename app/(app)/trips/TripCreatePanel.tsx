@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogCancelClass, dialogPrimaryClass } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogCancelClass, dialogPrimaryClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Truck } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import {
@@ -106,7 +106,7 @@ export function TripCreatePanel({ onClose }: Props) {
         </div>
 
         <footer className="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button disabled={saving || !vendorId || selected.size === 0} onClick={submit} className={dialogPrimaryClass} data-busy={saving}>
             {saving ? 'Membuat...' : `Buat Trip (${selected.size})`}
           </button>

@@ -1,6 +1,6 @@
 'use client'
 
-import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field } from '@/components/ui/FormDialog'
+import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { showSuccess } from '@/lib/feedback'
 import { useState, useTransition, useEffect } from 'react'
 import {
@@ -228,7 +228,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
 
         {/* Footer */}
         <div className={dialogFooterClass}>
-          <button type="button" onClick={onClose} className={dialogCancelClass}>Batal</button>
+          <DialogCancelButton onClose={onClose} />
           <button
             onClick={save}
             disabled={saving || optLoading}
