@@ -16,19 +16,22 @@ const fmtPct = (value: unknown) => (value == null ? '-' : `${Number(value).toLoc
 /** OTIF dan On-time per minggu dokumen, dengan garis target. */
 export function FulfillmentTrend({ data, target }: { data: WeekPoint[]; target: number }) {
   if (!data.length) return <p className="py-10 text-center text-sm text-slate-400">Belum ada PSS terukur.</p>
+  // Sumbu mulai sedikit di bawah nilai terendah (kelipatan 10) agar selisih antarminggu terbaca.
+  const values = data.flatMap(d => [d.otif, d.onTime]).filter((v): v is number => v != null)
+  const lowest = Math.max(0, Math.floor((Math.min(target, ...values) - 10) / 10) * 10)
   return (
     <div className="h-56 w-full" role="img" aria-label={`Tren OTIF dan On-time per minggu, target ${target}%`}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 16, right: 24, bottom: 0, left: -12 }}>
           <CartesianGrid stroke="#EEECE7" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-          <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} unit="%" />
+          <YAxis domain={[lowest, 100]} tickCount={5} allowDecimals={false} tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} unit="%" />
           <Tooltip
             formatter={(value, name) => [fmtPct(value), name]}
             labelFormatter={(label, payload) => `Minggu ${label} · ${payload?.[0]?.payload?.count ?? 0} PSS`}
             contentStyle={{ borderRadius: 10, border: '1px solid #E5E3DE', fontSize: 12 }}
           />
-          <ReferenceLine y={target} stroke={TARGET} strokeDasharray="5 4" label={{ value: `Target ${target}%`, position: 'insideTopRight', fontSize: 11, fill: TARGET }} />
+          <ReferenceLine y={target} stroke={TARGET} strokeDasharray="5 4" label={{ value: `Target ${target}%`, position: 'insideBottomLeft', fontSize: 11, fill: TARGET }} />
           <Line type="monotone" dataKey="onTime" name="On-time" stroke={SERIES_ONTIME} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
           <Line type="monotone" dataKey="otif" name="OTIF" stroke={SERIES_OTIF} strokeWidth={2.5} dot={{ r: 3.5 }} isAnimationActive={false}>
             <LabelList dataKey="otif" position="top" formatter={(v: unknown) => fmtPct(v)} style={{ fontSize: 11, fill: SERIES_OTIF, fontWeight: 600 }} />
@@ -55,7 +58,7 @@ export function TransporterOtif({ data, target }: { data: TransporterPoint[]; ta
             contentStyle={{ borderRadius: 10, border: '1px solid #E5E3DE', fontSize: 12 }}
           />
           <ReferenceLine x={target} stroke={TARGET} strokeDasharray="5 4" />
-          <Bar dataKey="otif" radius={[0, 6, 6, 0]} barSize={18} isAnimationActive={false}>
+          <Bar dataKey="otif" radius={[0, 6, 6, 0]} barSize={18} minPointSize={3} isAnimationActive={false}>
             {data.map(row => <Cell key={row.name} fill={colorOf(row.otif)} />)}
             <LabelList
               dataKey="otif"

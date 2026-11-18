@@ -126,7 +126,7 @@ async function getDashboardData(period: string) {
 // ─── komponen ─────────────────────────────────────────────────────────────────
 
 function Delta({ now, before, unit, higherIsBetter }: { now: number | null; before: number | null; unit: 'pp' | 'hari' | 'rp'; higherIsBetter: boolean }) {
-  if (now == null || before == null) return <span className="text-xs text-slate-400">Belum ada pembanding</span>
+  if (now == null || before == null) return <span className="text-xs text-slate-400">Bln lalu: belum ada data</span>
   const diff = now - before
   const flat = Math.abs(diff) < (unit === 'rp' ? 1000 : unit === 'hari' ? 0.02 : 0.05)
   const good = flat ? null : (diff > 0) === higherIsBetter
@@ -235,9 +235,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pengiriman & Fulfillment</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          {/* div, bukan p: globals.css menyembunyikan "h1 + p" di halaman lain. */}
+          <div className="mt-1 text-sm text-slate-500">
             {monthLabel(d.period)} · per PSS · tepat waktu = SLA DK 1 / LK 5 hari kerja dari jam dokumen · data {fmtWib(d.now)} WIB
-          </p>
+          </div>
         </div>
         <DashboardPeriodSelect period={d.period} months={months} />
       </header>
