@@ -1,4 +1,5 @@
 'use server'
+import { wibToday } from '@/lib/wib-time'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
@@ -393,7 +394,7 @@ export async function updatePtsDestination(
         hq_reference_no: pts.pts_no,
         document_date: pts.document_date,
         document_created_at: pts.document_created_at,
-        received_from_hq_date: pts.document_date ?? new Date().toISOString().slice(0, 10),
+        received_from_hq_date: pts.document_date ?? wibToday(),
         promised_delivery_date: destination.promised_delivery_date,
         status: 'Draft',
         notes: `Dibuat otomatis dari PTS ${pts.pts_no}`,

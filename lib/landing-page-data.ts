@@ -1,4 +1,5 @@
 "use server"
+import { wibToday } from '@/lib/wib-time'
 
 import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { calculateReceivingLoad, type ReceivingDetailForAnalytics, type ReceivingPackaging } from './receiving-analytics'
@@ -6,7 +7,7 @@ import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export async function getLandingPageData() {
   await requireAuthenticatedUser()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = wibToday()
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
   const fromDate = sixMonthsAgo.toISOString().slice(0, 7) + '-01'

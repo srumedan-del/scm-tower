@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState, useRef, useEffect } from 'react'
@@ -18,7 +19,7 @@ export default function ReceivingFilter({ months, defaultMonth }: Props) {
 
   const rawSelected = searchParams.getAll('month')
   const isAll = rawSelected.length === 1 && rawSelected[0] === 'all'
-  const effectiveDefault = defaultMonth || new Date().toISOString().slice(0, 7)
+  const effectiveDefault = defaultMonth || wibToday().slice(0, 7)
   const selected = isAll ? [] : rawSelected.length > 0 ? rawSelected : [effectiveDefault]
   const selectedSet = new Set(selected)
 

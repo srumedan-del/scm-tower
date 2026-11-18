@@ -66,7 +66,7 @@ function movementStatus(points: RoutePoint[], now = Date.now()) {
   if (!points.length) return null
   const last = points[points.length - 1]
   const lastAt = new Date(last.recorded_at).getTime()
-  const time = (value: number) => new Date(value).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  const time = (value: number) => new Date(value).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })
   if (now - lastAt > SIGNAL_LOST_MINUTES * 60_000) {
     return { tone: 'lost' as const, label: `Tidak ada sinyal sejak ${time(lastAt)}` }
   }
@@ -245,7 +245,7 @@ export default function DriverLiveTrackingMap() {
               <dl className="space-y-1.5 text-sm">
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Driver</dt><dd className="text-right font-semibold text-slate-900">{selectedTrip.driver_name ?? '-'}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Kendaraan</dt><dd className="text-right font-semibold text-slate-900">{selectedTrip.vehicle_nopol ?? '-'}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Mulai</dt><dd className="font-semibold text-slate-900">{selectedTrip.started_at ? new Date(selectedTrip.started_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Mulai</dt><dd className="font-semibold text-slate-900">{selectedTrip.started_at ? new Date(selectedTrip.started_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">KM awal</dt><dd className="font-mono font-semibold text-slate-900">{selectedTrip.odometer_start != null ? selectedTrip.odometer_start.toLocaleString('id-ID') : '-'}</dd></div>
                 {selectedTrip.odometer_end != null && (
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">KM akhir</dt><dd className="font-mono font-semibold text-slate-900">{selectedTrip.odometer_end.toLocaleString('id-ID')}{selectedTrip.odometer_start != null ? ` (${(selectedTrip.odometer_end - selectedTrip.odometer_start).toLocaleString('id-ID')} km)` : ''}</dd></div>
@@ -266,7 +266,7 @@ export default function DriverLiveTrackingMap() {
                       <dd><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[movement.tone]}`}>{movement.label}</span></dd>
                     </div>
                   )}
-                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Waktu</dt><dd className="font-semibold text-slate-900">{new Date(selectedTrip.last_location.recorded_at).toLocaleTimeString('id-ID')}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Waktu</dt><dd className="font-semibold text-slate-900">{new Date(selectedTrip.last_location.recorded_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' })}</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Kecepatan</dt><dd className="font-semibold text-slate-900">{speedKmh} km/jam</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-slate-500">Koordinat</dt><dd className="font-mono text-xs text-slate-700">{selectedTrip.last_location.latitude.toFixed(6)}, {selectedTrip.last_location.longitude.toFixed(6)}</dd></div>
                 </dl>
@@ -348,7 +348,7 @@ export default function DriverLiveTrackingMap() {
                       </div>
                       <div className="text-right text-xs">
                         <span className={`rounded-full px-2 py-0.5 font-semibold ${pod.status === 'Delivered' ? 'bg-green-100 text-green-800' : pod.status === 'Failed Delivery' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-700'}`}>{pod.status}</span>
-                        {pod.received_at && <p className="mt-1 text-slate-500">{new Date(pod.received_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
+                        {pod.received_at && <p className="mt-1 text-slate-500">{new Date(pod.received_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
                       </div>
                     </div>
                     {pod.receiver_name && <p className="mt-2 text-sm text-slate-700">Penerima: <strong>{pod.receiver_name}</strong></p>}
@@ -407,7 +407,7 @@ export default function DriverLiveTrackingMap() {
                         {log.spbu_name_location || 'SPBU Pertamina'}
                       </span>
                       <span className="text-xs font-semibold text-slate-500">
-                        {new Date(log.logged_at).toLocaleString('id-ID')}
+                        {new Date(log.logged_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}
                       </span>
                     </div>
 

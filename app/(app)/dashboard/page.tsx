@@ -1,3 +1,4 @@
+import { wibToday } from '@/lib/wib-time'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import DashboardPeriodSelect from '@/components/dashboard/DashboardPeriodSelect'
 import Link from 'next/link'
@@ -52,8 +53,8 @@ async function getDashboardData(period: string) {
   const to    = nextMonthStart(period)
   const today = jakartaToday()
 
-  const sevenDaysStr = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
-  const threeDaysStr = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
+  const sevenDaysStr = wibToday(new Date(Date.now() + 7 * 86_400_000))
+  const threeDaysStr = wibToday(new Date(Date.now() + 3 * 86_400_000))
 
   // ── Batch 1: query ringan (count-only + list kecil) ──────────────────────
   const [
@@ -260,7 +261,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-60" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
             </span>
-            Live · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            Live · {new Date().toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">SCM Dashboard</h1>
         </div>

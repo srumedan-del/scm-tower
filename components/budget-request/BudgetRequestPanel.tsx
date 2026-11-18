@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
@@ -33,7 +34,7 @@ type Props = {
 }
 
 export default function BudgetRequestPanel({ request, onClose, onSaved }: Props) {
-  const today = new Date().toISOString().slice(0, 7)
+  const today = wibToday().slice(0, 7)
 
   const [form, setForm] = useState({
     period:                  request?.period ?? today,
@@ -181,7 +182,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
       `────────────────────────────────────`,
       `APPROVAL`,
       `────────────────────────────────────`,
-      ...approvals.map((a, i) => `${i + 1}. ${a.approver_name.padEnd(20)} [ ${a.status === 'Approved' ? '✓ Approved' : '  Pending '} ]${a.approved_at ? '  ' + new Date(a.approved_at).toLocaleDateString('id-ID') : ''}`),
+      ...approvals.map((a, i) => `${i + 1}. ${a.approver_name.padEnd(20)} [ ${a.status === 'Approved' ? '✓ Approved' : '  Pending '} ]${a.approved_at ? '  ' + new Date(a.approved_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : ''}`),
     ]
 
     return lines.join('\n')
@@ -323,7 +324,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
                   </button>
                   <span className="text-sm flex-1">{a.approver_name}</span>
                   <span className="text-xs text-gray-400 mr-1">
-                    {a.approved_at ? new Date(a.approved_at).toLocaleDateString('id-ID') : 'Pending'}
+                    {a.approved_at ? new Date(a.approved_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : 'Pending'}
                   </span>
                   <button
                     onClick={async () => {

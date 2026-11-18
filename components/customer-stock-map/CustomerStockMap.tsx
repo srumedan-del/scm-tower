@@ -264,7 +264,7 @@ function CtrlScrollZoom() {
 
 function formatDate(value: string | null) {
 	if (!value) return 'Belum ada data'
-	return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(value))
+	return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' }).format(new Date(value))
 }
 
 function isStockMapCustomer(customer: Partial<Customer>) {

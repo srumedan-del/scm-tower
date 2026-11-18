@@ -1,4 +1,5 @@
 'use server'
+import { wibToday } from '@/lib/wib-time'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { ScmTask, TaskStatus, INITIAL_TASKS } from './types'
@@ -11,7 +12,7 @@ function mapDbToTask(row: any): ScmTask {
     name: row.name,
     description: row.description ?? '',
     status: (row.status as TaskStatus) || 'TODO',
-    deadline: row.deadline ? String(row.deadline).slice(0, 10) : new Date().toISOString().slice(0, 10),
+    deadline: row.deadline ? String(row.deadline).slice(0, 10) : wibToday(),
     pic: row.pic || 'Erwin',
     assigner: row.assigner || 'Erwin',
     frequency: row.frequency || 'Sekali saja',

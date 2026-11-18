@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 
 import { useEffect, useState, useTransition } from 'react'
 import { getCrossdockings, getCrossdockingAvailableMonths, type CrossdockingHeader } from './actions'
@@ -46,7 +47,7 @@ export default function CrossdockingPage() {
     async function init() {
       try {
         const avail = await getCrossdockingAvailableMonths()
-        const cur = new Date().toISOString().slice(0, 7)
+        const cur = wibToday().slice(0, 7)
         const def = avail.includes(cur) ? cur : (avail[0] ?? cur)
         setMonths(avail)
         setDefaultMonth(def)
@@ -64,7 +65,7 @@ export default function CrossdockingPage() {
     load(m)
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = wibToday()
 
   return (
     <div className="space-y-4">

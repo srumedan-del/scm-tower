@@ -277,11 +277,11 @@ export function ShipmentTableClient({ untrackedData, trackedData, onRefresh }: P
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-xs text-muted font-bold">Dispatch</span>
-                      <p className="text-sm mt-1">{row.dispatch_time ? new Date(row.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                      <p className="text-sm mt-1">{row.dispatch_time ? new Date(row.dispatch_time).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted font-bold">Delivery</span>
-                      <p className="text-sm mt-1">{row.delivery_time ? new Date(row.delivery_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                      <p className="text-sm mt-1">{row.delivery_time ? new Date(row.delivery_time).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted font-bold">Cost Model</span>

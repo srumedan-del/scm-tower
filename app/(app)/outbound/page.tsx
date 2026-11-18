@@ -1,3 +1,4 @@
+import { wibToday } from '@/lib/wib-time'
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import PssDetailModal from "@/components/outbound/PssDetailModal";
 import { NavSyncButton } from "@/components/shared/NavSyncButton";
@@ -183,7 +184,7 @@ export default async function OutboundPage({
 }) {
   const sp = await searchParams;
   const availableMonths = await getAvailableMonths();
-  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const currentMonthStr = wibToday().slice(0, 7);
   const defaultMonth = availableMonths.includes(currentMonthStr)
     ? currentMonthStr
     : (availableMonths[0] ?? currentMonthStr);

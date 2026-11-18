@@ -1,3 +1,4 @@
+import { wibToday } from '@/lib/wib-time'
 import { getShipmentCosts, getShipmentCostAvailableMonths } from './actions'
 import ShipmentCostClient from './ShipmentCostClient'
 import Link from 'next/link'
@@ -11,7 +12,7 @@ export default async function ShipmentCostPage({
 }) {
   const sp = await searchParams
   const availableMonths = await getShipmentCostAvailableMonths()
-  const currentMonthStr = new Date().toISOString().slice(0, 7)
+  const currentMonthStr = wibToday().slice(0, 7)
   const defaultMonth = availableMonths.includes(currentMonthStr)
     ? currentMonthStr
     : (availableMonths[0] ?? currentMonthStr)

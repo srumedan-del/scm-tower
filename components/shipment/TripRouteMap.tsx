@@ -58,7 +58,7 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
       {path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#C96442', weight: 4, opacity: 0.85 }} />}
       {path.slice(0, -1).map((position, index) => (
         <CircleMarker key={index} center={position} radius={3} pathOptions={{ color: '#C96442', fillColor: '#ffffff', fillOpacity: 1, weight: 1.5 }}>
-          <Tooltip>{new Date(points[index].recorded_at).toLocaleTimeString('id-ID')}</Tooltip>
+          <Tooltip>{new Date(points[index].recorded_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' })}</Tooltip>
         </CircleMarker>
       ))}
 
@@ -76,7 +76,7 @@ export default function TripRouteMap({ tripId, points, destinations, speedKmh, c
       {current && (
         <CircleMarker center={current} radius={10} pathOptions={{ color: '#ffffff', fillColor: '#C8372D', fillOpacity: 1, weight: 3 }}>
           <Tooltip permanent direction="top" offset={[0, -10]}>
-            Posisi driver · {new Date(points[points.length - 1].recorded_at).toLocaleTimeString('id-ID')}
+            Posisi driver · {new Date(points[points.length - 1].recorded_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' })}
             {speedKmh != null ? ` · ${speedKmh} km/jam` : ''}
           </Tooltip>
         </CircleMarker>

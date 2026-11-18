@@ -1,4 +1,6 @@
 'use client'
+
+import { nowWibInput } from '@/lib/wib-time'
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import {
@@ -52,7 +54,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
     cost_model:      'Trucking' as 'Internal' | 'Retail' | 'Trucking' | null,
     // Status
     status:          'Draft' as 'Draft' | 'Dispatched',
-    dispatch_time:   new Date().toISOString().slice(0, 16),
+    dispatch_time:   nowWibInput(),
   })
 
   const [saving, startSaving] = useTransition()

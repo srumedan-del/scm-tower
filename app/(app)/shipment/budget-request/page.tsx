@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 
 import { useEffect, useState, useTransition } from 'react'
 import {
@@ -27,7 +28,7 @@ export default function BudgetRequestPage() {
   const [avail, setAvail]       = useState<boolean | null>(null)
 
   // Realisasi bulan berjalan (preview)
-  const [curPeriod] = useState(() => new Date().toISOString().slice(0, 7))
+  const [curPeriod] = useState(() => wibToday().slice(0, 7))
   const [curRealiz, setCurRealiz] = useState<RealizationSummary | null>(null)
 
   function load() {

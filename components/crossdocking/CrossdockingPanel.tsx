@@ -1,5 +1,7 @@
 'use client'
 
+import { nowWibInput, parseWib, toWibInput, wibInputToIso, wibToday } from '@/lib/wib-time'
+
 import { DialogShell, DialogHeader, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
 import { Plus, Trash2, ArrowRightLeft, Loader2, AlertCircle, X } from 'lucide-react'
@@ -37,24 +39,18 @@ const emptyDetail = (): DetailDraft => ({
   notes: null,
 })
 
-function nowLocalDateTime() {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-}
+// Jam dokumen selalu dibaca dan disimpan sebagai WIB, apa pun zona waktu komputer (lib/wib-time).
+const nowLocalDateTime = nowWibInput
 
 function toLocalDateTimeInput(value: string | null | undefined) {
-  if (!value) return ''
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00`
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return toWibInput(value)
 }
 
 function normalizeDocumentDateTime(value: string | null | undefined) {
   if (!value) return { document_created_at: null, document_date: null }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return { document_created_at: null, document_date: value.slice(0, 10) || null }
-  return { document_created_at: date.toISOString(), document_date: value.slice(0, 10) }
+  const date = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? new Date(wibInputToIso(value)) : parseWib(value)
+  if (!date) return { document_created_at: null, document_date: value.slice(0, 10) || null }
+  return { document_created_at: date.toISOString(), document_date: toWibInput(date).slice(0, 10) }
 }
 
 export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: Props) {
@@ -71,8 +67,8 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
   const [header, setHeader] = useState<Partial<CrossdockingHeader>>({
     status: 'Draft',
     document_created_at: nowLocalDateTime(),
-    document_date: new Date().toISOString().slice(0, 10),
-    received_from_hq_date: new Date().toISOString().slice(0, 10),
+    document_date: wibToday(),
+    received_from_hq_date: wibToday(),
     promised_delivery_date: '',
   })
 

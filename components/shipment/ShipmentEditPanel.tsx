@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Truck } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
@@ -67,7 +68,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
       notes: shipment.notes ?? '',
       fleet_type: shipment.fleet_type ?? null,
     }
-    return { ...empty, shipment_date: new Date().toISOString().slice(0,10), fleet_type: fleetType ?? null }
+    return { ...empty, shipment_date: wibToday(), fleet_type: fleetType ?? null }
   })
   const [saving,startSaving]=useTransition()
   const [deleting,startDeleting]=useTransition()
@@ -249,7 +250,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {logs.map(l=>(
                     <div key={l.id} className="flex items-center gap-2 text-xs bg-white border rounded px-2 py-1.5">
-                      <span className="font-mono text-gray-500">{l.updated_at ? new Date(l.updated_at).toLocaleString('id-ID') : '-'}</span>
+                      <span className="font-mono text-gray-500">{l.updated_at ? new Date(l.updated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</span>
                       <span className="font-bold">{(l.status_from||'—').toUpperCase()}</span>
                       <span>→</span>
                       <span className="font-bold text-blue-700">{(l.status_to||'—').toUpperCase()}</span>

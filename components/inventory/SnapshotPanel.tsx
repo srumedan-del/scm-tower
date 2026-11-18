@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, dialogDangerClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { useState, useTransition, useEffect } from 'react'
@@ -16,7 +17,7 @@ type Props = {
   onSaved: () => void
 }
 
-function today() { return new Date().toISOString().slice(0, 10) }
+function today() { return wibToday() }
 
 export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
   const [warehouses, setWarehouses] = useState<WarehouseOption[]>([])

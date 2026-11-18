@@ -1,5 +1,7 @@
 'use client'
 
+import { nowWibInput, wibInputToIso, wibToday } from '@/lib/wib-time'
+
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { showSuccess } from '@/lib/feedback'
 import { useState, useTransition, useEffect } from 'react'
@@ -19,16 +21,12 @@ type Props = {
 }
 
 function generateTripId() {
-  const d = new Date()
-  const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`
+  const ymd = wibToday().replace(/-/g, '')
   const rnd = Math.floor(Math.random() * 90 + 10)
   return `TRIP-${ymd}-${rnd}`
 }
 
-function nowLocal() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-}
+const nowLocal = nowWibInput
 
 export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) {
   const [transporters, setTransporters] = useState<TransporterOption[]>([])
@@ -99,7 +97,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
             helper_id:      form.helper_id      ? Number(form.helper_id)      : null,
             route_id:       form.route_id       ? Number(form.route_id)       : null,
             trip_id:        form.trip_id.trim() || null,
-            dispatch_time:  form.dispatch_now ? new Date(form.dispatch_time).toISOString() : null,
+            dispatch_time:  form.dispatch_now ? wibInputToIso(form.dispatch_time) : null,
             status:         form.status,
           }
         )

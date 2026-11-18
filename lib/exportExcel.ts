@@ -1,3 +1,4 @@
+import { wibToday } from '@/lib/wib-time'
 /**
  * exportExcel — client-side Excel export utility
  * Pakai xlsx library yang sudah ada di project.
@@ -69,7 +70,7 @@ export async function exportToExcel(sheets: ExportSheetConfig[], fileName: strin
     XLSX.utils.book_append_sheet(wb, ws, sheetName)
   }
 
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const dateStr = wibToday().replace(/-/g, '')
   XLSX.writeFile(wb, `${fileName}_${dateStr}.xlsx`)
 }
 

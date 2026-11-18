@@ -1,4 +1,5 @@
 'use client'
+import { wibToday } from '@/lib/wib-time'
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
 import {
@@ -125,7 +126,7 @@ export default function ShipmentPage() {
     async function init() {
       try {
         const avail = await getShipmentAvailableMonths()
-        const cur = new Date().toISOString().slice(0, 7)
+        const cur = wibToday().slice(0, 7)
         const def = avail.includes(cur) ? cur : (avail[0] ?? cur)
         setMonths(avail)
         setDefaultMonth(def)
@@ -563,7 +564,7 @@ export default function ShipmentPage() {
                       {r.no_resi ?? '-'}
                     </td>
                     <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-600">
-                      {r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      {r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
                     <td className="px-4 py-3 text-[14px] font-medium text-right whitespace-nowrap text-slate-800">
                       {formatRupiah(r.total_biaya_eksternal)}
