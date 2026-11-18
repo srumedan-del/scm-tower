@@ -11,7 +11,7 @@ import {
   type TripSiblingItem,
 } from '@/app/(app)/shipment-cost/actions'
 import { displayVendorName } from '@/lib/vendor-display'
-import { Plus, Trash2, Fuel, Truck, Gauge, Building2, MapPin, Wallet } from 'lucide-react'
+import { Plus, Trash2, Fuel, Truck, Gauge, Building2, MapPin, Wallet, Printer } from 'lucide-react'
 import { showSuccess } from '@/lib/feedback'
 import { getTripFuelAuditLogs } from '@/app/(app)/shipment/actions'
 import { pickTripCostAnchor } from '@/lib/trip-cost'
@@ -415,7 +415,10 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       .finally(() => setRateLoading(false))
   }, [model, row.id, row.trip_id, row.destination_city, row.vehicle_type, row.transporter_name])
 
-  function save() {
+  /** printAfter: simpan dulu, lalu buka Surat Tugas (A4, 2 salinan) di tab baru dengan angka yang baru disimpan. */
+  function save(printAfter = false) {
+    // Tab dibuka langsung saat klik (sebelum proses async) agar tidak diblokir browser.
+    const printWindow = printAfter ? window.open('about:blank', '_blank') : null
     startSaving(async () => {
       setErr(null)
       try {
@@ -497,9 +500,16 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           total_biaya: previewTotal,
         }
 
+        if (printWindow) {
+          printWindow.location.href = `/print/surat-tugas/${row.id}`
+          onClose()
+          onSaved(nextRow)
+          return
+        }
         onClose()
         void showSuccess({ title: 'Biaya shipment tersimpan', details: [{ label: 'Total biaya', value: rp(previewTotal) }] }).then(() => onSaved(nextRow))
       } catch (e: any) {
+        printWindow?.close()
         setErr(e.message || 'Gagal menyimpan biaya.')
       }
     })
@@ -955,9 +965,20 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
 
           <div className="flex items-center gap-2.5">
             <DialogCancelButton onClose={onClose} />
+            {(model === 'Internal' || !model) && (
+              <button
+                type="button"
+                onClick={() => save(true)}
+                disabled={saving}
+                className={dialogCancelClass}
+                title="Simpan biaya lalu cetak Surat Tugas (A4, 2 salinan)"
+              >
+                <span className="inline-flex items-center gap-2"><Printer className="h-4 w-4" aria-hidden="true" /> Simpan &amp; Cetak Surat Tugas</span>
+              </button>
+            )}
             <button
               type="button"
-              onClick={save}
+              onClick={() => save()}
               disabled={saving}
               className={dialogPrimaryClass} data-busy={saving}
             >
