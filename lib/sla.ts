@@ -65,3 +65,18 @@ export function slaWorkingDaysLeft(documentDate: IsoDate, dkLk: string | null | 
   if (today <= due) return workingDaysBetween(today, due)
   return -Math.max(1, workingDaysBetween(due, today))
 }
+
+/**
+ * Tambah `days` hari kerja ke sebuah waktu, jam (WIB) tetap sama. Sabtu dan Minggu dilewati,
+ * mis. Jumat 09.10 + 1 hari kerja = Senin 09.10; dokumen hari Sabtu + 1 hari kerja = Senin.
+ */
+export function addWorkingDaysAt(at: Date, days: number): Date {
+  const WIB_MS = 7 * 3_600_000
+  let wib = new Date(at.getTime() + WIB_MS) // jam dinding WIB dalam komponen UTC
+  let remaining = days
+  while (remaining > 0) {
+    wib = addDay(wib)
+    if (isWorkingDay(wib)) remaining--
+  }
+  return new Date(wib.getTime() - WIB_MS)
+}

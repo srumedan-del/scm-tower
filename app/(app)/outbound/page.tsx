@@ -7,6 +7,7 @@ import { getChargeOnlyPss } from "@/lib/charge-only-pss";
 import OutboundFilter from "@/components/outbound/OutboundFilter";
 import { Suspense } from "react";
 import { parseWib } from "@/lib/wib-time";
+import { addWorkingDaysAt } from "@/lib/sla";
 
 export const dynamic = "force-dynamic";
 
@@ -128,12 +129,12 @@ async function getOutboundHeaders(months: string[], customer: string) {
       ? regionByCustomer.get(row.customer_no)
       : null;
     const targetLeadTimeDays = region === "DK" ? 1 : region === "LK" ? 5 : null;
-    const hours = targetLeadTimeDays !== null ? targetLeadTimeDays * 24 : null;
     // document_created_at = jam WIB dari NAV tanpa zona waktu; dibaca sebagai WIB (lib/wib-time).
     const createdAt = parseWib(row.document_created_at || row.document_date)?.getTime() ?? NaN;
+    // MTA dalam hari kerja (Sabtu dan Minggu libur di Sinar Roda): DK 1, LK 5 hari kerja, jam tetap.
     const mta =
-      hours !== null && Number.isFinite(createdAt)
-        ? new Date(createdAt + hours * 60 * 60 * 1000).toISOString()
+      targetLeadTimeDays !== null && Number.isFinite(createdAt)
+        ? addWorkingDaysAt(new Date(createdAt), targetLeadTimeDays).toISOString()
         : null;
 
     const pssKey = String(row.pss_no ?? row.shipment_no ?? "").trim();
