@@ -11,7 +11,7 @@ const time = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'
 
 /**
- * Tombol "Update dari NAV": membuat permintaan sinkronisasi yang dijalankan program pemantau
+ * Tombol "Update Data": membuat permintaan sinkronisasi yang dijalankan program pemantau
  * di komputer kantor (scripts/nav-sync/nav-sync-watch.ts), lalu menampilkan hasilnya.
  */
 export function NavSyncButton() {
@@ -63,7 +63,7 @@ export function NavSyncButton() {
         }),
       })
     } else {
-      notify.error('Update dari NAV gagal', [run.error, ...lines.filter((l) => l.startsWith('GAGAL'))].filter(Boolean).join('\n') || 'Lihat log di komputer sinkronisasi.')
+      notify.error('Update Data gagal', [run.error, ...lines.filter((l) => l.startsWith('GAGAL'))].filter(Boolean).join('\n') || 'Lihat log di komputer sinkronisasi.')
     }
   }
 
@@ -82,7 +82,7 @@ export function NavSyncButton() {
 
   const active = state?.latest && (state.latest.status === 'pending' || state.latest.status === 'running') ? state.latest : null
   const busy = waitingFor != null || Boolean(active)
-  const label = active?.status === 'running' ? 'Mengambil data NAV…' : busy ? 'Menunggu komputer…' : 'Update dari NAV'
+  const label = active?.status === 'running' ? 'Mengambil data…' : busy ? 'Menunggu komputer…' : 'Update Data'
   const last = state?.lastFinished
   const hint = state?.missingTable
     ? 'Migrasi v56 belum dijalankan'
@@ -91,17 +91,39 @@ export function NavSyncButton() {
         state && !state.agentOnline ? `Komputer sinkronisasi offline sejak ${time(state.agentLastSeen)}` : null,
       ].filter(Boolean).join(' · ')
 
+  // Baris kecil di bawah label: kapan terakhir sinkron, atau status komputer kantor.
+  const offline = Boolean(state && !state.agentOnline)
+  const subline = busy
+    ? 'Data NAV sedang diambil'
+    : state?.missingTable
+      ? 'Migrasi v56 belum dijalankan'
+      : offline
+        ? 'Komputer kantor offline'
+        : last
+          ? `Terakhir ${time(last.finished_at)}${last.status === 'failed' ? ' · gagal' : ''}`
+          : 'Belum pernah sinkron'
+
   return (
     <button
       type="button"
       onClick={() => void start()}
       disabled={busy}
       title={hint}
-      className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-wait disabled:opacity-80"
+      className="group inline-flex h-11 items-center gap-2.5 rounded-xl bg-indigo-600 pl-2 pr-4 text-left text-white disabled:cursor-wait"
     >
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-      <span>{label}</span>
-      {state && !state.agentOnline && !busy && <span className="h-2 w-2 rounded-full bg-amber-500" aria-label="Komputer sinkronisasi offline" />}
+      <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/10 text-gold-300 ring-1 ring-white/10">
+        {busy
+          ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          : <RefreshCw className="h-4 w-4 transition-transform duration-500 ease-out group-hover:rotate-180 motion-reduce:transition-none" aria-hidden="true" />}
+        <span
+          className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#262523] ${offline ? 'bg-amber-400' : last?.status === 'failed' ? 'bg-red-400' : 'bg-emerald-400'}`}
+          aria-label={offline ? 'Komputer sinkronisasi offline' : last?.status === 'failed' ? 'Sinkron terakhir gagal' : 'Komputer sinkronisasi online'}
+        />
+      </span>
+      <span className="flex flex-col leading-tight">
+        <span className="text-sm font-semibold">{label}</span>
+        <span className="text-[11px] font-medium text-white/60">{subline}</span>
+      </span>
     </button>
   )
 }

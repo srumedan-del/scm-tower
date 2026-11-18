@@ -242,7 +242,7 @@ async function main() {
   log(`Mulai ${PROBE ? 'probe' : DRY_RUN ? 'uji coba' : 'sinkronisasi'} NAV: ${from} s/d ${to} (${[...ONLY].join(', ')})`)
 
   // Profil Chrome tetap: pengaturan kolom NAV (Personalize) disimpan di browser dan dipakai lagi tiap jalan.
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
+  const launch = () => chromium.launchPersistentContext(PROFILE_DIR, {
     channel: 'chrome',
     headless: !(flag('headed') || SETUP),
     acceptDownloads: true,
@@ -251,6 +251,17 @@ async function main() {
     args: flag('windows-auth') ? [`--auth-server-allowlist=${new URL(BASE).hostname}`] : [],
     ...(flag('windows-auth') ? {} : { httpCredentials: { username: env.NAV_USERNAME!, password: env.NAV_PASSWORD! } }),
   })
+  // PC kantor (RAM 4 GB) kadang terlalu sibuk sehingga Chrome tidak sempat terbuka (18 Nov 16:00):
+  // tunggu sebentar lalu coba sekali lagi sebelum menyerah.
+  let context: Awaited<ReturnType<typeof launch>>
+  try {
+    context = await launch()
+  } catch (error) {
+    const firstLine = String((error as Error)?.message ?? error).split(/\r?\n/)[0]
+    log(`Chrome gagal terbuka (${firstLine}), mencoba lagi dalam 60 detik`)
+    await new Promise(resolve => setTimeout(resolve, 60_000))
+    context = await launch()
+  }
   const browser = { close: () => context.close() }
   const page = context.pages()[0] ?? await context.newPage()
 
