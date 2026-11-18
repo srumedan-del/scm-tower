@@ -165,7 +165,12 @@ export async function getShipmentTrackings(filters?: { status?: string; month?: 
   }
 
   if (filters?.status && filters.status !== 'all') {
-    q = q.eq('status', filters.status)
+    // Trip yang belum End Trip tetap tampil lengkap (termasuk PSS yang sudah Delivered/gagal),
+    // karena pengirimannya belum selesai sampai driver kembali ke gudang.
+    const { data: openTrips, error: openTripError } = await supabaseAdmin.from('trip').select('trip_no').is('completed_at', null).limit(300)
+    if (openTripError) throw openTripError
+    const tripList = (openTrips ?? []).map(trip => `"${String(trip.trip_no).replace(/"/g, '')}"`).join(',')
+    q = tripList ? q.or(`status.eq."${filters.status}",trip_id.in.(${tripList})`) : q.eq('status', filters.status)
   }
 
   const { data, error } = await q
