@@ -14,6 +14,7 @@ import { displayVendorName } from '@/lib/vendor-display'
 import { Plus, Trash2, Fuel, Truck, Gauge, Building2, MapPin, Wallet } from 'lucide-react'
 import { showSuccess } from '@/lib/feedback'
 import { getTripFuelAuditLogs } from '@/app/(app)/shipment/actions'
+import { pickTripCostAnchor } from '@/lib/trip-cost'
 
 type Props = {
   row: ShipmentCostRow
@@ -125,39 +126,41 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
   // ── TKBM Multi-PSS State ──
   const [tkbmEntries, setTkbmEntries] = useState<TkbmEntry[]>([])
   const [loadingTripItems, setLoadingTripItems] = useState(false)
+  const [anchorPss, setAnchorPss] = useState<string | null>(null)
 
   // Inisialisasi BBM dan TKBM dari data yang ada
   useEffect(() => {
-    let parsedNotes: any = null
-    if (row.misc_cost_notes) {
-      try {
-        parsedNotes = JSON.parse(row.misc_cost_notes)
-      } catch {
-        parsedNotes = null
+    /** BBM dari rincian tersimpan, kolom BBM, atau catatan BBM driver (bila belum pernah disimpan). */
+    function loadBbm(source: Pick<ShipmentCostRow, 'misc_cost_notes' | 'bbm_rupiah' | 'bbm_liter'>) {
+      let parsedNotes: any = null
+      if (source.misc_cost_notes) {
+        try {
+          parsedNotes = JSON.parse(source.misc_cost_notes)
+        } catch {
+          parsedNotes = null
+        }
       }
-    }
-
-    // Inisialisasi BBM
-    if (parsedNotes?.bbm_items && Array.isArray(parsedNotes.bbm_items) && parsedNotes.bbm_items.length > 0) {
-      setBbmEntries(
-        parsedNotes.bbm_items.map((b: any, idx: number) => {
-          const amt = Number(b.amount) || 0
-          const lit = b.liter !== undefined && b.liter !== null && b.liter !== ''
-            ? b.liter
-            : amt ? Number((amt / HARGA_BBM_PER_LITER).toFixed(2)) : ''
-          return {
-            id: String(b.id || idx + 1),
-            label: b.label || `Pengisian ${idx + 1}`,
-            odometer: b.odometer ? String(b.odometer) : '',
-            liter: lit,
-            amount: amt,
-          }
-        })
-      )
-    } else {
-      const initialRupiah = Number(row.bbm_rupiah) || 0
-      const initialLiter = row.bbm_liter != null && row.bbm_liter > 0
-        ? row.bbm_liter
+      if (parsedNotes?.bbm_items && Array.isArray(parsedNotes.bbm_items) && parsedNotes.bbm_items.length > 0) {
+        setBbmEntries(
+          parsedNotes.bbm_items.map((b: any, idx: number) => {
+            const amt = Number(b.amount) || 0
+            const lit = b.liter !== undefined && b.liter !== null && b.liter !== ''
+              ? b.liter
+              : amt ? Number((amt / HARGA_BBM_PER_LITER).toFixed(2)) : ''
+            return {
+              id: String(b.id || idx + 1),
+              label: b.label || `Pengisian ${idx + 1}`,
+              odometer: b.odometer ? String(b.odometer) : '',
+              liter: lit,
+              amount: amt,
+            }
+          })
+        )
+        return
+      }
+      const initialRupiah = Number(source.bbm_rupiah) || 0
+      const initialLiter = source.bbm_liter != null && source.bbm_liter > 0
+        ? source.bbm_liter
         : initialRupiah ? Number((initialRupiah / HARGA_BBM_PER_LITER).toFixed(2)) : ''
       setBbmEntries([
         {
@@ -185,6 +188,8 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       }
     }
 
+    loadBbm(row)
+
     // Inisialisasi TKBM per PSS / Surat Jalan
     setLoadingTripItems(true)
     const tripId = row.trip_id
@@ -192,6 +197,19 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       getShipmentCostTripItems(tripId)
         .then((siblings) => {
           if (siblings.length > 0) {
+            // Biaya trip tersimpan di satu PSS pembawa; tampilkan dari sana agar tidak diisi dua kali.
+            const anchor = pickTripCostAnchor(siblings) ?? siblings[0]
+            setAnchorPss(anchor.pss_no)
+            if (anchor.id !== row.id && model !== 'Retail' && model !== 'Trucking') {
+              loadBbm(anchor)
+              setForm((current) => ({
+                ...current,
+                hotel_cost: anchor.hotel_cost ?? '',
+                uang_makan_driver: anchor.uang_makan_driver ?? '',
+                uang_makan_helper: anchor.uang_makan_helper ?? '',
+                toll_cost: anchor.toll_cost ?? '',
+              }))
+            }
             setTkbmEntries(
               siblings.map((s) => {
                 const isCurrent = s.id === row.id
@@ -578,6 +596,12 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   <Plus className="h-3 w-3" /> Tambah Pengisian
                 </button>
               </div>
+
+              {row.trip_id && anchorPss && (
+                <p className="px-1 text-[11px] text-slate-500">
+                  BBM, hotel, tol, dan uang makan dihitung sekali untuk {row.trip_id} dan dicatat di {anchorPss}. TKBM dan parkir tetap per PSS.
+                </p>
+              )}
 
               {/* Header Kolom BBM */}
               <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-0.5">

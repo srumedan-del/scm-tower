@@ -1,3 +1,4 @@
+import { tripCostAnchorId } from '@/lib/trip-cost'
 import { randomUUID } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
@@ -556,16 +557,10 @@ export async function updateDeliverySequence(driverId: number, updates: { id: nu
 
 // ── BBM dan biaya ─────────────────────────────────────────────────────────────
 
+/** PSS pembawa biaya trip (sama dengan form Shipment Cost), agar BBM/biaya trip tidak tercatat di dua PSS. */
 async function firstShipmentOfTrip(tripNo: string) {
-  const { data, error } = await supabaseAdmin
-    .from('shipment_tracking')
-    .select('id')
-    .eq('trip_id', tripNo)
-    .order('id', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-  if (error) throw error
-  return data
+  const id = await tripCostAnchorId(supabaseAdmin, tripNo)
+  return id == null ? null : { id }
 }
 
 /** Biaya trip dihitung ulang dari log, jadi kirim ulang tidak menggandakan total. */
@@ -611,7 +606,7 @@ async function syncExpenseCost(tripNo: string) {
     if (tkbmError) throw tkbmError
   }
 
-  // Biaya lain berlaku untuk satu trip, ditulis ke shipment pertama trip.
+  // Biaya lain berlaku untuk satu trip, ditulis ke PSS pembawa biaya trip.
   const shipment = await firstShipmentOfTrip(tripNo)
   if (!shipment) return
   const costs: Record<string, number> = {}

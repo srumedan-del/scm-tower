@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel'
 import MonthFilter from '@/components/shared/MonthFilter'
@@ -30,6 +30,8 @@ export default function ShipmentCostTable({
 }: Props) {
   const router = useRouter()
   const [rows, setRows] = useState<ShipmentCostRow[]>(initialRows)
+  // Setelah simpan, router.refresh() membawa data baru (biaya trip bisa pindah ke PSS lain di trip yang sama).
+  useEffect(() => { setRows(initialRows) }, [initialRows])
   const [subMenu, setSubMenu] = useState<'maintain' | 'analysis'>('maintain')
   const [activeRow, setActiveRow] = useState<ShipmentCostRow | null>(null)
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null)

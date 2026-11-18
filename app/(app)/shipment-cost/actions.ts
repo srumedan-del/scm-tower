@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { inferDkLk } from '@/lib/dklk'
+import { TRIP_COST_FIELDS, pickTripCostAnchor } from '@/lib/trip-cost'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
 
 export type ShipmentCostRow = {
@@ -98,6 +99,14 @@ export type TripSiblingItem = {
   destination_city: string | null
   bongkar_muat_cost: number | null
   biaya_tkbm: number | null
+  bbm_liter: number | null
+  bbm_rupiah: number | null
+  hotel_cost: number | null
+  uang_makan_driver: number | null
+  uang_makan_helper: number | null
+  toll_cost: number | null
+  parkir_cost: number | null
+  misc_cost_notes: string | null
 }
 
 export async function getShipmentCostTripItems(tripId: string): Promise<TripSiblingItem[]> {
@@ -105,7 +114,7 @@ export async function getShipmentCostTripItems(tripId: string): Promise<TripSibl
   if (!tripId) return []
   const { data, error } = await supabaseAdmin
     .from('shipment_tracking')
-    .select('id, trip_id, pss_no, customer_name, destination_city, bongkar_muat_cost, biaya_tkbm')
+    .select('id, trip_id, pss_no, customer_name, destination_city, bongkar_muat_cost, biaya_tkbm, bbm_liter, bbm_rupiah, hotel_cost, uang_makan_driver, uang_makan_helper, toll_cost, parkir_cost, misc_cost_notes')
     .eq('trip_id', tripId)
     .order('id')
   if (error) {
@@ -478,11 +487,41 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
           biaya_tkbm: null,
         }
 
-  const { error } = await supabaseAdmin
-    .from('shipment_tracking')
-    .update(normalizedData)
-    .eq('id', id)
-  if (error) throw new Error(error.message)
+  // Internal dalam satu trip: biaya trip (lib/trip-cost) disimpan di PSS pembawa, dikosongkan di PSS lain trip itu.
+  const { data: current, error: currentError } = await supabaseAdmin.from('shipment_tracking').select('trip_id').eq('id', id).maybeSingle()
+  if (currentError) throw new Error(currentError.message)
+  const tripId = current?.trip_id ? String(current.trip_id) : null
+  if (costModel === 'Internal' && tripId) {
+    const { data: siblings, error: siblingError } = await supabaseAdmin.from('shipment_tracking').select(`id, ${TRIP_COST_FIELDS.join(', ')}`).eq('trip_id', tripId).order('id')
+    if (siblingError) throw new Error(siblingError.message)
+    const anchorId = Number(pickTripCostAnchor((siblings ?? []) as any[])?.id ?? id)
+    const tripCost: Record<string, unknown> = { misc_cost_notes: (normalizedData as any).misc_cost_notes ?? null }
+    const cleared: Record<string, null> = {}
+    for (const field of TRIP_COST_FIELDS) {
+      tripCost[field] = (normalizedData as any)[field] ?? null
+      cleared[field] = null
+    }
+    const ownData: Record<string, unknown> = { ...normalizedData }
+    for (const field of [...TRIP_COST_FIELDS, 'misc_cost_notes']) delete ownData[field]
+
+    const { error } = await supabaseAdmin.from('shipment_tracking').update(anchorId === id ? { ...ownData, ...tripCost } : { ...ownData, ...cleared }).eq('id', id)
+    if (error) throw new Error(error.message)
+    if (anchorId !== id) {
+      const { error: anchorError } = await supabaseAdmin.from('shipment_tracking').update(tripCost).eq('id', anchorId)
+      if (anchorError) throw new Error(anchorError.message)
+    }
+    const others = ((siblings ?? []) as any[]).map(row => Number(row.id)).filter(other => other !== id && other !== anchorId)
+    if (others.length) {
+      const { error: clearError } = await supabaseAdmin.from('shipment_tracking').update(cleared).in('id', others)
+      if (clearError) throw new Error(clearError.message)
+    }
+  } else {
+    const { error } = await supabaseAdmin
+      .from('shipment_tracking')
+      .update(normalizedData)
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+  }
 
   // Update TKBM untuk masing-masing PSS jika ada breakdown per Surat Jalan / PSS
   if (sibling_tkbm && sibling_tkbm.length > 0) {
