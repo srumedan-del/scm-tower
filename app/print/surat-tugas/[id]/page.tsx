@@ -18,21 +18,6 @@ const dayDate = (iso: string | null) => jakarta(iso, { weekday: 'long', day: '2-
 const clock = (iso: string | null) => (iso ? jakarta(iso, { hour: '2-digit', minute: '2-digit' }).replace(':', '.') : '')
 const sum = (rows: any[], field: string) => rows.reduce((total, row) => total + (Number(row[field]) || 0), 0)
 
-/** Logo roda merah PT Sinar Roda Utama (digambar ulang dari form kertas). */
-function Logo() {
-  return (
-    <svg viewBox="0 0 40 40" width="11mm" height="11mm" aria-hidden="true">
-      <circle cx="20" cy="20" r="16.5" fill="none" stroke="#E21F26" strokeWidth="5" />
-      {/* Tiga jari-jari menyilang di tengah roda. */}
-      {[90, 30, 150].map((angle) => {
-        const dx = 16 * Math.cos((angle * Math.PI) / 180)
-        const dy = 16 * Math.sin((angle * Math.PI) / 180)
-        return <line key={angle} x1={20 - dx} y1={20 + dy} x2={20 + dx} y2={20 - dy} stroke="#E21F26" strokeWidth="4.5" />
-      })}
-    </svg>
-  )
-}
-
 export default async function SuratTugasPrintPage({ params }: Props) {
   await requireAuthenticatedUser()
   const { id } = await params
@@ -121,10 +106,7 @@ export default async function SuratTugasPrintPage({ params }: Props) {
     <section className="st">
       <div className="st-head">
         <div className="st-brand">
-          <div className="st-logo-row">
-            <Logo />
-            <h1>SURAT TUGAS</h1>
-          </div>
+          <h1 className="st-title">SURAT TUGAS</h1>
           <div className="st-company"><span className="pt">PT.</span> Sinar Roda Utama</div>
           <div>Pergudangan Paragon No.9C, Jl. Asrama,</div>
           <div>Kec. Medan Helvetia, Medan Sumatera Utara 20123</div>
@@ -217,8 +199,7 @@ export default async function SuratTugasPrintPage({ params }: Props) {
                 .st table { border-collapse: collapse; }
         .st-head { display: flex; justify-content: space-between; gap: 6mm; }
         .st-brand { line-height: 1.25; }
-        .st-logo-row { display: flex; align-items: center; gap: 10mm; margin-left: 12mm; }
-        .st-logo-row h1 { font-size: 16pt; font-weight: 700; margin: 0; letter-spacing: 0.3px; }
+                .st-title { font-size: 16pt; font-weight: 700; margin: 0 0 1.5mm 30mm; letter-spacing: 0.3px; }
         .st-company { font-family: Georgia, 'Times New Roman', serif; font-size: 11.5pt; color: #1F3B70; }
         .st-company .pt { font-variant: small-caps; }
         .st-info { width: 74mm; align-self: flex-start; }
