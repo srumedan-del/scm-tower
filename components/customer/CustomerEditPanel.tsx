@@ -164,7 +164,7 @@ export default function CustomerEditPanel({ customer, initial, onClose, onSaved 
             </Field>
             <Field label="Active"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
           </div>
-          {/* DK = Medan, Binjai, Deli Serdang, Lubuk Pakam; di luar itu LK. Label menentukan MTA (DK 1, LK 5 hari kerja). */}
+          {/* DK = Medan, Binjai, Deli Serdang, Lubuk Pakam, Serdang Bedagai; di luar itu LK. Label menentukan MTA (DK 1, LK 5 hari kerja). */}
           {(() => {
             const suggested = inferDkLk(form.city)
             if (!suggested || suggested === (form.dk_lk ?? 'DK')) return null
