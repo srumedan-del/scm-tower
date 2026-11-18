@@ -15,10 +15,20 @@ type Props = {
   onSaved: () => void
 }
 
+/** Waktu POD selalu dalam WIB (UTC+7), apa pun zona waktu komputer admin. Format input: "YYYY-MM-DDTHH:mm". */
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
+
+function toWibLocal(value: string | Date) {
+  const time = new Date(value).getTime()
+  return new Date(time + WIB_OFFSET_MS).toISOString().slice(0, 16)
+}
+
+function wibLocalToIso(local: string) {
+  return new Date(`${local}:00+07:00`).toISOString()
+}
+
 function nowLocal() {
-  // datetime-local format: "YYYY-MM-DDTHH:mm"
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  return toWibLocal(new Date())
 }
 
 export default function PodPanel({ shipment, onClose, onSaved }: Props) {
@@ -55,7 +65,8 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
         getPodImageUrls(p).then(setImageUrls).catch(() => setImageUrls({}))
         setForm({
           receiver_name: p.receiver_name,
-          received_at:   p.received_at.slice(0, 16),
+          // received_at tersimpan UTC (mis. dari aplikasi driver); tampilkan dalam WIB.
+          received_at:   toWibLocal(p.received_at),
           notes:         p.notes ?? '',
         })
       }
@@ -82,7 +93,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
         return
       }
       try {
-        const receivedAtISO = new Date(form.received_at).toISOString()
+        const receivedAtISO = wibLocalToIso(form.received_at)
 
         await upsertPod({
           id:            pod?.id,
@@ -162,7 +173,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
                   POD sudah tercatat — diterima oleh <strong>{pod.receiver_name}</strong> pada{' '}
                   {new Date(pod.received_at).toLocaleString('id-ID', {
                     day: '2-digit', month: 'short', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit',
+                    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta',
                   })}. Edit di bawah jika perlu koreksi.
                 </div>
               </div>
