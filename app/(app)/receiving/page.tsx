@@ -1,11 +1,7 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { PtrHeaderUploadButton } from '@/components/receiving/ReceivingUploadButton'
-import MultiDestinationDetailUpload from '@/components/shared/MultiDestinationDetailUpload'
 import { NavSyncButton } from '@/components/shared/NavSyncButton'
 import ReceivingTable from '@/components/receiving/ReceivingTable'
 import ReceivingFilter from '@/components/receiving/ReceivingFilter'
-import ReceivingAIAnalysis from '@/components/receiving/ReceivingAIAnalysis'
-import type { ReceivingPackaging } from '@/lib/receiving-analytics'
 import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
@@ -78,15 +74,6 @@ async function getReceivingDetails(ptrNos?: string[]) {
   return data ?? []
 }
 
-async function getReceivingPackaging(itemNos: string[]) {
-  if (!itemNos.length) return [] as ReceivingPackaging[]
-  const { data } = await supabase
-    .from('master_sku')
-    .select('sku_code, pcs_per_outer_box, outer_box_cbm, outer_box_weight_kg, pcs_per_pallet')
-    .in('sku_code', itemNos)
-  return (data ?? []) as ReceivingPackaging[]
-}
-
 export default async function ReceivingPage({ searchParams }: { searchParams: Promise<{ month?: string | string[] }> }) {
   const sp = await searchParams
   const availableMonths = await getAvailableMonths()
@@ -112,9 +99,6 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
 
   const details = await getReceivingDetails(ptrNos.length > 0 ? ptrNos : undefined)
 
-  const itemNos = [...new Set(details.map(detail => String(detail.item_no ?? '').trim()).filter(Boolean))]
-  const packaging = await getReceivingPackaging(itemNos)
-
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-4 flex-wrap pb-3">
@@ -126,10 +110,6 @@ export default async function ReceivingPage({ searchParams }: { searchParams: Pr
             <ReceivingFilter months={availableMonths} defaultMonth={defaultMonth} />
           </Suspense>
           <NavSyncButton />
-          <PtrHeaderUploadButton />
-          <MultiDestinationDetailUpload />
-          {/* PTR koreksi bukan pengiriman: tidak ikut analisis lead time dan volume. */}
-          <ReceivingAIAnalysis rows={rows.filter((r: any) => r.ptr_type !== 'koreksi')} details={details} packaging={packaging} />
         </div>
       </header>
 

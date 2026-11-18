@@ -1,7 +1,7 @@
 /**
- * Pemantau tombol "Update dari NAV" di SCM Tower.
+ * Pemantau tombol "Update Data" di SCM Tower.
  * Berjalan terus di komputer kantor (yang bisa menjangkau NAV), dimulai otomatis saat Windows login.
- * Tiap ±20 detik: perbarui tanda hidup (nav_sync_agent), ambil permintaan pending di nav_sync_run,
+ * Tiap ±20 detik: perbarui tanda hidup (nav_sync_agent, terpisah dari proses sinkron), ambil permintaan pending di nav_sync_run,
  * lalu jalankan nav-sync.ts --run-id=N. Proses yang macet > 30 menit ditandai gagal.
  *
  *   npx tsx scripts/nav-sync/nav-sync-watch.ts
@@ -23,7 +23,17 @@ function readEnv(file: string): Record<string, string> {
     .map((line) => { const i = line.indexOf('='); return [line.slice(0, i).trim(), line.slice(i + 1).trim().replace(/^"|"$/g, '')] }))
 }
 const env = readEnv(path.join(ROOT, '.env.local'))
-const db = createClient<any>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+// Batas 30 detik per permintaan: tanpa ini satu permintaan yang menggantung (RAM penuh, jaringan putus)
+// menghentikan pemantau selamanya dan SCM Tower menganggap komputer kantor offline (18 Nov 19.43).
+const REQUEST_TIMEOUT_MS = 30_000
+const timedFetch: typeof fetch = (input, init) => {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout })
+}
+const db = createClient<any>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: timedFetch },
+})
 
 function log(message: string) {
   const line = `[${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}] ${message}`
@@ -44,8 +54,13 @@ function runSync(runId: number): Promise<number> {
 }
 
 let busy = false
+/** Tanda hidup terpisah dari proses sinkron, agar tetap terkirim selama nav-sync berjalan (3-10 menit). */
+async function heartbeat() {
+  const { error } = await db.from('nav_sync_agent').upsert({ id: 1, last_seen: new Date().toISOString(), hostname: os.hostname() })
+  if (error) throw new Error(error.message)
+}
+
 async function tick() {
-  await db.from('nav_sync_agent').upsert({ id: 1, last_seen: new Date().toISOString(), hostname: os.hostname() })
   if (busy) return
 
   // Proses yang macet (mis. komputer sempat mati) dianggap gagal agar permintaan berikutnya bisa jalan.
@@ -77,6 +92,9 @@ async function tick() {
 }
 
 log(`Pemantau nav-sync aktif di ${os.hostname()}`)
+const beat = () => { heartbeat().catch((error) => log(`Peringatan tanda hidup: ${(error as Error).message}`)) }
+beat()
+setInterval(beat, POLL_MS)
 const loop = async () => {
   try { await tick() } catch (error) { log(`Peringatan: ${(error as Error).message}`) }
   setTimeout(loop, POLL_MS)
