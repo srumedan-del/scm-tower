@@ -1,4 +1,5 @@
 'use client'
+import { inferDkLk } from '@/lib/dklk-rule'
 
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Users } from 'lucide-react'
@@ -163,6 +164,17 @@ export default function CustomerEditPanel({ customer, initial, onClose, onSaved 
             </Field>
             <Field label="Active"><label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={!!form.is_active} onChange={e=>up('is_active', e.target.checked)} /><span className="text-sm">AKTIF</span></label></Field>
           </div>
+          {/* DK = Medan, Binjai, Deli Serdang, Lubuk Pakam; di luar itu LK. Label menentukan MTA (DK 1, LK 5 hari kerja). */}
+          {(() => {
+            const suggested = inferDkLk(form.city)
+            if (!suggested || suggested === (form.dk_lk ?? 'DK')) return null
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <span>Kota <strong>{String(form.city).toUpperCase()}</strong> biasanya <strong>{suggested === 'LK' ? 'LK (luar kota)' : 'DK (dalam kota)'}</strong>, tapi diisi {form.dk_lk}. MTA dihitung dari label ini.</span>
+                <button type="button" onClick={() => up('dk_lk', suggested)} className="rounded-lg border border-amber-300 bg-white px-2.5 py-1 font-semibold hover:bg-amber-100">Ubah ke {suggested}</button>
+              </div>
+            )
+          })()}
           <Field label="Jumlah mesin HD"><input type="number" min={0} value={form.machine_count ?? ''} onChange={e=>up('machine_count', e.target.value === '' ? null : Number(e.target.value))} className="inp" placeholder="CONTOH: 12" /></Field>
           <Field label="Jenis customer">
             <select
