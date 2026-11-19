@@ -927,6 +927,39 @@ a.bg-indigo-600:hover {
   }
 }
 
+/* Baris/panel yang baru dibuka (detail baris, isi grup trip, form inline): turun halus 4px.
+   Menutup tetap seketika. Baris tabel lebih cepat karena sering dibuka-tutup. */
+.row-reveal,
+.panel-reveal {
+  transition: opacity 150ms var(--ease-out-soft), transform 150ms var(--ease-out-soft), background-color 150ms ease;
+}
+
+.panel-reveal {
+  transition-duration: 180ms;
+}
+
+@starting-style {
+  .row-reveal,
+  .panel-reveal {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-reveal,
+  .panel-reveal {
+    transition: opacity 100ms ease;
+  }
+
+  @starting-style {
+    .row-reveal,
+    .panel-reveal {
+      transform: none;
+    }
+  }
+}
+
 /* Modal ditutup: memudar dan sedikit mengecil, lebih cepat dari saat dibuka. */
 .fixed.inset-0[data-closing='true'] {
   animation: lux-fade-out 150ms ease forwards;

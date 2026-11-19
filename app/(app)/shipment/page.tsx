@@ -432,7 +432,7 @@ export default function ShipmentPage() {
                   <tr
                     key={r.id}
                     onClick={() => setSelected(r)}
-                    className="cursor-pointer transition-colors hover:bg-blue-50"
+                    className="row-reveal cursor-pointer hover:bg-blue-50"
                   >
                     <td className="px-4 py-3 pl-11 text-xs whitespace-nowrap text-slate-400">{r.trip_id ?? '-'}</td>
                     <td className="px-4 py-3 text-sm font-medium whitespace-nowrap font-medium text-slate-600">

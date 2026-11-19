@@ -55,7 +55,7 @@ export default function SearchableSelect({
         {selected?.label ?? placeholder}
       </button>
       {open && !disabled && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="lux-popover origin-top absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
           <input
             autoFocus
             value={query}

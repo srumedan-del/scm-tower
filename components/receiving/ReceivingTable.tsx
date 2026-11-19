@@ -264,7 +264,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                 </tr>
                 {isExpanded && (
                   <tr
-                    className={`border-t transition-colors ${
+                    className={`row-reveal border-t ${
                       !hasContainer
                         ? 'bg-red-50/50 border-red-200/80'
                         : 'bg-slate-50/90 border-slate-100'

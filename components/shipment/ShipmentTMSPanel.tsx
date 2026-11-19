@@ -587,7 +587,7 @@ function AttemptRow({ row, onChanged }: { row: ShipmentTrackingRow; onChanged: (
         {failed && <button type="button" onClick={undo} disabled={busy} className="text-xs font-semibold text-slate-500 hover:underline disabled:opacity-50">Batalkan</button>}
       </div>
       {open && (
-        <div className="mt-1.5 grid gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 sm:grid-cols-[12rem_1fr_auto_auto]">
+        <div className="panel-reveal mt-1.5 grid gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 sm:grid-cols-[12rem_1fr_auto_auto]">
           <select value={reason} onChange={e => setReason(e.target.value)} aria-label={`Alasan gagal kirim ${label}`} className="inp">
             {FAILURE_REASONS.map(item => <option key={item} value={item}>{item}</option>)}
           </select>

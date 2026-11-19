@@ -169,7 +169,7 @@ export function DataTable<T extends Record<string, any>>({
                       ))}
                     </tr>
                     {expandable && isExpanded && (
-                      <tr className="bg-gray-50 border-t border-border">
+                      <tr className="row-reveal bg-gray-50 border-t border-border">
                         <td colSpan={visibleCols.length + (expandable ? 1 : 0)} className="px-4 py-4">
                           {expandable.render(row)}
                         </td>
@@ -217,7 +217,7 @@ export function DataTable<T extends Record<string, any>>({
                       />
                       {isExpanded ? 'Tutup' : 'Detail'}
                     </button>
-                    {isExpanded && <div className="mt-3 pt-3 border-t border-border">{expandable.render(row)}</div>}
+                    {isExpanded && <div className="row-reveal mt-3 pt-3 border-t border-border">{expandable.render(row)}</div>}
                   </>
                 )}
               </div>
