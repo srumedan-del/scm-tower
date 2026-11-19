@@ -48,6 +48,9 @@ type Props = {
 
 const formatDate = (value?: string | null) => value ? value.slice(0, 10) : '-'
 
+/** Standar lead time kirim (Ship Date -> Posting Date) dari gudang pusat. */
+const LEAD_TIME_STANDARD_DAYS = 12
+
 export default function ReceivingTable({ rows, details }: Props) {
   const router = useRouter()
   const [pendingAction, startTransition] = useTransition()
@@ -144,7 +147,9 @@ export default function ReceivingTable({ rows, details }: Props) {
             const lt = (shipmentDate && postingDate && !isNaN(shipmentDate.getTime()) && !isNaN(postingDate.getTime()))
               ? Math.ceil((postingDate.getTime() - shipmentDate.getTime()) / (1000 * 60 * 60 * 24))
               : 0
-            const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt >= 11 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+            // Standar lead time 12 hari: sampai 12 hari = baik, 13-18 = di atas standar, lebih dari 18 = terlambat.
+            const ltColor = lt > 18 ? 'bg-red-100 text-red-700' : lt > LEAD_TIME_STANDARD_DAYS ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+            const ltTitle = lt > 18 ? 'Terlambat (lebih dari 18 hari)' : lt > LEAD_TIME_STANDARD_DAYS ? `Di atas standar ${LEAD_TIME_STANDARD_DAYS} hari` : `Sesuai standar (maks. ${LEAD_TIME_STANDARD_DAYS} hari)`
             const isExpanded = expandedRows.has(r.id)
             const isCorrection = r.ptr_type === 'koreksi'
             // PTR koreksi tidak punya container: jangan ditandai merah.
@@ -254,7 +259,7 @@ export default function ReceivingTable({ rows, details }: Props) {
                   <td className="px-4 py-2.5 text-[14px] font-medium text-right whitespace-nowrap text-slate-600">
                     {isCorrection
                       ? <span className="text-slate-400" title="PTR koreksi tidak dihitung di lead time">—</span>
-                      : <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[14px] font-bold ${ltColor}`}>{lt} hari</span>}
+                      : <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[14px] font-bold ${ltColor}`} title={ltTitle}>{lt} hari</span>}
                   </td>
                 </tr>
                 {isExpanded && (
