@@ -4,12 +4,12 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Referen
 import type { TransporterPoint, WeekPoint } from '@/lib/fulfillment-metrics'
 
 // Warna seri (palet aman buta warna dari skill bi-dashboard-design); status hanya untuk target.
-const SERIES_OTIF = '#2563EB'
-const SERIES_ONTIME = '#0D9488'
+const SERIES_OTIF = '#1F3B34'
+const SERIES_ONTIME = '#A9813F'
 const TARGET = '#6B7280'
-const GOOD = '#1A7F37'
-const WARN = '#B7791F'
-const BAD = '#C62828'
+const GOOD = '#2F6B44'
+const WARN = '#9A6C20'
+const BAD = '#9D3D31'
 
 const fmtPct = (value: unknown) => (value == null ? '-' : `${Number(value).toLocaleString('id-ID', { maximumFractionDigits: 1 })}%`)
 

@@ -1510,3 +1510,324 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   color: #1F1E1D;
   background-color: #F8FAFC;
 }
+
+/* ===================================================================
+   Fase 3 — Ivory & Pine (tenang, premium)
+   Hanya lapisan tampilan: token warna, huruf, tabel, modal, kartu.
+   Markup, isi, dan fungsi tidak berubah. Blok ini sengaja di akhir
+   file agar menang atas token @theme (lapisan theme) dan aturan di atas.
+   =================================================================== */
+:root {
+  /* Dasar */
+  --color-background-primary: #FFFFFF;
+  --color-background-secondary: #F6F4EF;
+  --color-background-tertiary: #EFECE5;
+  --color-foreground-primary: #17201C;
+  --color-foreground-secondary: #4B524E;
+  --color-foreground-tertiary: #6A706B;
+  --color-border-default: #E3DFD5;
+  --color-border-light: #ECE9E2;
+  --color-border: #E6E2D9;
+  --color-border-subtle: #F1EEE8;
+  --color-border-muted: #E6E2D9;
+  --color-bg-muted: #F8F7F3;
+  --color-bg-table-header: #F8F7F3;
+  --color-border-focus: #A9813F;
+
+  /* Utama: hijau pinus. Aksen: kuningan. */
+  --color-brand-primary: #1F3B34;
+  --color-brand-primary-hover: #2A4A42;
+  --color-brand-primary-pressed: #16302A;
+  --color-brand-secondary: #A9813F;
+  --color-brand-accent: #8E6A30;
+  --color-blue: #1F3B34;
+  --color-blue-hover: #2A4A42;
+  --color-blue-pressed: #16302A;
+  --color-blue-muted: #E3EAE6;
+  --color-text: #17201C;
+  --color-text-secondary: #4B524E;
+  --color-text-tertiary: #6A706B;
+  --color-text-muted: #6A706B;
+
+  --color-indigo-50: #F1F4F2; --color-indigo-100: #E3EAE6; --color-indigo-200: #C9D6CF;
+  --color-indigo-300: #A3B8AE; --color-indigo-400: #6F8A7F; --color-indigo-500: #4A665B;
+  --color-indigo-600: #1F3B34; --color-indigo-700: #2A4A42; --color-indigo-800: #16302A;
+  --color-indigo-900: #17201C; --color-indigo-950: #0E1512;
+
+  --color-gold-50: #F8F3EA; --color-gold-100: #EFE4CF; --color-gold-200: #E2CDA6;
+  --color-gold-300: #D2B27C; --color-gold-400: #C29858; --color-gold-500: #A9813F;
+  --color-gold-600: #8E6A30; --color-gold-700: #715425; --color-gold-800: #56401C;
+
+  /* Netral sedikit kehijauan, tetap hangat */
+  --color-slate-50: #F8F7F3; --color-slate-100: #F1EFEA; --color-slate-200: #E6E3DB;
+  --color-slate-300: #CFCBC2; --color-slate-400: #7C807A; --color-slate-500: #646A65;
+  --color-slate-600: #4B524E; --color-slate-700: #363D39; --color-slate-800: #232A26;
+  --color-slate-900: #17201C; --color-slate-950: #0E1512;
+  --color-gray-50: #F8F7F3; --color-gray-100: #F1EFEA; --color-gray-200: #E6E3DB;
+  --color-gray-300: #D4D0C6; --color-gray-400: #7F827B; --color-gray-500: #6C706A;
+  --color-gray-600: #535853; --color-gray-700: #3E433F; --color-gray-800: #292E2B;
+  --color-gray-900: #1A1F1C; --color-gray-950: #0F1311;
+
+  /* Info / tautan: biru batu yang redup */
+  --color-blue-50: #EEF3F5; --color-blue-100: #DDE7EC; --color-blue-200: #BDD0DA;
+  --color-blue-300: #91B0C1; --color-blue-400: #648CA2; --color-blue-500: #456F88;
+  --color-blue-600: #355B73; --color-blue-700: #2B4B5F; --color-blue-800: #233D4D;
+  --color-blue-900: #1C303D; --color-blue-950: #121F28;
+  --color-sky-50: #EEF3F5; --color-sky-100: #DDE7EC; --color-sky-500: #456F88;
+  --color-sky-600: #355B73; --color-sky-700: #2B4B5F;
+  --color-cyan-50: #EEF4F4; --color-cyan-100: #D9E8E8; --color-cyan-500: #3E7A7C;
+  --color-cyan-600: #326466; --color-cyan-700: #295253;
+
+  /* Status: tetap terbaca, tidak menyala */
+  --color-green-50: #EEF6F0; --color-green-100: #D9EBDF; --color-green-200: #B4D7BF;
+  --color-green-300: #84BB94; --color-green-400: #569A6C; --color-green-500: #3B8053;
+  --color-green-600: #2F6B44; --color-green-700: #275838; --color-green-800: #20472E;
+  --color-green-900: #1A3A26; --color-green-950: #0F2417;
+  --color-emerald-50: #EDF5F1; --color-emerald-100: #D6EAE0; --color-emerald-200: #AFD4C1;
+  --color-emerald-300: #7FB89B; --color-emerald-400: #519877; --color-emerald-500: #367D5D;
+  --color-emerald-600: #2C684D; --color-emerald-700: #24563F; --color-emerald-800: #1E4634;
+  --color-emerald-900: #19392B;
+  --color-teal-50: #EDF5F3; --color-teal-100: #D6EAE5; --color-teal-500: #3A7C70;
+  --color-teal-600: #2F675D; --color-teal-700: #27554D;
+  --color-red-50: #FBF1EF; --color-red-100: #F5DED9; --color-red-200: #EBBEB5;
+  --color-red-300: #DC9486; --color-red-400: #C96A5C; --color-red-500: #B44B3E;
+  --color-red-600: #9D3D31; --color-red-700: #823128; --color-red-800: #692820;
+  --color-red-900: #55221B; --color-red-950: #33130F;
+  --color-rose-50: #FBF1EF; --color-rose-100: #F5DED9; --color-rose-500: #B44B3E;
+  --color-rose-600: #9D3D31; --color-rose-700: #823128;
+  --color-orange-50: #FBF3ED; --color-orange-100: #F5E2D4; --color-orange-200: #EBC4AA;
+  --color-orange-300: #DD9E7A; --color-orange-400: #CC7B52; --color-orange-500: #B7623A;
+  --color-orange-600: #9B4F2E; --color-orange-700: #7E4127; --color-orange-800: #663522;
+  --color-orange-900: #542D1E;
+  --color-amber-50: #FAF5E9; --color-amber-100: #F4E8C8; --color-amber-200: #EAD299;
+  --color-amber-300: #DCB666; --color-amber-400: #CC9B40; --color-amber-500: #B7842A;
+  --color-amber-600: #9A6C20; --color-amber-700: #7B561C; --color-amber-800: #63451A;
+  --color-amber-900: #513917;
+  --color-yellow-50: #FAF6E9; --color-yellow-100: #F4EBCB; --color-yellow-200: #EAD89D;
+  --color-yellow-300: #DCBE6A; --color-yellow-400: #CBA444; --color-yellow-500: #B58C2D;
+  --color-yellow-600: #977322; --color-yellow-700: #795C1D; --color-yellow-800: #614A1A;
+  --color-yellow-900: #503D17;
+  /* Tidak ada ungu di tampilan: dipetakan ke biru batu */
+  --color-violet-50: #EEF1F5; --color-violet-100: #DDE3EC; --color-violet-500: #4F6A88;
+  --color-violet-600: #3F5772; --color-violet-700: #33475E;
+  --color-violet-200: #BFCAD9; --color-violet-300: #93A5BD; --color-violet-400: #6B83A1;
+  --color-purple-50: #EEF1F5; --color-purple-100: #DDE3EC; --color-purple-200: #BFCAD9;
+  --color-purple-300: #93A5BD; --color-purple-400: #6B83A1; --color-purple-500: #4F6A88;
+  --color-purple-600: #3F5772; --color-purple-700: #33475E;
+
+  --color-status-success: #2F6B44;
+  --color-status-warning: #9A6C20;
+  --color-status-error: #9D3D31;
+  --color-status-info: #355B73;
+
+  --gradient-gold: linear-gradient(135deg, #C29858 0%, #A9813F 60%, #8E6A30 100%);
+  --gradient-midnight: linear-gradient(165deg, #24423A 0%, #1A322C 50%, #12241F 100%);
+  --shadow-card: 0 1px 2px rgba(23, 32, 28, 0.04), 0 6px 20px -16px rgba(23, 32, 28, 0.14);
+  --shadow-card-hover: 0 2px 4px rgba(23, 32, 28, 0.05), 0 16px 32px -20px rgba(23, 32, 28, 0.22);
+  --shadow-focus: 0 0 0 3px rgba(169, 129, 63, 0.35);
+
+  --font-sans: var(--font-inter), 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family-sans: var(--font-sans);
+  --font-display: var(--font-sans);
+}
+
+body {
+  background: var(--color-background-secondary);
+  color: var(--color-foreground-primary);
+}
+
+body, button, input, select, textarea {
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+::selection {
+  background: rgba(31, 59, 52, 0.16);
+  color: #17201C;
+}
+
+:focus-visible {
+  outline-color: var(--color-gold-500);
+}
+
+/* Judul halaman: tenang, garis aksen tipis */
+.app-main h1 {
+  font-weight: 650 !important;
+  letter-spacing: -0.022em;
+  color: #17201C !important;
+}
+
+.app-main h1::after {
+  width: 28px;
+  background: var(--color-gold-500);
+  opacity: 0.85;
+}
+
+.app-main h2,
+.app-main h3 {
+  letter-spacing: -0.01em;
+}
+
+/* Tombol utama: pinus polos dengan sorot tipis */
+.bg-indigo-600 {
+  background-image: none;
+  background-color: #1F3B34;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(23, 32, 28, 0.18);
+}
+
+button.bg-indigo-600:not(:disabled):hover,
+a.bg-indigo-600:hover {
+  filter: none;
+  background-color: #2A4A42;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 6px 14px -8px rgba(23, 32, 28, 0.45);
+}
+
+/* Kartu dan panel: garis halus, bayangan nyaris tak terlihat */
+.app-main section[class*='rounded-'][class*='border'],
+.app-main div[class*='rounded-xl'][class*='border'][class*='bg-white'],
+.app-main div[class*='rounded-2xl'][class*='border'][class*='bg-white'] {
+  border-color: #E6E2D9;
+  box-shadow: var(--shadow-card);
+}
+
+.app-main a[class*='rounded-xl'][class*='border']:hover,
+.app-main a[class*='rounded-2xl'][class*='border']:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-gold-300);
+}
+
+/* Tabel: kepala lembut, angka rata, baris lega */
+.app-main table {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-main table thead th {
+  background-color: #F8F7F3;
+  color: #646A65;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #E6E2D9;
+}
+
+.app-main table tbody tr {
+  border-color: #EFECE6;
+}
+
+.app-main table tbody tr:hover {
+  background-color: #F5F4EF;
+}
+
+/* Modal dan dialog */
+.fixed.inset-0[class*='bg-black'],
+.fixed.inset-0[class*='bg-slate-9'] {
+  background-color: rgba(14, 21, 18, 0.38);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.fixed.inset-0[class*='bg-black'] > :not(style),
+.fixed.inset-0[class*='bg-slate-9'] > :not(style) {
+  box-shadow: 0 0 0 1px rgba(23, 32, 28, 0.06), 0 24px 56px -24px rgba(14, 21, 18, 0.42);
+}
+
+.swal2-popup {
+  border-top: 0 !important;
+  border-radius: 1rem !important;
+  color: #232A26 !important;
+  font-family: var(--font-sans) !important;
+}
+
+.swal2-container.swal2-backdrop-show {
+  background: rgba(14, 21, 18, 0.38) !important;
+}
+
+.swal2-styled.swal2-confirm {
+  background-color: #1F3B34 !important;
+}
+
+/* Kolom input */
+.inp {
+  border-color: #D9D5CB;
+  border-radius: 0.625rem;
+}
+
+.inp:hover:not(:disabled):not([readonly]) {
+  border-color: #BDB8AC;
+}
+
+.inp:focus {
+  border-color: var(--color-gold-500);
+  box-shadow: 0 0 0 3px rgba(169, 129, 63, 0.18);
+}
+
+/* Sidebar */
+.lux-sidebar {
+  background: #F1EFE9;
+  color: #363D39;
+}
+
+.lux-sidebar::after {
+  background: #E3DFD5;
+}
+
+.lux-brand-mark {
+  background: #1F3B34;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 10px -6px rgba(23, 32, 28, 0.5);
+}
+
+.lux-nav-link {
+  color: #4B524E;
+}
+
+.lux-nav-link:hover {
+  color: #17201C;
+  background-color: rgba(23, 32, 28, 0.045);
+}
+
+.lux-nav-link svg {
+  color: #7C807A;
+}
+
+.lux-nav-link:hover svg,
+.lux-nav-link[aria-current='page'] svg {
+  color: #1F3B34;
+}
+
+.lux-nav-link[aria-current='page'] {
+  color: #17201C;
+}
+
+.lux-nav-active {
+  background: #FFFFFF;
+  box-shadow: inset 2px 0 0 var(--color-gold-500), 0 1px 2px rgba(23, 32, 28, 0.06);
+}
+
+.lux-nav-heading {
+  color: #8A8E87;
+  letter-spacing: 0.1em;
+}
+
+.lux-login-panel::before {
+  background: radial-gradient(circle, rgba(194, 152, 88, 0.18), transparent 66%);
+}
+
+/* HP: toolbar di samping judul halaman turun ke baris sendiri, tidak terpotong di kanan */
+@media (max-width: 640px) {
+  .app-main header.flex.justify-between {
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
+  }
+
+  .app-main header.flex.justify-between > div {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .app-main header.flex.justify-between > div > * {
+    flex: 1 1 auto;
+  }
+
+  .app-main header.flex.justify-between button {
+    white-space: nowrap;
+  }
+}

@@ -137,7 +137,7 @@ function Delta({ now, before, unit, higherIsBetter }: { now: number | null; befo
       : `${diff > 0 ? '+' : '−'}${fmtRp(Math.abs(diff)).replace('Rp ', 'Rp ')}`
   const Icon = flat ? Minus : diff > 0 ? ArrowUpRight : ArrowDownRight
   return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${good == null ? 'text-slate-500' : good ? 'text-[#1A7F37]' : 'text-[#C62828]'}`}>
+    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${good == null ? 'text-slate-500' : good ? 'text-[#2F6B44]' : 'text-[#9D3D31]'}`}>
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />{text} <span className="font-normal text-slate-400">vs bln lalu</span>
     </span>
   )
@@ -146,7 +146,7 @@ function Delta({ now, before, unit, higherIsBetter }: { now: number | null; befo
 function KpiCard({ label, value, hint, status, children, href }: {
   label: string; value: string; hint: string; status?: 'good' | 'warn' | 'bad'; children?: React.ReactNode; href?: string
 }) {
-  const ring = status === 'good' ? 'border-l-[#1A7F37]' : status === 'warn' ? 'border-l-[#B7791F]' : status === 'bad' ? 'border-l-[#C62828]' : 'border-l-slate-200'
+  const ring = status === 'good' ? 'border-l-[#2F6B44]' : status === 'warn' ? 'border-l-[#9A6C20]' : status === 'bad' ? 'border-l-[#9D3D31]' : 'border-l-slate-200'
   const body = (
     <>
       <div className="flex items-center justify-between gap-2">
@@ -168,9 +168,9 @@ function statusFor(value: number | null, target: number) {
 
 function FailureSplit({ s }: { s: FulfillmentSummary }) {
   const rows = [
-    { label: 'Terlambat (lewat SLA)', value: s.failures.late, color: '#EA580C' },
-    { label: 'Gagal kirim', value: s.failures.failed, color: '#7C3AED' },
-    { label: 'Lewat SLA, belum terkirim', value: s.failures.overdueOpen, color: '#C62828' },
+    { label: 'Terlambat (lewat SLA)', value: s.failures.late, color: '#B7623A' },
+    { label: 'Gagal kirim', value: s.failures.failed, color: '#355B73' },
+    { label: 'Lewat SLA, belum terkirim', value: s.failures.overdueOpen, color: '#9D3D31' },
   ]
   const total = rows.reduce((sum, r) => sum + r.value, 0)
   if (!total) return <p className="py-10 text-center text-sm text-slate-400">Tidak ada PSS gagal OTIF. 🎉</p>
@@ -195,8 +195,8 @@ function FailureSplit({ s }: { s: FulfillmentSummary }) {
 }
 
 const KIND_STYLE: Record<ActionRow['kind'], string> = {
-  'Lewat SLA': 'bg-red-50 text-[#C62828]',
-  'Jatuh tempo': 'bg-amber-50 text-[#B7791F]',
+  'Lewat SLA': 'bg-red-50 text-[#9D3D31]',
+  'Jatuh tempo': 'bg-amber-50 text-[#9A6C20]',
   'Belum dikirim': 'bg-orange-50 text-orange-700',
   Crossdocking: 'bg-slate-100 text-slate-700',
   PTS: 'bg-slate-100 text-slate-700',
@@ -275,8 +275,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <Panel className="lg:col-span-8" title="OTIF per minggu" subtitle="Minggu dokumen dibuat · garis putus-putus = target">
           <FulfillmentTrend data={d.trend} target={OTIF_TARGET} />
           <div className="mt-2 flex gap-4 text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#2563EB]" />OTIF</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#0D9488]" />On-time</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#1F3B34]" />OTIF</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#A9813F]" />On-time</span>
           </div>
         </Panel>
         <Panel className="lg:col-span-4" title="Kenapa tidak OTIF?" subtitle={monthLabel(d.period)}>
