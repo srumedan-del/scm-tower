@@ -302,7 +302,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {d.actions.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-400">Semua aman. Tidak ada PSS lewat atau mendekati SLA.</p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="-mx-1 overflow-x-auto px-1">
+            <table className="w-full min-w-[30rem] text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="pb-2 pr-2">Jenis</th><th className="pb-2 pr-2">Dokumen</th><th className="pb-2 pr-2">Customer</th><th className="pb-2 text-right">Jatuh tempo</th>
@@ -312,13 +313,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 {d.actions.slice(0, 7).map(a => (
                   <tr key={`${a.kind}-${a.ref}`}>
                     <td className="py-2 pr-2"><span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${KIND_STYLE[a.kind]}`}>{a.kind === 'Lewat SLA' ? <AlertTriangle className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}{a.kind}</span></td>
-                    <td className="py-2 pr-2"><Link href={a.href} className="font-mono text-xs font-semibold text-slate-800 hover:underline">{a.ref}</Link></td>
-                    <td className="max-w-0 py-2 pr-2"><div className="truncate text-slate-700" title={a.who}>{a.who}</div><div className="truncate text-xs text-slate-400">{a.note}</div></td>
+                    <td className="py-2 pr-2"><Link href={a.href} className="whitespace-nowrap font-mono text-xs font-semibold text-slate-800 hover:underline">{a.ref}</Link></td>
+                    <td className="w-full max-w-0 min-w-[8rem] py-2 pr-2"><div className="truncate text-slate-700" title={a.who}>{a.who}</div><div className="truncate text-xs text-slate-400">{a.note}</div></td>
                     <td className="whitespace-nowrap py-2 text-right text-xs tabular-nums text-slate-600">{a.due ? fmtWib(a.due) : '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           {d.actions.length > 7 && <p className="mt-2 text-xs text-slate-400">+{d.actions.length - 7} lainnya di halaman Shipment dan Crossdocking.</p>}
         </Panel>
