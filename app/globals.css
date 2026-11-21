@@ -1819,6 +1819,13 @@ a.bg-indigo-600:hover {
   letter-spacing: -0.03em;
   color: #17201C;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .kpi-value {
+    font-size: 1.5rem;
+  }
 }
 
 /* Angka di sel tabel (biaya, qty, lead time): rata kanan sudah, dibuat sedikit lebih tegas */
