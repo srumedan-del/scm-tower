@@ -23,22 +23,18 @@ export function EmptyState({ icon = 'box', title, description, action }: EmptySt
   const Icon = iconMap[icon]
 
   return (
-    <div className="bg-white border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-16 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 text-muted opacity-50">
-          <Icon size={64} />
-        </div>
-        <h3 className="text-sm font-semibold text-text mb-1">{title}</h3>
-        {description && <p className="text-xs text-muted mb-4 max-w-xs mx-auto">{description}</p>}
-        {action && (
-                  <button
-                    onClick={action.onClick}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-500 transition-colors"
-                  >
-                    {action.label}
-                  </button>
-                )}
-      </div>
+    <div className="empty-state">
+      <span className="empty-state-icon" aria-hidden="true"><Icon size={20} strokeWidth={1.75} /></span>
+      <h3 className="empty-state-title">{title}</h3>
+      {description && <p className="empty-state-text">{description}</p>}
+      {action && (
+        <button
+          onClick={action.onClick}
+          className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   )
 }

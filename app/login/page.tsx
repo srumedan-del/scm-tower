@@ -50,16 +50,15 @@ function LoginForm() {
           </div>
 
           <div className="relative">
-            <p className="lux-display max-w-md text-4xl font-bold leading-tight xl:text-5xl">
+            <p className="lux-display max-w-md text-4xl font-semibold leading-[1.15] tracking-[-0.025em] xl:text-[2.75rem]">
               Satu ruang kendali untuk setiap pergerakan barang.
             </p>
-            <svg viewBox="0 0 420 72" className="mt-10 w-full max-w-md" aria-hidden="true">
-              <path d="M36 24 H384" fill="none" stroke="#D9BE7E" strokeOpacity="0.55" strokeWidth="1.5" className="lux-route-line" />
+            <svg viewBox="0 0 420 72" className="mt-12 w-full max-w-md" aria-hidden="true">
+              <path d="M36 24 H384" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
               {[[36, 'Receiving'], [152, 'Outbound'], [268, 'Shipment'], [384, 'Delivered']].map(([x, label]) => (
                 <g key={label}>
-                  <circle cx={x} cy="24" r="9" fill="#1F1E1D" stroke="#D9805F" strokeWidth="1.5" />
-                  <circle cx={x} cy="24" r="3" fill="#D9BE7E" />
-                  <text x={x} y="60" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.72)">{label}</text>
+                  <circle cx={x} cy="24" r="3.5" fill="#C29858" />
+                  <text x={x} y="56" textAnchor="middle" fontSize="12" letterSpacing="0.02em" fill="rgba(255,255,255,0.62)">{label}</text>
                 </g>
               ))}
             </svg>
@@ -80,7 +79,7 @@ function LoginForm() {
               <span className="lux-display text-lg font-semibold text-indigo-900">SCM Control Tower</span>
             </div>
 
-            <h1 className="lux-display text-3xl font-bold text-indigo-900">Selamat datang kembali</h1>
+            <h1 className="lux-display text-[1.75rem] font-semibold tracking-[-0.02em] text-indigo-900">Selamat datang kembali</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">Masuk untuk melanjutkan ke ruang kendali operasional.</p>
 
             <form onSubmit={signIn} className="mt-8 space-y-5">
@@ -95,7 +94,7 @@ function LoginForm() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="min-h-12 w-full rounded-xl border border-gray-300 bg-white px-4 pl-10 text-sm text-slate-900 outline-none transition-interactive placeholder:text-slate-400 focus:border-gold-500 focus:ring-3 focus:ring-gold-300/40"
+                    className="min-h-12 w-full rounded-lg border border-gray-300 bg-white px-4 pl-10 text-sm text-slate-900 outline-none transition-interactive placeholder:text-slate-400 focus:border-gold-500 focus:ring-3 focus:ring-gold-300/40"
                     placeholder="nama@email.com"
                   />
                 </div>
@@ -112,7 +111,7 @@ function LoginForm() {
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="min-h-12 w-full rounded-xl border border-gray-300 bg-white px-11 text-sm text-slate-900 outline-none transition-interactive placeholder:text-slate-400 focus:border-gold-500 focus:ring-3 focus:ring-gold-300/40"
+                    className="min-h-12 w-full rounded-lg border border-gray-300 bg-white px-11 text-sm text-slate-900 outline-none transition-interactive placeholder:text-slate-400 focus:border-gold-500 focus:ring-3 focus:ring-gold-300/40"
                     placeholder="Masukkan password"
                   />
                   <button
@@ -146,7 +145,7 @@ function LoginForm() {
               <button
                 disabled={loading}
                 type="submit"
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading
                   ? <><Loader2 size={16} aria-hidden="true" className="animate-spin" /> Memeriksa...</>

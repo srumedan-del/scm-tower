@@ -146,18 +146,22 @@ function Delta({ now, before, unit, higherIsBetter }: { now: number | null; befo
 function KpiCard({ label, value, hint, status, children, href }: {
   label: string; value: string; hint: string; status?: 'good' | 'warn' | 'bad'; children?: React.ReactNode; href?: string
 }) {
-  const ring = status === 'good' ? 'border-l-[#2F6B44]' : status === 'warn' ? 'border-l-[#9A6C20]' : status === 'bad' ? 'border-l-[#9D3D31]' : 'border-l-slate-200'
+  const dot = status === 'good' ? 'bg-[#2F6B44]' : status === 'warn' ? 'bg-[#9A6C20]' : status === 'bad' ? 'bg-[#9D3D31]' : null
+  const statusLabel = status === 'good' ? 'Sesuai target' : status === 'warn' ? 'Mendekati target' : status === 'bad' ? 'Di bawah target' : undefined
   const body = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+        <span className="flex items-center gap-2 text-[13px] font-medium text-slate-500">
+          {dot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} title={statusLabel} aria-label={statusLabel} role="img" />}
+          {label}
+        </span>
         <span title={hint} className="text-slate-300"><Info className="h-3.5 w-3.5" aria-label={hint} /></span>
       </div>
-      <div className="mt-1.5 text-[1.75rem] font-bold leading-tight tracking-tight text-slate-900 tabular-nums">{value}</div>
-      <div className="mt-1 min-h-4">{children}</div>
+      <div className="kpi-value mt-2">{value}</div>
+      <div className="mt-1.5 min-h-4">{children}</div>
     </>
   )
-  const className = `block rounded-xl border border-slate-200 border-l-4 ${ring} bg-white p-4`
+  const className = 'block rounded-xl border border-slate-200 bg-white p-5'
   return href ? <Link href={href} className={className}>{body}</Link> : <div className={className}>{body}</div>
 }
 

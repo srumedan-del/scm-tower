@@ -1811,6 +1811,82 @@ a.bg-indigo-600:hover {
   background: radial-gradient(circle, rgba(194, 152, 88, 0.18), transparent 66%);
 }
 
+/* Angka penting (KPI Dashboard): besar, tipis, angka rata */
+.kpi-value {
+  font-size: 2.125rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: #17201C;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Angka di sel tabel (biaya, qty, lead time): rata kanan sudah, dibuat sedikit lebih tegas */
+.app-main td[data-numeric='true'] {
+  font-weight: 500;
+  color: #232A26;
+}
+
+/* Jarak baris tabel seragam di semua halaman (tabel entri opname dikecualikan: berisi input) */
+.app-main table:not(.opname-entry) thead th {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.app-main table:not(.opname-entry) tbody td {
+  padding-top: 0.6875rem;
+  padding-bottom: 0.6875rem;
+  vertical-align: middle;
+}
+
+/* Empty state: satu gaya, tenang, tanpa kartu besar */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  background: #FFFFFF;
+  border: 1px solid #E6E2D9;
+  border-radius: 0.75rem;
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.875rem;
+  border-radius: 9999px;
+  background: #F1EFEA;
+  color: #646A65;
+}
+
+.empty-state-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #17201C;
+}
+
+.empty-state-text {
+  max-width: 22rem;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #646A65;
+}
+
+/* Login: panel pinus polos, tanpa cahaya dekoratif */
+.lux-login-panel {
+  background: #1A322C;
+}
+
+.lux-login-panel::before {
+  display: none;
+}
+
 /* HP: toolbar di samping judul halaman turun ke baris sendiri, tidak terpotong di kanan */
 @media (max-width: 640px) {
   .app-main header.flex.justify-between {
