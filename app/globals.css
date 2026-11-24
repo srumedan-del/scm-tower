@@ -1887,13 +1887,9 @@ a.bg-indigo-600:hover {
 
 /* Login: foto gudang senja (Higgsfield) dengan lapisan pinus agar teks tetap terbaca */
 .lux-login-panel {
-  justify-content: flex-start;
-  gap: clamp(4rem, 14vh, 9rem);
+  justify-content: space-between;
+  padding: 3rem 3.5rem 3.5rem;
   background: #1A322C url('/images/login-warehouse.webp') center bottom / cover no-repeat;
-}
-
-.lux-login-panel > :last-child {
-  margin-top: auto;
 }
 
 .lux-login-panel::before {
@@ -1904,7 +1900,7 @@ a.bg-indigo-600:hover {
   width: auto;
   aspect-ratio: auto;
   border-radius: 0;
-  background: linear-gradient(180deg, rgba(17, 32, 28, 0.62) 0%, rgba(17, 32, 28, 0.38) 42%, rgba(17, 32, 28, 0.5) 70%, rgba(17, 32, 28, 0.86) 100%);
+  background: linear-gradient(180deg, rgba(17, 32, 28, 0.55) 0%, rgba(17, 32, 28, 0.22) 32%, rgba(17, 32, 28, 0.55) 56%, rgba(14, 26, 23, 0.93) 100%);
 }
 
 /* HP: toolbar di samping judul halaman turun ke baris sendiri, tidak terpotong di kanan */
