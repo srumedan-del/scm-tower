@@ -1901,6 +1901,28 @@ a.bg-indigo-600:hover {
   aspect-ratio: auto;
   border-radius: 0;
   background: linear-gradient(180deg, rgba(17, 32, 28, 0.55) 0%, rgba(17, 32, 28, 0.22) 32%, rgba(17, 32, 28, 0.55) 56%, rgba(14, 26, 23, 0.93) 100%);
+  z-index: 1;
+}
+
+.lux-login-video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  pointer-events: none;
+}
+
+.lux-login-panel > .relative {
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lux-login-video {
+    display: none;
+  }
 }
 
 /* HP: toolbar di samping judul halaman turun ke baris sendiri, tidak terpotong di kanan */

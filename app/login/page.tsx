@@ -41,6 +41,21 @@ function LoginForm() {
     <MotionConfig reducedMotion="user">
       <main className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
         <section className="lux-login-panel hidden flex-col justify-between p-12 text-white lg:flex">
+          {/* Latar video loop dari Higgsfield; gambar diam di CSS tetap jadi cadangan (dan saat hemat animasi). */}
+          <video
+            className="lux-login-video"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/images/login-warehouse.webp"
+            aria-hidden="true"
+            tabIndex={-1}
+          >
+            <source src="/videos/login-warehouse.webm" type="video/webm" />
+            <source src="/videos/login-warehouse.mp4" type="video/mp4" />
+          </video>
           <div className="relative flex items-center gap-3">
             <span className="lux-brand-mark grid h-11 w-11 place-items-center rounded-xl text-sm font-bold tracking-wider">SC</span>
             <span className="lux-display text-xl font-semibold leading-tight">SCM Control Tower</span>
