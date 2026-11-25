@@ -2,10 +2,13 @@ import { Tabs } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { useQueue } from '../../src/hooks'
 import { OfflineBanner } from '../../src/ui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../../src/theme'
 
 export default function TabsLayout() {
   const queue = useQueue()
+  // Tinggi tetap 62 menimpa jarak aman bawaan: di HP dengan tombol navigasi, menu bisa tertutup bilah sistem.
+  const insets = useSafeAreaInsets()
   return (
     <>
       <Tabs
@@ -13,8 +16,8 @@ export default function TabsLayout() {
           headerStyle: { backgroundColor: colors.midnight },
           headerTintColor: '#FFFFFF',
           tabBarActiveTintColor: colors.navy,
-          tabBarInactiveTintColor: '#6A6E76',
-          tabBarStyle: { height: 62, paddingBottom: 8 },
+          tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: { height: 62 + insets.bottom, paddingBottom: 8 + insets.bottom, borderTopColor: colors.border },
           tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
         }}
       >

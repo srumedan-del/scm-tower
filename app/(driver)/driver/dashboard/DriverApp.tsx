@@ -127,8 +127,8 @@ export function DriverApp({ driver }: { driver: DriverSession }) {
   const title = TITLES[route?.name ?? tab]
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F5F0] text-[#111827]">
-      <header className="sticky top-0 z-30 flex min-h-[56px] items-center gap-2 bg-[#0D1C33] px-2 text-white">
+    <div className="flex min-h-dvh flex-col bg-[#F6F4EF] text-[#17201C]">
+      <header className="sticky top-0 z-30 flex min-h-[calc(56px+env(safe-area-inset-top,0px))] items-center gap-2 bg-[#16302A] px-2 pt-[env(safe-area-inset-top,0px)] text-white">
         {route
           ? <button type="button" onClick={back} aria-label="Kembali" className="flex h-11 w-11 items-center justify-center rounded-full active:bg-white/10"><ArrowLeft className="h-5 w-5" /></button>
           : <span className="w-3" />}
@@ -136,12 +136,12 @@ export function DriverApp({ driver }: { driver: DriverSession }) {
       </header>
 
       {toast && (
-        <div role="status" className={`fixed left-4 right-4 top-16 z-40 mx-auto max-w-md rounded-[14px] px-4 py-3 text-sm font-semibold text-white shadow-lg ${toast.tone === 'success' ? 'bg-[#1F8A5B]' : 'bg-[#C8372D]'}`}>
+        <div role="status" className={`fixed left-4 right-4 top-16 z-40 mx-auto max-w-md rounded-[14px] px-4 py-3 text-sm font-semibold text-white shadow-lg ${toast.tone === 'success' ? 'bg-[#2F6B44]' : 'bg-[#9D3D31]'}`}>
           {toast.message}
         </div>
       )}
 
-      <main className={`flex flex-1 flex-col gap-3 p-4 ${route ? 'pb-8' : 'pb-24'}`}>
+      <main className={`flex flex-1 flex-col gap-3 p-4 ${route ? 'pb-[calc(2rem+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'}`}>
         {loading ? <Meta>Memuat data trip...</Meta> : route ? <RouteView route={route} ctx={ctx} /> : (
           <>
             {tab === 'trips' && <TripsTab driverName={driver.driver_name} ctx={ctx} error={loadError} />}
@@ -152,14 +152,14 @@ export function DriverApp({ driver }: { driver: DriverSession }) {
       </main>
 
       {!route && (
-        <nav className="fixed bottom-0 left-0 right-0 z-30 mx-auto flex h-[62px] max-w-md border-t border-[#E0DACD] bg-white" aria-label="Menu utama">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 mx-auto flex h-[calc(62px+env(safe-area-inset-bottom,0px))] max-w-md border-t pb-[env(safe-area-inset-bottom,0px)] border-[#E4E0D6] bg-white" aria-label="Menu utama">
           {([['trips', 'Trip', Navigation], ['money', 'BBM & Biaya', Wallet], ['profile', 'Profil', User]] as const).map(([key, label, Icon]) => (
             <button
               key={key}
               type="button"
               onClick={() => setTab(key)}
               aria-current={tab === key ? 'page' : undefined}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${tab === key ? 'text-[#1F3F6E]' : 'text-[#6A6E76]'}`}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${tab === key ? 'text-[#1F3B34]' : 'text-[#6B736F]'}`}
             >
               <Icon className="h-5 w-5" />
               {label}
@@ -247,20 +247,20 @@ function greeting() {
 function TripsTab({ ctx, error, driverName }: { ctx: Ctx; error: string; driverName: string }) {
   const stops = ctx.trips.flatMap(trip => trip.stops)
   const tiles = [
-    { label: 'Menunggu', value: stops.filter(stop => !isStopDone(stop)).length, className: 'bg-[#FAF0E0] text-[#9A5F0F]' },
-    { label: 'Terkirim', value: stops.filter(stop => stop.status === 'Delivered').length, className: 'bg-[#E5F4EC] text-[#1F8A5B]' },
-    { label: 'Gagal', value: stops.filter(stop => stop.status === 'Failed Delivery').length, className: 'bg-[#FBECEA] text-[#C8372D]' },
+    { label: 'Menunggu', value: stops.filter(stop => !isStopDone(stop)).length, className: 'bg-[#F6EEDD] text-[#9A6C20]' },
+    { label: 'Terkirim', value: stops.filter(stop => stop.status === 'Delivered').length, className: 'bg-[#E8F0EA] text-[#2F6B44]' },
+    { label: 'Gagal', value: stops.filter(stop => stop.status === 'Failed Delivery').length, className: 'bg-[#F6E7E4] text-[#9D3D31]' },
   ]
 
   return (
     <>
       <div>
-        <p className="text-xl font-bold text-[#0D1C33]" suppressHydrationWarning>{greeting()}, {driverName}</p>
+        <p className="text-xl font-bold text-[#16302A]" suppressHydrationWarning>{greeting()}, {driverName}</p>
         <Meta>Utamakan keselamatan. Semoga pengiriman hari ini lancar.</Meta>
       </div>
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <section className="flex flex-col gap-3 rounded-[18px] bg-[#0D1C33] p-4">
-        <p className="text-[13px] font-semibold text-[#E8D5A3]">Tujuan di trip aktif</p>
+      <section className="flex flex-col gap-3 rounded-[18px] bg-[#16302A] p-4">
+        <p className="text-[13px] font-semibold text-[#E6D6B5]">Tujuan di trip aktif</p>
         <div className="flex gap-2">
           {tiles.map(tile => (
             <div key={tile.label} className={`flex flex-1 flex-col items-center rounded-[10px] py-2.5 ${tile.className}`}>
@@ -269,7 +269,7 @@ function TripsTab({ ctx, error, driverName }: { ctx: Ctx; error: string; driverN
             </div>
           ))}
         </div>
-        <button type="button" onClick={() => ctx.push({ name: 'history' })} className="min-h-[44px] self-start text-sm font-bold text-[#C5A25D]">
+        <button type="button" onClick={() => ctx.push({ name: 'history' })} className="min-h-[44px] self-start text-sm font-bold text-[#A9813F]">
           Lihat riwayat trip
         </button>
       </section>
@@ -287,8 +287,8 @@ function TripsTab({ ctx, error, driverName }: { ctx: Ctx; error: string; driverN
         return (
           <Card key={trip.trip_no} onClick={() => ctx.push({ name: 'trip', tripNo: trip.trip_no })}>
             <div className="flex items-center justify-between">
-              <span className="text-[17px] font-bold text-[#0D1C33]">{trip.trip_no}</span>
-              <span className={`text-xs font-bold ${trip.started_at ? 'text-[#1F8A5B]' : 'text-[#9A5F0F]'}`}>{trip.started_at ? 'Berjalan' : 'Siap jalan'}</span>
+              <span className="text-[17px] font-bold text-[#16302A]">{trip.trip_no}</span>
+              <span className={`text-xs font-bold ${trip.started_at ? 'text-[#2F6B44]' : 'text-[#9A6C20]'}`}>{trip.started_at ? 'Berjalan' : 'Siap jalan'}</span>
             </div>
             {trip.vehicle?.vehicle_no && <Meta>Kendaraan: {[trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ')}</Meta>}
             <Meta>{done} dari {trip.stops.length} tujuan selesai</Meta>
@@ -314,8 +314,8 @@ function MoneyTab({ ctx }: { ctx: Ctx }) {
   return (
     <>
       <Card>
-        <span className="text-[13px] text-[#4C5361]">Trip aktif</span>
-        <span className="text-[17px] font-bold text-[#0D1C33]">{trip.trip_no}</span>
+        <span className="text-[13px] text-[#56605B]">Trip aktif</span>
+        <span className="text-[17px] font-bold text-[#16302A]">{trip.trip_no}</span>
         {summary ? (
           <>
             <Meta>BBM: {summary.totalBbmLiters.toLocaleString('id-ID')} liter · {formatRupiah(summary.totalBbmRp)}</Meta>
@@ -334,7 +334,7 @@ function ProfileTab({ ctx, driver, onLogout }: { ctx: Ctx; driver: DriverSession
   return (
     <>
       <Card>
-        <span className="text-lg font-bold text-[#0D1C33]">{driver.driver_name}</span>
+        <span className="text-lg font-bold text-[#16302A]">{driver.driver_name}</span>
         <Meta>{driver.driver_code} · {driver.role}</Meta>
       </Card>
       <Button label="Riwayat Trip" tone="outline" onClick={() => ctx.push({ name: 'history' })} />
@@ -389,8 +389,8 @@ function TripScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
   return (
     <>
       <Card>
-        <span className="text-[13px] text-[#4C5361]">Kendaraan</span>
-        <span className="text-[17px] font-bold text-[#0D1C33]">
+        <span className="text-[13px] text-[#56605B]">Kendaraan</span>
+        <span className="text-[17px] font-bold text-[#16302A]">
           {trip.vehicle?.vehicle_no ? [trip.vehicle.vehicle_no, trip.vehicle.vehicle_type].filter(Boolean).join(' · ') : 'Belum ditentukan admin'}
         </span>
       </Card>
@@ -411,7 +411,7 @@ function TripScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
         </div>
       )}
 
-      <h2 className="text-base font-bold text-[#0D1C33]">Tujuan ({trip.stops.length})</h2>
+      <h2 className="text-base font-bold text-[#16302A]">Tujuan ({trip.stops.length})</h2>
       {trip.stops.map((stop, index) => (
         <Card key={stop.id} onClick={() => ctx.push({ name: 'stop', id: stop.id })}>
           <span className="text-base font-bold">{index + 1}. {stop.customer_name ?? '-'}</span>
@@ -468,8 +468,8 @@ function StopScreen({ id, ctx }: { id: number; ctx: Ctx }) {
 
       {open && (
         <Card>
-          <span className="text-[13px] font-semibold text-[#4C5361]">Jarak ke lokasi tujuan</span>
-          <span className="text-[22px] font-bold text-[#0D1C33]">
+          <span className="text-[13px] font-semibold text-[#56605B]">Jarak ke lokasi tujuan</span>
+          <span className="text-[22px] font-bold text-[#16302A]">
             {distance != null ? formatDistance(distance) : hasTarget ? 'Menghitung...' : 'Koordinat customer belum tersedia'}
           </span>
           <a
@@ -477,23 +477,23 @@ function StopScreen({ id, ctx }: { id: number; ctx: Ctx }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-disabled={!hasTarget && !address}
-            className="flex min-h-[52px] items-center justify-center rounded-[14px] border-[1.5px] border-[#1F3F6E] bg-white text-base font-bold text-[#1F3F6E]"
+            className="flex min-h-[52px] items-center justify-center rounded-[14px] border-[1.5px] border-[#1F3B34] bg-white text-base font-bold text-[#1F3B34]"
           >
             Navigasi ke Tujuan
           </a>
         </Card>
       )}
 
-      <h2 className="text-base font-bold text-[#0D1C33]">Barang ({stop.items.length})</h2>
+      <h2 className="text-base font-bold text-[#16302A]">Barang ({stop.items.length})</h2>
       <Card>
         {stop.items.length === 0 ? <Meta>Detail barang belum tersedia.</Meta> : null}
         {stop.items.map((item, index) => (
-          <div key={`${item.item_no}-${item.lot_no}-${index}`} className="flex gap-3 border-b border-[#E0DACD] py-1.5 last:border-b-0">
+          <div key={`${item.item_no}-${item.lot_no}-${index}`} className="flex gap-3 border-b border-[#E4E0D6] py-1.5 last:border-b-0">
             <div className="flex-1">
               <p className="text-sm">{item.description}</p>
               <Meta>{item.item_no}{item.lot_no ? ` · Lot ${item.lot_no}` : ''}</Meta>
             </div>
-            <span className="text-[15px] font-bold text-[#0D1C33]">{item.quantity.toLocaleString('id-ID')}</span>
+            <span className="text-[15px] font-bold text-[#16302A]">{item.quantity.toLocaleString('id-ID')}</span>
           </div>
         ))}
       </Card>
@@ -561,14 +561,14 @@ function PodScreen({ id, ctx }: { id: number; ctx: Ctx }) {
       <p className="text-[17px] font-bold">{stop.customer_name}</p>
       <Meta>{stop.reference_no}</Meta>
       {distance != null && distance > NEAR_DESTINATION_METERS && (
-        <p className="rounded-[10px] bg-[#FAF0E0] p-3 text-sm text-[#9A5F0F]">Posisi Anda sekitar {formatDistance(distance)} dari lokasi customer. Pastikan tujuan sudah benar.</p>
+        <p className="rounded-[10px] bg-[#F6EEDD] p-3 text-sm text-[#9A6C20]">Posisi Anda sekitar {formatDistance(distance)} dari lokasi customer. Pastikan tujuan sudah benar.</p>
       )}
       <Field label="Nama penerima" value={name} onChange={setName} autoCapitalize="words" />
       <ChoiceRow label="Tipe penerima" options={RECEIVER_TYPES} value={receiverType} onChange={setReceiverType} />
       <PhotoField label="Foto bukti terima" value={photo} onChange={setPhoto} />
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-semibold">Tanda tangan penerima (opsional)</span>
-        <div className="overflow-hidden rounded-[10px] border border-[#E0DACD] bg-white">
+        <div className="overflow-hidden rounded-[10px] border border-[#E4E0D6] bg-white">
           <SignatureCanvas onSave={setSignature} onClear={() => setSignature('')} height={160} />
         </div>
       </div>
@@ -720,7 +720,7 @@ function FinishScreen({ tripNo, ctx }: { tripNo: string; ctx: Ctx }) {
   return (
     <>
       <Card>
-        <span className="text-[17px] font-bold text-[#0D1C33]">{tripNo}</span>
+        <span className="text-[17px] font-bold text-[#16302A]">{tripNo}</span>
         <Meta>Terkirim: {delivered} · Gagal: {failed}</Meta>
         {startKm != null ? <Meta>Odometer awal: {startKm.toLocaleString('id-ID')} KM</Meta> : null}
         {startKm != null && endKm >= startKm ? <Meta>Jarak tempuh: {(endKm - startKm).toLocaleString('id-ID')} KM</Meta> : null}
@@ -755,7 +755,7 @@ function HistoryScreen() {
   return (
     <>
       <Meta>Trip selesai dalam 30 hari terakhir.</Meta>
-      {trips.length === 0 && <p className="pt-12 text-center text-[15px] text-[#4C5361]">Belum ada trip yang selesai.</p>}
+      {trips.length === 0 && <p className="pt-12 text-center text-[15px] text-[#56605B]">Belum ada trip yang selesai.</p>}
       {trips.map(trip => {
         const delivered = trip.stops.filter(stop => stop.status === 'Delivered').length
         const failed = trip.stops.filter(stop => stop.status === 'Failed Delivery').length
@@ -763,7 +763,7 @@ function HistoryScreen() {
         return (
           <Card key={trip.trip_no} onClick={() => setOpenTrip(expanded ? null : trip.trip_no)}>
             <div className="flex items-center justify-between">
-              <span className="text-base font-bold text-[#0D1C33]">{trip.trip_no}</span>
+              <span className="text-base font-bold text-[#16302A]">{trip.trip_no}</span>
               <Meta>{formatDate(trip.completed_at ?? trip.document_date)}</Meta>
             </div>
             <Meta>
@@ -772,7 +772,7 @@ function HistoryScreen() {
             </Meta>
             {expanded
               ? trip.stops.map(stop => (
-                <div key={stop.id} className="flex items-center gap-2.5 border-t border-[#E0DACD] pt-2.5">
+                <div key={stop.id} className="flex items-center gap-2.5 border-t border-[#E4E0D6] pt-2.5">
                   <div className="flex-1">
                     <p className="text-sm font-semibold">{stop.customer_name ?? '-'}</p>
                     <Meta>{stop.reference_no}{stop.destination_city ? ` · ${stop.destination_city}` : ''}</Meta>
@@ -781,7 +781,7 @@ function HistoryScreen() {
                   <StatusPill status={stop.status} />
                 </div>
               ))
-              : <span className="text-[13px] font-semibold text-[#856828]">Ketuk untuk melihat tujuan</span>}
+              : <span className="text-[13px] font-semibold text-[#7A5C2A]">Ketuk untuk melihat tujuan</span>}
           </Card>
         )
       })}

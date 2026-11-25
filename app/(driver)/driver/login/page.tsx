@@ -33,18 +33,18 @@ export default function DriverLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0D1C33]">
-      <div className="flex flex-col gap-1.5 px-6 pb-7 pt-[72px]">
-        <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[14px] bg-[#C5A25D] text-base font-extrabold text-[#0D1C33]">SC</div>
+    <div className="flex min-h-dvh flex-col bg-[#16302A]">
+      <div className="flex flex-col gap-1.5 px-6 pb-7 pt-[calc(72px+env(safe-area-inset-top,0px))]">
+        <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[14px] bg-[#A9813F] text-base font-extrabold text-[#16302A]">SC</div>
         <h1 className="text-[26px] font-bold text-white">SCM Tower Driver</h1>
-        <p className="text-sm text-[#E8D5A3]">Pengiriman, BBM, dan bukti terima</p>
+        <p className="text-sm text-[#E6D6B5]">Pengiriman, BBM, dan bukti terima</p>
       </div>
-      <form onSubmit={handleLogin} className="flex flex-1 flex-col gap-3 rounded-t-3xl bg-[#F7F5F0] p-4 pt-6">
+      <form onSubmit={handleLogin} className="flex flex-1 flex-col gap-3 rounded-t-3xl bg-[#F6F4EF] p-4 pt-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         <Field label="Username" value={username} onChange={setUsername} autoCapitalize="none" disabled={mustChangePin} />
         <Field label="PIN" value={pin} onChange={setPin} type="password" inputMode="numeric" maxLength={6} disabled={mustChangePin} />
         {mustChangePin && (
           <>
-            <p className="text-sm text-[#111827]">PIN Anda masih bawaan. Buat PIN baru 6 angka untuk melanjutkan.</p>
+            <p className="text-sm text-[#17201C]">PIN Anda masih bawaan. Buat PIN baru 6 angka untuk melanjutkan.</p>
             <Field label="PIN baru" value={newPin} onChange={digits(setNewPin)} type="password" inputMode="numeric" maxLength={6} />
             <Field label="Ulangi PIN baru" value={confirmPin} onChange={digits(setConfirmPin)} type="password" inputMode="numeric" maxLength={6} />
           </>

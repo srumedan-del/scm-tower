@@ -23,8 +23,8 @@ function Summary({ trips, driverName, onHistory }: { trips: Trip[]; driverName: 
   const counts = countStops(trips)
   const tiles = [
     { label: 'Menunggu', value: counts.pending, color: colors.goldLight },
-    { label: 'Terkirim', value: counts.delivered, color: '#9FE0BF' },
-    { label: 'Gagal', value: counts.failed, color: '#F4B2AC' },
+    { label: 'Terkirim', value: counts.delivered, color: colors.onDarkSuccess },
+    { label: 'Gagal', value: counts.failed, color: colors.onDarkDanger },
   ]
   return (
     <View style={styles.summary}>
@@ -54,7 +54,7 @@ function TripCard({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
   const state = finished
     ? { label: 'Siap ditutup', color: colors.success, bg: colors.successSoft }
     : started
-      ? { label: 'Berjalan', color: colors.navy, bg: '#E8EEF7' }
+      ? { label: 'Berjalan', color: colors.navy, bg: colors.infoSoft }
       : { label: 'Belum dimulai', color: colors.warning, bg: colors.warningSoft }
   const cta = finished ? 'Tutup Trip' : started ? 'Lanjutkan Pengiriman' : 'Mulai Trip'
 
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: 'row', gap: 8, marginTop: 4 },
   tile: { flex: 1, borderRadius: radius.sm, paddingVertical: 10, alignItems: 'center', backgroundColor: colors.midnightSoft },
   tileValue: { fontSize: 24, fontWeight: '800' },
-  tileLabel: { fontSize: 12, fontWeight: '600', color: '#C9D2E0' },
+  tileLabel: { fontSize: 12, fontWeight: '600', color: colors.onDarkSoft },
   historyLink: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44 },
   historyText: { fontSize: 14, fontWeight: '700', color: colors.gold },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 10 },

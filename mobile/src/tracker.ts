@@ -78,7 +78,7 @@ export async function startTracking(tripNo: string) {
     foregroundService: {
       notificationTitle: 'Trip sedang berjalan',
       notificationBody: 'Lokasi dicatat selama pengiriman',
-      notificationColor: '#0D1C33',
+      notificationColor: '#16302A',
     },
   })
   return true

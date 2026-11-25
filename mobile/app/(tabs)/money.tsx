@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   heroStats: { flexDirection: 'row', gap: 8, marginTop: 6 },
   heroStat: { flex: 1, borderRadius: radius.sm, padding: 10, backgroundColor: colors.midnightSoft },
   heroValue: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
-  heroStatLabel: { fontSize: 12, color: '#C9D2E0', marginTop: 2 },
+  heroStatLabel: { fontSize: 12, color: colors.onDarkSoft, marginTop: 2 },
   heroTotal: { fontSize: 14, fontWeight: '700', color: colors.gold, marginTop: 4 },
   actions: { flexDirection: 'row', gap: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },

@@ -77,7 +77,7 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warning' 
     ? { bg: colors.warningSoft, fg: colors.warning, icon: 'alert-circle-outline' as const }
     : tone === 'success'
       ? { bg: colors.successSoft, fg: colors.success, icon: 'checkmark-circle-outline' as const }
-      : { bg: '#E8EEF7', fg: colors.navy, icon: 'information-circle-outline' as const }
+      : { bg: colors.infoSoft, fg: colors.info, icon: 'information-circle-outline' as const }
   return (
     <View style={[styles.notice, { backgroundColor: palette.bg }]}>
       <Ionicons name={palette.icon} size={18} color={palette.fg} />
@@ -137,22 +137,29 @@ export function Field({ label, value, onChangeText, placeholder, keyboardType, s
   multiline?: boolean
   editable?: boolean
 }) {
+  // Garis tepi pinus saat aktif: driver langsung tahu kolom mana yang sedang diisi.
+  const [focused, setFocused] = useState(false)
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        autoCorrect={autoCapitalize === 'none' ? false : undefined}
+        cursorColor={colors.navy}
+        selectionColor={colors.goldLight}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#6A6E76"
+        placeholderTextColor={colors.muted}
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         maxLength={maxLength}
         autoCapitalize={autoCapitalize}
         multiline={multiline}
         editable={editable}
-        style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputReadonly]}
+        style={[styles.input, focused && editable && styles.inputFocused, multiline && styles.inputMultiline, !editable && styles.inputReadonly]}
       />
     </View>
   )
@@ -174,7 +181,7 @@ export function ChoiceRow({ label, options, value, onChange }: {
             accessibilityRole="radio"
             accessibilityState={{ selected: option === value }}
             onPress={() => onChange(option)}
-            style={[styles.choice, option === value && styles.choiceActive]}
+            style={({ pressed }) => [styles.choice, option === value && styles.choiceActive, pressed && styles.choicePressed]}
           >
             <Text style={[styles.choiceText, option === value && styles.choiceTextActive]}>{option}</Text>
           </Pressable>
@@ -298,7 +305,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ivory },
   content: { padding: 16, gap: 12, paddingBottom: 24 },
   footer: { paddingVertical: 12, paddingHorizontal: 16, gap: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  progressTrack: { height: 8, borderRadius: 999, backgroundColor: '#ECE7DB', overflow: 'hidden' },
+  progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.track, overflow: 'hidden' },
   progressTrackLight: { backgroundColor: 'rgba(255,255,255,0.18)' },
   progressFill: { height: '100%', borderRadius: 999, backgroundColor: colors.gold },
   sectionTitle: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 },
@@ -315,21 +322,23 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 6 },
   cardPressed: { borderColor: colors.gold, transform: [{ scale: 0.99 }] },
   button: { minHeight: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  buttonPressed: { opacity: 0.85 },
+  buttonPressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
   disabled: { opacity: 0.5 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   buttonTextOutline: { color: colors.navy },
   field: { gap: 6 },
   label: { fontSize: 14, fontWeight: '600', color: colors.text },
   input: { minHeight: 52, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: 14, fontSize: 16, color: colors.text },
+  inputFocused: { borderColor: colors.navy },
   inputMultiline: { minHeight: 90, paddingTop: 12, textAlignVertical: 'top' },
-  inputReadonly: { backgroundColor: '#EFEBE2' },
+  inputReadonly: { backgroundColor: colors.readonly },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choice: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   choiceActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+  choicePressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   choiceText: { fontSize: 14, color: colors.text },
   choiceTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  photo: { width: '100%', height: 200, borderRadius: radius.sm, backgroundColor: '#EFEBE2' },
+  photo: { width: '100%', height: 200, borderRadius: radius.sm, backgroundColor: colors.readonly },
   pill: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   pillText: { fontSize: 12, fontWeight: '700' },
   banner: { backgroundColor: colors.navy, paddingVertical: 8, paddingHorizontal: 16 },

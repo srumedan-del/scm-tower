@@ -9,7 +9,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#0D1C33',
+  // cover: halaman boleh sampai ke tepi layar; header dan menu bawah menambah jarak aman sendiri.
+  viewportFit: 'cover',
+  // Keyboard HP mengecilkan layout, jadi tombol di bawah tidak tertutup.
+  interactiveWidget: 'resizes-content',
+  // Sama dengan warna header agar status bar menyatu.
+  themeColor: '#16302A',
 }
 
 export default function DriverMobileLayout({
@@ -18,9 +23,9 @@ export default function DriverMobileLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-[#E9E5DC] text-[#111827] flex flex-col">
+    <div className="driver-shell min-h-dvh bg-[#E9E5DC] text-[#17201C] flex flex-col">
       {/* Mobile container centered on larger screens */}
-      <main className="w-full max-w-md mx-auto flex-1 flex flex-col bg-[#F7F5F0] shadow-xl relative min-h-screen">
+      <main className="w-full max-w-md mx-auto flex-1 flex flex-col bg-[#F6F4EF] shadow-xl relative min-h-dvh">
         {children}
       </main>
     </div>

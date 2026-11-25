@@ -59,8 +59,8 @@ export function TrackingSetupCard({ always = false }: { always?: boolean }) {
 
 const styles = StyleSheet.create({
   card: { borderRadius: radius.lg, borderWidth: 1, padding: 14, gap: 10 },
-  warn: { backgroundColor: colors.warningSoft, borderColor: '#E9CF9F' },
-  ok: { backgroundColor: colors.successSoft, borderColor: '#BFE3CF' },
+  warn: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
+  ok: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { flex: 1, fontSize: 15, fontWeight: '700' },
   issue: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: radius.sm, padding: 10 },

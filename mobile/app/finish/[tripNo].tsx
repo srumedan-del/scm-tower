@@ -84,8 +84,8 @@ export default function FinishScreen() {
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>{tripNo}</Text>
         <View style={styles.stats}>
-          <View style={styles.stat}><Text style={[styles.statValue, { color: '#9FE0BF' }]}>{delivered}</Text><Text style={styles.statLabel}>Terkirim</Text></View>
-          <View style={styles.stat}><Text style={[styles.statValue, { color: '#F4B2AC' }]}>{failed}</Text><Text style={styles.statLabel}>Gagal</Text></View>
+          <View style={styles.stat}><Text style={[styles.statValue, { color: colors.onDarkSuccess }]}>{delivered}</Text><Text style={styles.statLabel}>Terkirim</Text></View>
+          <View style={styles.stat}><Text style={[styles.statValue, { color: colors.onDarkDanger }]}>{failed}</Text><Text style={styles.statLabel}>Gagal</Text></View>
           <View style={styles.stat}><Text style={[styles.statValue, { color: '#FFFFFF' }]}>{dropPointCount}</Text><Text style={styles.statLabel}>Drop point</Text></View>
           <View style={styles.stat}><Text style={[styles.statValue, { color: colors.goldLight }]}>{distance != null ? distance.toLocaleString('id-ID') : '-'}</Text><Text style={styles.statLabel}>KM tempuh</Text></View>
         </View>
@@ -118,5 +118,5 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: 8 },
   stat: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.sm, backgroundColor: colors.midnightSoft },
   statValue: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 12, fontWeight: '600', color: '#C9D2E0' },
+  statLabel: { fontSize: 12, fontWeight: '600', color: colors.onDarkSoft },
 })

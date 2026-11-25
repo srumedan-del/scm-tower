@@ -7,28 +7,28 @@ import React, { useState, type ReactNode } from 'react'
  * Android (mobile/src/theme.ts dan mobile/src/ui.tsx) agar keduanya terasa satu produk.
  */
 export const driverColors = {
-  midnight: '#0D1C33',
-  navy: '#1F3F6E',
-  gold: '#C5A25D',
-  goldLight: '#E8D5A3',
-  goldDark: '#856828',
-  ivory: '#F7F5F0',
-  border: '#E0DACD',
-  text: '#111827',
-  textSoft: '#4C5361',
-  success: '#1F8A5B',
-  successSoft: '#E5F4EC',
-  warning: '#9A5F0F',
-  warningSoft: '#FAF0E0',
-  danger: '#C8372D',
-  dangerSoft: '#FBECEA',
+  midnight: '#16302A',
+  navy: '#1F3B34',
+  gold: '#A9813F',
+  goldLight: '#E6D6B5',
+  goldDark: '#7A5C2A',
+  ivory: '#F6F4EF',
+  border: '#E4E0D6',
+  text: '#17201C',
+  textSoft: '#56605B',
+  success: '#2F6B44',
+  successSoft: '#E8F0EA',
+  warning: '#9A6C20',
+  warningSoft: '#F6EEDD',
+  danger: '#9D3D31',
+  dangerSoft: '#F6E7E4',
 }
 
 export function Card({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
-  const base = 'w-full text-left rounded-[14px] border border-[#E0DACD] bg-white p-4 flex flex-col gap-1.5'
+  const base = 'w-full text-left rounded-[14px] border border-[#E4E0D6] bg-white p-4 flex flex-col gap-1.5'
   if (!onClick) return <div className={base}>{children}</div>
   return (
-    <button type="button" onClick={onClick} className={`${base} transition active:scale-[0.99] hover:border-[#C5A25D] focus-visible:outline-2 focus-visible:outline-[#C5A25D]`}>
+    <button type="button" onClick={onClick} className={`${base} transition active:scale-[0.99] hover:border-[#A9813F] focus-visible:outline-2 focus-visible:outline-[#A9813F]`}>
       {children}
     </button>
   )
@@ -36,9 +36,9 @@ export function Card({ children, onClick }: { children: ReactNode; onClick?: () 
 
 type Tone = 'primary' | 'outline' | 'danger'
 const toneClass: Record<Tone, string> = {
-  primary: 'bg-[#1F3F6E] text-white',
-  outline: 'bg-white text-[#1F3F6E] border-[1.5px] border-[#1F3F6E]',
-  danger: 'bg-[#C8372D] text-white',
+  primary: 'bg-[#1F3B34] text-white',
+  outline: 'bg-white text-[#1F3B34] border-[1.5px] border-[#1F3B34]',
+  danger: 'bg-[#9D3D31] text-white',
 }
 
 export function Button({ label, onClick, tone = 'primary', disabled, busy, type = 'button' }: {
@@ -73,13 +73,13 @@ export function Field({ label, value, onChange, type = 'text', inputMode, maxLen
   autoCapitalize?: string
 }) {
   const id = React.useId()
-  const className = 'w-full min-h-[52px] rounded-[10px] border border-[#E0DACD] bg-white px-3.5 text-base text-[#111827] outline-none focus:border-[#1F3F6E] focus:ring-2 focus:ring-[#1F3F6E]/15 disabled:bg-[#EFEBE2]'
+  const className = 'w-full min-h-[52px] rounded-[10px] border border-[#E4E0D6] bg-white px-3.5 text-base text-[#17201C] outline-none focus:border-[#1F3B34] focus:ring-2 focus:ring-[#1F3B34]/15 disabled:bg-[#EFEBE2]'
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-semibold text-[#111827]">{label}</label>
+      <label htmlFor={id} className="text-sm font-semibold text-[#17201C]">{label}</label>
       {multiline
         ? <textarea id={id} value={value} onChange={e => onChange(e.target.value)} disabled={disabled} rows={3} className={`${className} py-3`} />
-        : <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} inputMode={inputMode} maxLength={maxLength} disabled={disabled} autoCapitalize={autoCapitalize} autoComplete="off" className={className} />}
+        : <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} inputMode={inputMode} maxLength={maxLength} disabled={disabled} autoCapitalize={autoCapitalize} autoCorrect={autoCapitalize === 'none' ? 'off' : undefined} spellCheck={autoCapitalize === 'none' ? false : undefined} autoComplete="off" className={className} />}
     </div>
   )
 }
@@ -87,7 +87,7 @@ export function Field({ label, value, onChange, type = 'text', inputMode, maxLen
 export function ChoiceRow({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (value: string) => void }) {
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="mb-1.5 text-sm font-semibold text-[#111827]">{label}</legend>
+      <legend className="mb-1.5 text-sm font-semibold text-[#17201C]">{label}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map(option => (
           <button
@@ -95,7 +95,7 @@ export function ChoiceRow({ label, options, value, onChange }: { label: string; 
             type="button"
             aria-pressed={option === value}
             onClick={() => onChange(option)}
-            className={`min-h-[44px] rounded-[10px] border px-3.5 text-sm transition ${option === value ? 'border-[#1F3F6E] bg-[#1F3F6E] font-semibold text-white' : 'border-[#E0DACD] bg-white text-[#111827]'}`}
+            className={`min-h-[44px] rounded-[10px] border px-3.5 text-sm transition ${option === value ? 'border-[#1F3B34] bg-[#1F3B34] font-semibold text-white' : 'border-[#E4E0D6] bg-white text-[#17201C]'}`}
           >
             {option}
           </button>
@@ -139,33 +139,33 @@ export function PhotoField({ label, value, onChange }: { label: string; value: s
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold text-[#111827]">{label}</span>
+      <span className="text-sm font-semibold text-[#17201C]">{label}</span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {value ? <img src={value} alt={label} className="h-[200px] w-full rounded-[10px] bg-[#EFEBE2] object-cover" /> : null}
       <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pick} />
       <Button label={value ? 'Ambil ulang foto' : 'Ambil foto'} tone="outline" busy={busy} onClick={() => inputRef.current?.click()} />
-      {error ? <p className="text-sm text-[#C8372D]">{error}</p> : null}
+      {error ? <p className="text-sm text-[#9D3D31]">{error}</p> : null}
     </div>
   )
 }
 
 const pillStyle: Record<string, { className: string; label: string }> = {
-  Delivered: { className: 'bg-[#E5F4EC] text-[#1F8A5B]', label: 'Terkirim' },
-  'Failed Delivery': { className: 'bg-[#FBECEA] text-[#C8372D]', label: 'Gagal kirim' },
-  Closed: { className: 'bg-[#E0DACD] text-[#4C5361]', label: 'Ditutup' },
+  Delivered: { className: 'bg-[#E8F0EA] text-[#2F6B44]', label: 'Terkirim' },
+  'Failed Delivery': { className: 'bg-[#F6E7E4] text-[#9D3D31]', label: 'Gagal kirim' },
+  Closed: { className: 'bg-[#E4E0D6] text-[#56605B]', label: 'Ditutup' },
 }
 
 export function StatusPill({ status }: { status: string }) {
-  const style = pillStyle[status] ?? { className: 'bg-[#FAF0E0] text-[#9A5F0F]', label: 'Belum dikirim' }
+  const style = pillStyle[status] ?? { className: 'bg-[#F6EEDD] text-[#9A6C20]', label: 'Belum dikirim' }
   return <span className={`self-start rounded-full px-2.5 py-1 text-xs font-bold ${style.className}`}>{style.label}</span>
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
-  return <p role="alert" className="text-sm text-[#C8372D]">{children}</p>
+  return <p role="alert" className="text-sm text-[#9D3D31]">{children}</p>
 }
 
 export function Meta({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-[#4C5361]">{children}</p>
+  return <p className="text-sm text-[#56605B]">{children}</p>
 }
 
 export function formatRupiah(value: number) {
@@ -206,10 +206,10 @@ export function ConfirmSheet({ title, message, confirmLabel, cancelLabel = 'Bata
   onCancel: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0D1C33]/50" onClick={onCancel}>
-      <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" className="w-full max-w-md rounded-t-3xl bg-[#F7F5F0] p-5 pb-8 flex flex-col gap-3" onClick={event => event.stopPropagation()}>
-        <h2 id="confirm-title" className="text-lg font-bold text-[#0D1C33]">{title}</h2>
-        <p className="text-sm text-[#4C5361]">{message}</p>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#16302A]/50" onClick={onCancel}>
+      <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" className="w-full max-w-md rounded-t-3xl bg-[#F6F4EF] p-5 pb-8 flex flex-col gap-3" onClick={event => event.stopPropagation()}>
+        <h2 id="confirm-title" className="text-lg font-bold text-[#16302A]">{title}</h2>
+        <p className="text-sm text-[#56605B]">{message}</p>
         <Button label={confirmLabel} tone={tone} onClick={onConfirm} />
         <Button label={cancelLabel} tone="outline" onClick={onCancel} />
       </div>

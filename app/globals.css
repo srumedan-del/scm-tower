@@ -1945,3 +1945,18 @@ a.bg-indigo-600:hover {
     white-space: nowrap;
   }
 }
+
+/* ===================================================================
+   Portal driver di HP: hilangkan tanda "ini situs web"
+   - kilatan abu-abu saat diketuk diganti umpan balik :active milik tombol
+   - ketuk langsung (tanpa jeda tunggu ketuk-dua-kali)
+   - label tombol tidak ikut terseleksi saat ditekan lama
+   =================================================================== */
+.driver-shell { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+.driver-shell button,
+.driver-shell a,
+.driver-shell [role='button'] { touch-action: manipulation; }
+.driver-shell button,
+.driver-shell [role='button'] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.driver-shell button:not(:disabled) { transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1), opacity 120ms, background-color 120ms; }
+.driver-shell button:not(:disabled):active { transform: scale(0.98); }
