@@ -94,20 +94,24 @@ export default function ShipmentPage() {
     setCheckedUt(new Set())
   }
 
+  async function fetchTracking(inc: boolean, m: string) {
+    const data = await getShipmentTrackings({ status: inc ? 'all' : 'In Transit', month: m })
+    // Trip terbaru di atas; di dalam satu Trip, PSS berurutan naik. Tanpa Trip di bawah.
+    return [...data].sort((a, b) => {
+      const tripA = a.trip_id ?? ''
+      const tripB = b.trip_id ?? ''
+      if (!tripA !== !tripB) return tripA ? -1 : 1
+      if (tripA !== tripB) return tripB.localeCompare(tripA)
+      return String(a.pss_no ?? '').localeCompare(String(b.pss_no ?? ''))
+    })
+  }
+
   function loadTracking(includeAllStatuses?: unknown, targetMonth?: unknown) {
     const inc = typeof includeAllStatuses === 'boolean' ? includeAllStatuses : showAllStatuses
     const m = typeof targetMonth === 'string' ? targetMonth : selectedMonth
     startLoad(async () => {
       try {
-        const data = await getShipmentTrackings({ status: inc ? 'all' : 'In Transit', month: m })
-        // Trip terbaru di atas; di dalam satu Trip, PSS berurutan naik. Tanpa Trip di bawah.
-        setRows([...data].sort((a, b) => {
-          const tripA = a.trip_id ?? ''
-          const tripB = b.trip_id ?? ''
-          if (!tripA !== !tripB) return tripA ? -1 : 1
-          if (tripA !== tripB) return tripB.localeCompare(tripA)
-          return String(a.pss_no ?? '').localeCompare(String(b.pss_no ?? ''))
-        }))
+        setRows(await fetchTracking(inc, m))
         setTmsAvail(true)
       } catch (e: any) {
         if (e.message?.includes('schema cache')) setTmsAvail(false)
@@ -153,6 +157,27 @@ export default function ShipmentPage() {
     if (mainTab === 'tracking') loadTracking(showAllStatuses, selectedMonth)
     if (mainTab === 'retail-in-transit') loadRetailInTransit(selectedMonth)
   }, [mainTab, selectedMonth])
+
+  // POD dari aplikasi driver masuk tanpa membuka halaman ini: segarkan daftar diam-diam
+  // tiap 60 detik dan saat tab browser dibuka lagi, agar PSS yang sudah diterima langsung hilang.
+  useEffect(() => {
+    if (mainTab !== 'tracking' || !selectedMonth) return
+    let cancelled = false
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const next = await fetchTracking(showAllStatuses, selectedMonth)
+        if (!cancelled) setRows(next)
+      } catch {}
+    }
+    const timer = window.setInterval(refresh, 60_000)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [mainTab, selectedMonth, showAllStatuses])
 
   // Klik baris PSS untracked → buka form shipment pre-filled (single)
   function openFromUntracked(pss: UntrackedPssRow) {
