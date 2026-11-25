@@ -328,7 +328,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <footer className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
         <span>Definisi: arahkan kursor ke ikon <Info className="inline h-3 w-3" /> di setiap kartu.</span>
-        <span>PSS ongkos kirim (BIA-…) tidak dihitung.</span>
+        <span>PSS ongkos kirim (BIA-…) dan PSS batal tidak dihitung.</span>
         <span>Data sejak {monthLabel(DATA_START.slice(0, 7))}.</span>
       </footer>
     </div>
