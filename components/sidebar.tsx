@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
-  ArrowLeftRight, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
+  ArrowLeftRight, Boxes, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
   LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -26,11 +26,19 @@ const stockOpname: NavParent = {
   ],
 }
 
+const inventory: NavParent = {
+  label: 'Inventory', href: '/inventory', icon: Warehouse, collapsedHref: '/inventory/stok',
+  children: [
+    ['Stock Cabang', '/inventory/stok', Boxes],
+    ['Inventory Snapshot', '/inventory/snapshot', Warehouse],
+  ],
+}
+
 const dashboard: NavItem = ['Dashboard', '/dashboard', LayoutDashboard]
 const groups: readonly { label: string; items: readonly NavEntry[] }[] = [
   { label: 'Workspace', items: [['Task Board', '/', CheckSquare], ['Peta & Stok HD', '/peta-stok-hd', MapPin], ['Live Tracking', '/live-tracking', Radio]] },
   { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', PackageOpen], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign]] },
-  { label: 'Monitoring', items: [['Inventory', '/inventory', Warehouse], stockOpname] },
+  { label: 'Monitoring', items: [inventory, stockOpname] },
   { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database]] },
 ]
 
