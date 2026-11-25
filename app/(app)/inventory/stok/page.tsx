@@ -8,17 +8,21 @@ import { getStockByDate, getStockDates, type StockRow } from './actions'
 
 type View = 'lot' | 'item' | 'bin'
 
-// Batch yang kedaluwarsa dalam 180 hari ditandai agar bisa didahulukan (FEFO).
-const NEAR_EXPIRY_DAYS = 180
+// Bin utama gudang Medan; bin lain dipilih lewat dropdown.
+const DEFAULT_BIN = 'MDN-PAR-CON'
+// Pilihan batas expired (bulan) untuk tombol "Expired < N bulan".
+const EXPIRY_MONTH_OPTIONS = [1, 3, 6, 12] as const
+
+/** Expired sebelum tanggal snapshot + N bulan. */
+function addMonthsIso(date: string, months: number) {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCMonth(d.getUTCMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
 
 const fmtQty = (v: number) => v.toLocaleString('id-ID', { maximumFractionDigits: 2 })
 const fmtDate = (d: string | null, long = false) =>
   d ? new Date(`${d}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: long ? 'long' : 'short', year: 'numeric', ...(long ? { weekday: 'long' } : {}) }) : '-'
-
-function daysUntil(date: string | null, from: string) {
-  if (!date) return null
-  return Math.round((new Date(`${date}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86_400_000)
-}
 
 function Delta({ qty, prev }: { qty: number; prev: number | null }) {
   if (prev == null) return <span className="text-slate-400">-</span>
@@ -27,28 +31,13 @@ function Delta({ qty, prev }: { qty: number; prev: number | null }) {
   return <span className={diff > 0 ? 'text-green-700' : 'text-red-700'}>{diff > 0 ? '+' : '−'}{fmtQty(Math.abs(diff))}</span>
 }
 
-function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-slate-900 tabular-nums">{value}</div>
-      {hint && <div className="mt-0.5 text-xs text-slate-500">{hint}</div>}
-    </div>
-  )
-}
-
-function downloadCsv(filename: string, header: string[], lines: (string | number | null)[][]) {
-  const esc = (v: string | number | null) => {
-    const s = v == null ? '' : String(v)
-    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }
-  const csv = [header, ...lines].map(row => row.map(esc).join(',')).join('\n')
-  const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+async function downloadExcel(filename: string, sheetName: string, header: string[], lines: (string | number | null)[][]) {
+  const XLSX = await import('xlsx')
+  const sheet = XLSX.utils.aoa_to_sheet([header, ...lines])
+  sheet['!cols'] = header.map((h, i) => ({ wch: Math.min(60, Math.max(h.length, ...lines.map(l => String(l[i] ?? '').length)) + 2) }))
+  const book = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(book, sheet, sheetName.slice(0, 31))
+  XLSX.writeFile(book, filename)
 }
 
 const th = 'px-4 py-3 text-left text-[13px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap'
@@ -65,10 +54,12 @@ export default function StokCabangMedanPage() {
   const loading = pending || !datesLoaded
 
   const [view, setView] = useState<View>('lot')
-  const [bin, setBin] = useState('all')
+  const [bin, setBin] = useState(DEFAULT_BIN)
   const [kategori, setKategori] = useState('all')
   const [query, setQuery] = useState('')
-  const [nearOnly, setNearOnly] = useState(false)
+  const [expiryOn, setExpiryOn] = useState(false)
+  const [expiryMonths, setExpiryMonths] = useState<number>(6)
+  const expiryLimit = date ? addMonthsIso(date, expiryMonths) : ''
 
   function load(target: string) {
     setDate(target)
@@ -102,14 +93,11 @@ export default function StokCabangMedanPage() {
     return rows.filter(r => {
       if (bin !== 'all' && (r.bincode ?? '-') !== bin) return false
       if (kategori !== 'all' && (r.kategori ?? '-') !== kategori) return false
-      if (nearOnly) {
-        const left = daysUntil(r.expiration_date, date)
-        if (left == null || left > NEAR_EXPIRY_DAYS) return false
-      }
+      if (expiryOn && (!r.expiration_date || r.expiration_date >= expiryLimit)) return false
       if (!q) return true
       return [r.no_item, r.nama_item, r.lot_no, r.serial_no].some(v => v?.toLowerCase().includes(q))
     })
-  }, [rows, bin, kategori, query, nearOnly, date])
+  }, [rows, bin, kategori, query, expiryOn, expiryLimit])
 
   const lotRows = useMemo(() => [...filtered].sort((a, b) =>
     (a.bincode ?? '').localeCompare(b.bincode ?? '') ||
@@ -145,16 +133,14 @@ export default function StokCabangMedanPage() {
     return [...map.values()].sort((a, b) => b.qty - a.qty)
   }, [filtered])
 
-  const totalQty = filtered.reduce((s, r) => s + r.qty, 0)
-  const nearCount = filtered.filter(r => { const d = daysUntil(r.expiration_date, date); return d != null && d <= NEAR_EXPIRY_DAYS }).length
-
-  function exportCsv() {
-    const name = `stok-medan-${date}${bin !== 'all' ? `-${bin}` : ''}-${view}.csv`
-    if (view === 'lot') downloadCsv(name, ['Tanggal', 'Bin', 'No Item', 'Nama Item', 'Kategori', 'LOT', 'Serial', 'Expired', 'Qty', 'Qty Sebelumnya'],
+  function exportExcel() {
+    const name = `stok-medan-${date}${bin !== 'all' ? `-${bin}` : ''}-${view}.xlsx`
+    const sheet = view === 'lot' ? 'Per LOT' : view === 'item' ? 'Per Material' : 'Per Store Bin'
+    if (view === 'lot') downloadExcel(name, sheet,['Tanggal', 'Bin', 'No Item', 'Nama Item', 'Kategori', 'LOT', 'Serial', 'Expired', 'Qty', 'Qty Sebelumnya'],
       lotRows.map(r => [date, r.bincode, r.no_item, r.nama_item, r.kategori, r.lot_no, r.serial_no, r.expiration_date, r.qty, r.prev_qty]))
-    else if (view === 'item') downloadCsv(name, ['Tanggal', 'No Item', 'Nama Item', 'Kategori', 'Bin', 'Jumlah LOT', 'Expired Terdekat', 'Qty', 'Qty Sebelumnya'],
+    else if (view === 'item') downloadExcel(name, sheet,['Tanggal', 'No Item', 'Nama Item', 'Kategori', 'Bin', 'Jumlah LOT', 'Expired Terdekat', 'Qty', 'Qty Sebelumnya'],
       itemRows.map(r => [date, r.no_item, r.nama_item, r.kategori, [...r.bins].join(' / '), r.lots, r.nearestExpiry, r.qty, r.prev]))
-    else downloadCsv(name, ['Tanggal', 'Bin', 'Jumlah Item', 'Jumlah LOT', 'Qty', 'Qty Sebelumnya'],
+    else downloadExcel(name, sheet,['Tanggal', 'Bin', 'Jumlah Item', 'Jumlah LOT', 'Qty', 'Qty Sebelumnya'],
       binRows.map(r => [date, r.bin, r.items.size, r.lots, r.qty, r.prev]))
   }
 
@@ -181,38 +167,28 @@ export default function StokCabangMedanPage() {
           </select>
           <button
             type="button"
-            onClick={exportCsv}
+            onClick={exportExcel}
             disabled={!filtered.length}
             className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            <Download className="h-4 w-4" aria-hidden="true" /> Export CSV
+            <Download className="h-4 w-4" aria-hidden="true" /> Export Excel
           </button>
         </div>
       </header>
 
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Total qty" value={fmtQty(totalQty)} hint={bin === 'all' ? 'semua bin' : bin} />
-        <Kpi label="Item" value={fmtQty(itemRows.length)} />
-        <Kpi label="LOT" value={fmtQty(filtered.length)} hint={`${binRows.length} bin`} />
-        <Kpi label="Expired ≤ 6 bulan" value={fmtQty(nearCount)} hint="baris LOT" />
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter store bin">
-          {['all', ...bins].map(b => (
-            <button
-              key={b}
-              type="button"
-              aria-pressed={bin === b}
-              onClick={() => setBin(b)}
-              className={`rounded-full border px-3 py-1 text-sm font-semibold transition-colors ${bin === b ? 'border-indigo-900 bg-indigo-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}
-            >
-              {b === 'all' ? 'Semua bin' : b}
-            </button>
-          ))}
-        </div>
+        <label className="sr-only" htmlFor="stok-bin">Store bin</label>
+        <select
+          id="stok-bin"
+          value={bin}
+          onChange={e => setBin(e.target.value)}
+          className="min-h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
+        >
+          {[...new Set([DEFAULT_BIN, ...bins])].map(b => <option key={b} value={b}>Bin {b}</option>)}
+          <option value="all">Semua bin</option>
+        </select>
         <select
           value={kategori}
           onChange={e => setKategori(e.target.value)}
@@ -222,10 +198,24 @@ export default function StokCabangMedanPage() {
           <option value="all">Semua kategori</option>
           {categories.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={nearOnly} onChange={e => setNearOnly(e.target.checked)} className="rounded border-slate-300" />
-          Hanya expired ≤ 6 bulan
-        </label>
+        <div className={`inline-flex min-h-9 items-center overflow-hidden rounded-xl border text-sm font-semibold ${expiryOn ? 'border-amber-600 bg-amber-50 text-amber-900' : 'border-slate-200 bg-white text-slate-700'}`}>
+          <button
+            type="button"
+            aria-pressed={expiryOn}
+            onClick={() => setExpiryOn(on => !on)}
+            className="min-h-9 px-3 hover:bg-black/5"
+          >
+            Expired &lt;
+          </button>
+          <select
+            value={expiryMonths}
+            onChange={e => { setExpiryMonths(Number(e.target.value)); setExpiryOn(true) }}
+            aria-label="Batas bulan expired"
+            className="min-h-9 border-l border-inherit bg-transparent px-2 font-semibold"
+          >
+            {EXPIRY_MONTH_OPTIONS.map(m => <option key={m} value={m}>{m} bulan</option>)}
+          </select>
+        </div>
         <div className="relative ml-auto w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
           <input
@@ -250,7 +240,7 @@ export default function StokCabangMedanPage() {
         ]}
       />
 
-      <div className="data-list-scroll max-h-[calc(100vh-340px)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="data-list-scroll max-h-[calc(100vh-250px)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[900px] border-collapse text-[14px]">
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             {view === 'lot' && (
@@ -280,8 +270,8 @@ export default function StokCabangMedanPage() {
               <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">{dates.length ? 'Tidak ada stok yang cocok dengan filter.' : 'Belum ada data stok.'}</td></tr>
             )}
             {!loading && view === 'lot' && lotRows.map(r => {
-              const left = daysUntil(r.expiration_date, date)
-              const near = left != null && left <= NEAR_EXPIRY_DAYS
+              // Tandai batch yang expired sebelum batas tombol "Expired <" (FEFO).
+              const near = !!r.expiration_date && !!expiryLimit && r.expiration_date < expiryLimit
               return (
                 <tr key={`${r.bincode}|${r.no_item}|${r.lot_no}|${r.serial_no}`} className="hover:bg-slate-50">
                   <td className={`${td} whitespace-nowrap`}>{r.bincode ?? '-'}</td>
@@ -322,10 +312,6 @@ export default function StokCabangMedanPage() {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-slate-500">
-        Sumber: snapshot stok SIRUP jam 07.00 hari kerja. Detail per hari tersimpan 30 hari di SCM Tower; tanggal yang lebih lama ada di arsip CSV D:/sirup.
-        Kolom perubahan membandingkan qty item, bin dan LOT yang sama dengan snapshot sebelumnya.
-      </p>
     </div>
   )
 }
