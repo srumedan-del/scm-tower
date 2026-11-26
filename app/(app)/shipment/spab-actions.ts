@@ -51,7 +51,7 @@ export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDra
 
   const { data: rows, error } = await supabaseAdmin
     .from('shipment_tracking')
-    .select('id, pss_no, trip_id, customer_name, destination_city, destination_address, transporter_id, vehicle_id, driver_id, cost_model, fleet_type, notes, status')
+    .select('id, pss_no, trip_id, customer_name, destination_city, destination_address, transporter_id, vehicle_id, driver_id, cost_model, notes, status')
     .in('pss_no', list)
     .neq('status', 'Failed Delivery')
     .order('id', { ascending: false })
@@ -78,7 +78,7 @@ export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDra
   const address = new Map((customers.data ?? []).map((row: any) => [String(row.customer_name).toUpperCase(), row.address as string | null]))
 
   const drafts: SpabDraft[] = shipments.map(row => {
-    const internal = row.cost_model === 'Internal' || row.fleet_type === 'Internal'
+    const internal = row.cost_model === 'Internal'
     const vendor = (row.transporter_id != null ? transporterName.get(Number(row.transporter_id)) : null) ?? noteField(row.notes, 'Vendor')
     return {
       tracking_id: row.id,
@@ -125,7 +125,7 @@ export async function createSpabDocuments(inputs: CreateSpabInput[]) {
 
   const { data: shipments, error } = await supabaseAdmin
     .from('shipment_tracking')
-    .select('id, pss_no, trip_id, customer_name, transporter_id, vehicle_id, driver_id, cost_model, fleet_type, notes')
+    .select('id, pss_no, trip_id, customer_name, transporter_id, vehicle_id, driver_id, cost_model, notes')
     .in('id', inputs.map(input => input.tracking_id))
   if (error) throw error
   const drafts = (await getSpabDrafts((shipments ?? []).map(row => row.pss_no).filter(Boolean) as string[])).drafts
