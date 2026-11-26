@@ -467,6 +467,8 @@ export type PodReturnVendorSummary = {
   /** Belum kembali dan sudah melewati target. */
   overdue: number
   pending: number
+  /** Masih In Transit (belum Delivered), POD belum bisa kembali. */
+  inTransit: number
   items: PodReturnItem[]
 }
 
@@ -484,7 +486,7 @@ export type PodReturnItem = {
   returnedDate: string | null
   /** Hari kerja sampai POD kembali, atau sampai hari ini bila belum kembali. */
   days: number
-  status: 'on_time' | 'late' | 'pending' | 'overdue'
+  status: 'on_time' | 'late' | 'pending' | 'overdue' | 'in_transit'
 }
 
 /**
@@ -494,7 +496,9 @@ export type PodReturnItem = {
  */
 export async function getPodReturnSummary(month: string): Promise<PodReturnVendorSummary[]> {
   await requireAuthenticatedUser()
-  const rows = (await getShipmentCosts({ status: 'Delivered', month }))
+  // Delivered/Closed: POD ditunggu kembali. In Transit: barang masih di jalan, ikut ditampilkan agar trip terpantau.
+  const rows = (await getShipmentCosts({ status: 'all', month }))
+    .filter(row => ['Delivered', 'Closed', 'In Transit'].includes(row.status))
     .filter(row => (row.cost_model === 'Trucking' || row.cost_model === 'Retail') && row.dispatch_time)
   if (!rows.length) return []
 
@@ -522,10 +526,10 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
   }
 
   const today = jakartaToday()
-  const groups = new Map<string, { shipments: number; returned: number; onTime: number; actual: number; ideal: number; overdue: number; pending: number; items: PodReturnItem[] }>()
+  const groups = new Map<string, { shipments: number; returned: number; onTime: number; actual: number; ideal: number; overdue: number; pending: number; inTransit: number; items: PodReturnItem[] }>()
   for (const row of rows) {
     const vendor = displayVendorName(row.transporter_name) || row.transporter_name || 'Tanpa vendor'
-    const group = groups.get(vendor) ?? { shipments: 0, returned: 0, onTime: 0, actual: 0, ideal: 0, overdue: 0, pending: 0, items: [] }
+    const group = groups.get(vendor) ?? { shipments: 0, returned: 0, onTime: 0, actual: 0, ideal: 0, overdue: 0, pending: 0, inTransit: 0, items: [] }
     const handover = jakartaToday(new Date(row.dispatch_time!))
     const ideal = 2 * (await leadTime(row)) + 0.5
     const extra = extraById.get(row.id)
@@ -540,6 +544,10 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
       group.actual += days
       group.ideal += ideal
       if (status === 'on_time') group.onTime++
+    } else if (row.status === 'In Transit') {
+      days = workingDaysSince(handover, today)
+      status = 'in_transit'
+      group.inTransit++
     } else {
       days = workingDaysSince(handover, today)
       status = days > ideal ? 'overdue' : 'pending'
@@ -573,6 +581,7 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
       avgIdealDays: g.returned ? g.ideal / g.returned : null,
       overdue: g.overdue,
       pending: g.pending,
+      inTransit: g.inTransit,
       items: g.items.sort((a, b) => (b.trip_id ?? '').localeCompare(a.trip_id ?? '') || (a.pss_no ?? '').localeCompare(b.pss_no ?? '')),
     }))
     .sort((a, b) => b.shipments - a.shipments)

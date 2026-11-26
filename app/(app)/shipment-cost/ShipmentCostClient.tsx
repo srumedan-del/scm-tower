@@ -8,7 +8,7 @@ import type { PodReturnItem, PodReturnVendorSummary, ShipmentCostRow } from './a
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
-import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3 } from 'lucide-react'
+import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight } from 'lucide-react'
 
 function rp(value: number | null | undefined) {
   if (!value) return '-'
@@ -341,7 +341,7 @@ function PodReturnCard({ rows, selected, onSelect }: { rows: PodReturnVendorSumm
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
         <h2 className="text-[14px] font-bold uppercase tracking-wider text-slate-800">POD Kembali per Vendor</h2>
         <p className="text-[11px] text-slate-500 mt-0.5">
-          Hari kerja dari serah barang + dokumen ke vendor sampai dokumen POD diterima di SRU. Target ideal 2 × leadtime + ½ hari
+          Shipment vendor Delivered, Closed, dan masih In Transit. Hari kerja dari serah barang + dokumen ke vendor sampai dokumen POD diterima di SRU. Target ideal 2 × leadtime + ½ hari
           (leadtime rate card vendor, atau SLA DK 1 / LK 5 hari bila kosong). Klik nama vendor untuk melihat trip, invoice, dan POD yang belum kembali.
         </p>
       </div>
@@ -356,6 +356,7 @@ function PodReturnCard({ rows, selected, onSelect }: { rows: PodReturnVendorSumm
               <th className={`${th} text-right`}>Rata-rata Target</th>
               <th className={`${th} text-right`}>Tepat Waktu</th>
               <th className={`${th} text-right`}>Belum Kembali</th>
+              <th className={`${th} text-right`}>In Transit</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -382,11 +383,12 @@ function PodReturnCard({ rows, selected, onSelect }: { rows: PodReturnVendorSumm
                     {row.pending}
                     {row.overdue > 0 && <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{row.overdue} lewat target</span>}
                   </td>
+                  <td className={`px-4 py-3 text-right tabular-nums ${row.inTransit ? 'font-semibold text-sky-700' : 'text-slate-400'}`}>{row.inTransit}</td>
                 </tr>
               )
             })}
             {!rows.length && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-400">Belum ada shipment vendor ekspedisi pada periode ini.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-slate-400">Belum ada shipment vendor ekspedisi pada periode ini.</td></tr>
             )}
           </tbody>
         </table>
@@ -402,22 +404,56 @@ const POD_STATUS: Record<PodReturnItem['status'], { label: string; cls: string }
   late: { label: 'Kembali terlambat', cls: 'bg-amber-50 text-amber-800 border-amber-200' },
   pending: { label: 'Belum kembali', cls: 'bg-slate-50 text-slate-600 border-slate-200' },
   overdue: { label: 'Belum kembali, lewat target', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+  in_transit: { label: 'Masih In Transit', cls: 'bg-sky-50 text-sky-700 border-sky-200' },
 }
+
+/** Urutan perhatian: lewat target dulu, lalu belum kembali, kembali terlambat, tepat waktu. */
+const STATUS_RANK: Record<PodReturnItem['status'], number> = { overdue: 0, pending: 1, in_transit: 2, late: 3, on_time: 4 }
+const worstStatus = (list: PodReturnItem[]) =>
+  list.reduce<PodReturnItem['status']>((worst, item) => (STATUS_RANK[item.status] < STATUS_RANK[worst] ? item.status : worst), 'on_time')
 
 /** Trip dan invoice satu vendor ekspedisi, dengan status dokumen POD tiap PSS. */
 function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendorSummary; onClose: () => void; onOpen: (id: number) => void }) {
-  const [onlyOpen, setOnlyOpen] = useState(summary.pending > 0)
+  const [onlyOpen, setOnlyOpen] = useState(summary.pending + summary.inTransit > 0)
+  // Per Trip: satu baris ringkas per trip, yang paling butuh perhatian di atas; klik untuk membuka PSS-nya.
+  const [perTrip, setPerTrip] = useState(true)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggleTrip = (trip: string) => setExpanded((prev) => {
+    const next = new Set(prev)
+    if (next.has(trip)) next.delete(trip)
+    else next.add(trip)
+    return next
+  })
   const trips = useMemo(() => {
-    const items = onlyOpen ? summary.items.filter((i) => i.status === 'pending' || i.status === 'overdue') : summary.items
+    const items = onlyOpen ? summary.items.filter((i) => i.status === 'pending' || i.status === 'overdue' || i.status === 'in_transit') : summary.items
     const map = new Map<string, PodReturnItem[]>()
     for (const item of items) {
       const key = item.trip_id ?? `Tanpa trip · ${item.pss_no ?? item.id}`
       map.set(key, [...(map.get(key) ?? []), item])
     }
-    return [...map.entries()]
-  }, [summary, onlyOpen])
+    const entries = [...map.entries()]
+    if (perTrip) entries.sort((a, b) => STATUS_RANK[worstStatus(a[1])] - STATUS_RANK[worstStatus(b[1])] || b[0].localeCompare(a[0]))
+    return entries
+  }, [summary, onlyOpen, perTrip])
   const th = 'px-3 py-2.5 text-[12px] font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap'
   const td = 'px-3 py-2 whitespace-nowrap'
+  const renderItem = (item: PodReturnItem) => (
+    <tr key={item.id} className={`hover:bg-slate-50 ${perTrip ? 'bg-slate-50/40' : ''}`}>
+      <td className={`${td} ${perTrip ? 'pl-9' : ''}`}>
+        <button type="button" onClick={() => onOpen(item.id)} className="font-mono font-semibold text-indigo-600 hover:underline">{item.pss_no ?? item.id}</button>
+      </td>
+      <td className="px-3 py-2 text-slate-700">{item.customer_name ?? '-'}{item.destination_city ? <span className="text-slate-400"> · {item.destination_city}</span> : null}</td>
+      <td className={`${td} font-mono text-slate-700`}>{item.invoice_no ?? '-'}</td>
+      <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>
+      <td className={`${td} text-slate-700`}>{fmtDmy(item.handover)}</td>
+      <td className={`${td} text-right tabular-nums text-slate-600`}>{item.idealDays.toLocaleString('id-ID')} hari</td>
+      <td className={`${td} text-slate-700`}>{fmtDmy(item.returnedDate)}</td>
+      <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{item.days}</td>
+      <td className={td}>
+        <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[item.status].cls}`}>{POD_STATUS[item.status].label}</span>
+      </td>
+    </tr>
+  )
   return (
     <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden font-sans">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-50">
@@ -425,10 +461,14 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
           <h2 className="text-[14px] font-bold uppercase tracking-wider text-slate-800">Trip &amp; Invoice: {summary.vendor}</h2>
           <p className="text-[11px] text-slate-500 mt-0.5">
             {summary.shipments} PSS · {summary.returned} POD kembali · {summary.pending} belum kembali
-            {summary.overdue > 0 ? ` (${summary.overdue} lewat target)` : ''}. Klik PSS untuk mengisi Tgl POD Diterima di SRU.
+            {summary.overdue > 0 ? ` (${summary.overdue} lewat target)` : ''}{summary.inTransit > 0 ? ` · ${summary.inTransit} masih In Transit` : ''}. Klik PSS untuk mengisi Tgl POD Diterima di SRU.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <input type="checkbox" checked={perTrip} onChange={(e) => setPerTrip(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+            Tampilkan per Trip
+          </label>
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
             <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
             Hanya POD belum kembali
@@ -446,7 +486,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
         <table className="w-full min-w-[980px] text-[13px] text-left">
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className={th}>PSS</th>
+              <th className={th}>{perTrip ? 'Trip / PSS' : 'PSS'}</th>
               <th className={th}>Pelanggan</th>
               <th className={th}>No. Invoice</th>
               <th className={th}>Tgl Invoice</th>
@@ -461,6 +501,39 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
             {trips.map(([trip, list]) => {
               const back = list.filter((i) => i.returnedDate).length
               const invoices = [...new Set(list.map((i) => i.invoice_no).filter(Boolean))]
+              if (perTrip) {
+                const open = expanded.has(trip)
+                const worst = worstStatus(list)
+                const customers = [...new Set(list.map((i) => i.customer_name).filter(Boolean))]
+                const invoiceDates = [...new Set(list.map((i) => i.invoice_date).filter(Boolean))] as string[]
+                const handover = list.map((i) => i.handover).sort()[0]
+                return (
+                  <Fragment key={trip}>
+                    <tr className={`cursor-pointer hover:bg-slate-50 ${open ? 'bg-slate-50/70' : ''}`} onClick={() => toggleTrip(trip)}>
+                      <td className={td}>
+                        <span className="inline-flex items-center gap-1.5">
+                          <ChevronRight className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
+                          <span className="font-mono font-bold text-indigo-700">{trip}</span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">
+                        <span className="font-semibold">{list.length} PSS</span>
+                        {customers.length ? <span className="text-slate-500"> · {customers.join(', ')}</span> : null}
+                      </td>
+                      <td className={`${td} font-mono text-slate-700`}>{invoices.length ? invoices.join(', ') : <span className="font-sans text-amber-700">belum ada</span>}</td>
+                      <td className={`${td} text-slate-700`}>{invoiceDates.length ? invoiceDates.map(fmtDmy).join(', ') : '-'}</td>
+                      <td className={`${td} text-slate-700`}>{fmtDmy(handover)}</td>
+                      <td className={`${td} text-right tabular-nums text-slate-600`}>{Math.max(...list.map((i) => i.idealDays)).toLocaleString('id-ID')} hari</td>
+                      <td className={`${td} font-semibold ${back === list.length ? 'text-emerald-700' : 'text-slate-700'}`}>{back}/{list.length} kembali</td>
+                      <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{Math.max(...list.map((i) => i.days))}</td>
+                      <td className={td}>
+                        <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[worst].cls}`}>{POD_STATUS[worst].label}</span>
+                      </td>
+                    </tr>
+                    {open && list.map(renderItem)}
+                  </Fragment>
+                )
+              }
               return (
                 <Fragment key={trip}>
                   <tr className="bg-slate-50/70">
@@ -471,23 +544,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
                       <span className="ml-3">Invoice: {invoices.length ? invoices.join(', ') : <span className="text-amber-700">belum ada</span>}</span>
                     </td>
                   </tr>
-                  {list.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className={td}>
-                        <button type="button" onClick={() => onOpen(item.id)} className="font-mono font-semibold text-indigo-600 hover:underline">{item.pss_no ?? item.id}</button>
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">{item.customer_name ?? '-'}{item.destination_city ? <span className="text-slate-400"> · {item.destination_city}</span> : null}</td>
-                      <td className={`${td} font-mono text-slate-700`}>{item.invoice_no ?? '-'}</td>
-                      <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>
-                      <td className={`${td} text-slate-700`}>{fmtDmy(item.handover)}</td>
-                      <td className={`${td} text-right tabular-nums text-slate-600`}>{item.idealDays.toLocaleString('id-ID')} hari</td>
-                      <td className={`${td} text-slate-700`}>{fmtDmy(item.returnedDate)}</td>
-                      <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{item.days}</td>
-                      <td className={td}>
-                        <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[item.status].cls}`}>{POD_STATUS[item.status].label}</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {list.map(renderItem)}
                 </Fragment>
               )
             })}
