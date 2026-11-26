@@ -9,6 +9,7 @@ import {
 import MonthFilter from '@/components/shared/MonthFilter'
 import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
+import SpabDialog from '@/components/shipment/SpabDialog'
 import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
 import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight, Printer } from 'lucide-react'
@@ -89,6 +90,8 @@ export default function ShipmentPage() {
   const [prefillPss, setPrefillPss]     = useState<UntrackedPssRow | null>(null)
   // Bulk create
   const [bulkOpen, setBulkOpen]         = useState(false)
+  // PSS yang akan dibuatkan SPAB (muncul setelah trip dibuat, atau dari form Edit Shipment).
+  const [spabPss, setSpabPss]           = useState<string[] | null>(null)
   const [checkedUt, setCheckedUt]       = useState<Set<string>>(new Set())
   const [utFilter, setUtFilter]         = useState<'all' | 'redelivery'>('all')
 
@@ -668,7 +671,10 @@ export default function ShipmentPage() {
           relatedShipments={selected ? selectedTripRows : undefined}
           prefillPss={prefillPss}
           onClose={() => { setSelected(null); setAdding(false); setPrefillPss(null) }}
+          onOpenSpab={pssNos => { setSelected(null); setAdding(false); setPrefillPss(null); setSpabPss(pssNos) }}
           onSaved={() => {
+            // Shipment baru dari satu PSS: langsung tawarkan pembuatan SPAB.
+            if (adding && !selected && prefillPss?.pss_no) setSpabPss([prefillPss.pss_no])
             // Tetap di tab yang sedang dibuka, agar bisa lanjut membuat trip untuk PSS lain.
             setSelected(null); setAdding(false); setPrefillPss(null)
             loadTracking(); loadUntracked(); loadRetailInTransit()
@@ -686,8 +692,14 @@ export default function ShipmentPage() {
         <BulkShipmentPanel
           selectedPss={selectedUtRows}
           onClose={() => setBulkOpen(false)}
-          onSaved={() => { setBulkOpen(false); setCheckedUt(new Set()); loadUntracked(); loadTracking(); loadRetailInTransit() }}
+          onSaved={() => {
+            setSpabPss(selectedUtRows.map(row => row.pss_no))
+            setBulkOpen(false); setCheckedUt(new Set()); loadUntracked(); loadTracking(); loadRetailInTransit()
+          }}
         />
+      )}
+      {spabPss && spabPss.length > 0 && (
+        <SpabDialog pssNos={spabPss} onClose={() => setSpabPss(null)} />
       )}
     </div>
   )

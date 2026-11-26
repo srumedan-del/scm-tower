@@ -1,7 +1,7 @@
 'use client'
 
 import { DialogShell, DialogHeader, dialogBodyClass, dialogFooterClass, dialogCancelClass, dialogPrimaryClass, dialogDangerClass, FormField as Field, DialogCancelButton } from '@/components/ui/FormDialog'
-import { Truck } from 'lucide-react'
+import { Truck, FileText } from 'lucide-react'
 import { useState, useTransition, useEffect } from 'react'
 import {
   upsertShipmentTracking, deleteShipmentTracking, type TripRemovalReason, markShipmentFailed, undoShipmentFailed,
@@ -45,9 +45,11 @@ type Props = {
   prefillPss?: import('@/app/(app)/shipment/actions').UntrackedPssRow | null
   onClose: () => void
   onSaved: () => void
+  /** Buka dialog SPAB untuk PSS di trip ini. */
+  onOpenSpab?: (pssNos: string[]) => void
 }
 
-export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPss, onClose, onSaved }: Props) {
+export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPss, onClose, onSaved, onOpenSpab }: Props) {
   const [transporters, setTransporters] = useState<TransporterOption[]>([])
   const [vehicles,     setVehicles]     = useState<VehicleOption[]>([])
   const [allCrew,      setAllCrew]      = useState<DriverOption[]>([])
@@ -317,7 +319,20 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
 
   return (
     <DialogShell onClose={onClose} size="3xl">
-      <DialogHeader title={shipment ? 'Edit Shipment TMS' : 'Tambah Shipment TMS'} subtitle={shipment?.pss_no ?? 'Jadwalkan pengiriman baru'} icon={Truck} />
+      <DialogHeader
+        title={shipment ? 'Edit Shipment TMS' : 'Tambah Shipment TMS'}
+        subtitle={shipment?.pss_no ?? 'Jadwalkan pengiriman baru'}
+        icon={Truck}
+        actions={shipment && onOpenSpab ? (
+          <button
+            type="button"
+            onClick={() => onOpenSpab((tripRows.length ? tripRows : [shipment]).map(row => row.pss_no).filter((pss): pss is string => Boolean(pss)))}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            <FileText className="h-4 w-4" /> SPAB
+          </button>
+        ) : undefined}
+      />
 
         <div className={dialogBodyClass}>
           {optLoading && <p className="text-sm text-gray-400 text-center py-4">Memuat opsi...</p>}
