@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import {
-  Building2, ChevronRight, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, type LucideIcon,
+  Building2, ChevronRight, History, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, type LucideIcon,
 } from 'lucide-react'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { countAppUsers } from './users/actions'
 
-type CountKey = 'users' | 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters'
+type CountKey = 'users' | 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters' | 'logs'
 
 const TABLES: Record<Exclude<CountKey, 'users'>, string> = {
   vendors: 'vendors',
@@ -17,6 +17,7 @@ const TABLES: Record<Exclude<CountKey, 'users'>, string> = {
   warehouses: 'warehouses',
   skus: 'master_sku',
   transporters: 'master_transporter',
+  logs: 'nav_sync_run',
 }
 
 async function getCounts() {
@@ -58,6 +59,7 @@ const groups: { title: string; items: { name: string; path: string; desc: string
     title: 'Sistem',
     items: [
       { name: 'Pengguna', path: '/master-data/users', desc: 'Akun login web: tambah, reset password, nonaktifkan', icon: Users, count: 'users' },
+      { name: 'Log', path: '/master-data/log', desc: 'Riwayat download dan update data NAV, terjadwal maupun manual', icon: History, count: 'logs' },
     ],
   },
 ]
