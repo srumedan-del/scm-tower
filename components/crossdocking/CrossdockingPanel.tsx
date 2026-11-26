@@ -25,7 +25,8 @@ type DetailDraft = Omit<CrossdockingDetail, 'id' | 'crossdocking_id' | 'created_
 type Props = {
   crossdockingId: number | null
   onClose: () => void
-  onSaved: () => void
+  /** Dipanggil langsung setelah simpan/hapus berhasil; month = bulan Terima dari HQ (YYYY-MM). */
+  onSaved: (month?: string) => void
 }
 
 const emptyDetail = (): DetailDraft => ({
@@ -212,7 +213,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
             await upsertCrossdockingDetail({ ...rest, id: rest.id ?? 0, crossdocking_id: crossdockingId! })
           }
         }
-        onClose(); void showSuccess({ title: 'Crossdocking tersimpan', message: header.customer_name ?? undefined }).then(onSaved)
+        onClose(); onSaved(header.received_from_hq_date?.slice(0, 7)); void showSuccess({ title: 'Crossdocking tersimpan', message: header.customer_name ?? undefined })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -221,7 +222,7 @@ export default function CrossdockingPanel({ crossdockingId, onClose, onSaved }: 
     if (!crossdockingId) return
     if (!(await confirmAction({ title: 'Hapus crossdocking?', message: 'Data crossdocking beserta seluruh detail itemnya akan dihapus.' }))) return
     startDeleting(async () => {
-      try { await deleteCrossdocking(crossdockingId); onClose(); void showSuccess({ title: 'Crossdocking dihapus' }).then(onSaved) }
+      try { await deleteCrossdocking(crossdockingId); onClose(); onSaved(); void showSuccess({ title: 'Crossdocking dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }

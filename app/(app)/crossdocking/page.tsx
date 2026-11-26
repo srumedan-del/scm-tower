@@ -214,9 +214,13 @@ export default function CrossdockingPage() {
         <CrossdockingPanel
           crossdockingId={editId}
           onClose={() => setEditId(undefined)}
-          onSaved={() => {
+          onSaved={(savedMonth) => {
             setEditId(undefined)
-            load()
+            // Data baru di bulan lain tidak lolos filter bulan; pindah ke bulan tersebut.
+            const target = savedMonth && selectedMonth !== 'all' && savedMonth !== selectedMonth ? savedMonth : selectedMonth
+            if (target !== selectedMonth) setSelectedMonth(target)
+            load(target)
+            getCrossdockingAvailableMonths().then(setMonths).catch(() => {})
           }}
         />
       )}
