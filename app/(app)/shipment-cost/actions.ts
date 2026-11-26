@@ -439,6 +439,23 @@ export async function getShipmentInvoiceDates(id: number) {
   }
 }
 
+export type TripPodDate = { id: number; pss_no: string | null; customer_name: string | null; pod_returned_date: string | null }
+
+/** Semua PSS dalam trip (atau PSS ini saja bila tanpa trip) dengan tanggal POD kembalinya masing-masing. */
+export async function getTripPodDates(id: number, tripId: string | null): Promise<TripPodDate[]> {
+  await requireAuthenticatedUser()
+  let q = supabaseAdmin.from('shipment_tracking').select('id, pss_no, customer_name, pod_returned_date, status').order('id')
+  q = tripId ? q.eq('trip_id', tripId).neq('status', 'Failed Delivery') : q.eq('id', id)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(row => ({
+    id: Number(row.id),
+    pss_no: row.pss_no ?? null,
+    customer_name: row.customer_name ?? null,
+    pod_returned_date: row.pod_returned_date ?? null,
+  }))
+}
+
 export type PodReturnVendorSummary = {
   vendor: string
   /** PSS vendor yang sudah diserahkan (punya waktu dispatch). */
@@ -595,14 +612,15 @@ export type UpsertCostPayload = {
   invoice_value?: number | null
   invoice_date?: string | null
   invoice_received_date?: string | null
-  pod_returned_date?: string | null
+  /** Tanggal POD diterima di SRU per PSS (satu dokumen POD per PSS, terpisah dari invoice). */
+  pod_dates?: Array<{ id: number; date: string | null }>
   // Multi-PSS TKBM breakdown
   sibling_tkbm?: Array<{ id: number; tkbm: number }>
 }
 
 export async function upsertShipmentCost(payload: UpsertCostPayload) {
   await requireAuthenticatedUser()
-  const { id, sibling_tkbm, ...data } = payload
+  const { id, sibling_tkbm, pod_dates, ...data } = payload
   const costModel = payload.cost_model === 'Retail' || Boolean(payload.no_resi)
     ? 'Retail'
     : payload.cost_model === 'Trucking'
@@ -621,7 +639,6 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
         biaya_tkbm: null,
         invoice_date: null,
         invoice_received_date: null,
-        pod_returned_date: null,
       }
     : costModel === 'Trucking'
       ? {
@@ -675,6 +692,13 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
       .update(normalizedData)
       .eq('id', id)
     if (error) throw new Error(error.message)
+  }
+
+  // Tanggal POD kembali disimpan di masing-masing PSS.
+  for (const pod of pod_dates ?? []) {
+    if (!pod.id) continue
+    const { error: podError } = await supabaseAdmin.from('shipment_tracking').update({ pod_returned_date: pod.date || null }).eq('id', pod.id)
+    if (podError) throw new Error(podError.message)
   }
 
   // Update TKBM untuk masing-masing PSS jika ada breakdown per Surat Jalan / PSS

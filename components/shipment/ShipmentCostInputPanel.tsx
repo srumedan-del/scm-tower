@@ -9,6 +9,8 @@ import {
   getShipmentCostTripItems,
   getTripReturnStatus,
   getShipmentInvoiceDates,
+  getTripPodDates,
+  type TripPodDate,
   type ShipmentCostRow,
   type TripSiblingItem,
 } from '@/app/(app)/shipment-cost/actions'
@@ -122,7 +124,6 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     biaya_trucking: row.biaya_trucking ?? '',
     invoice_date: '',
     invoice_received_date: '',
-    pod_returned_date: '',
   })
 
   // Tanggal invoice vendor tidak ada di view daftar biaya; dibaca terpisah.
@@ -132,11 +133,22 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     getShipmentInvoiceDates(row.id)
       .then((d) => {
         if (!active) return
-        setForm((f) => ({ ...f, invoice_date: d.invoice_date ?? '', invoice_received_date: d.invoice_received_date ?? '', pod_returned_date: d.pod_returned_date ?? '' }))
+        setForm((f) => ({ ...f, invoice_date: d.invoice_date ?? '', invoice_received_date: d.invoice_received_date ?? '' }))
       })
       .catch(() => {})
     return () => { active = false }
   }, [row.id, model])
+
+  // Dokumen POD kembali per PSS (bukan per invoice): semua PSS di trip ini, masing-masing satu tanggal.
+  const [podDates, setPodDates] = useState<TripPodDate[]>([])
+  useEffect(() => {
+    if (model !== 'Trucking' && model !== 'Retail') return
+    let active = true
+    getTripPodDates(row.id, row.trip_id).then((list) => { if (active) setPodDates(list) }).catch(() => {})
+    return () => { active = false }
+  }, [row.id, row.trip_id, model])
+  const setPodDate = (id: number, date: string) =>
+    setPodDates((list) => list.map((p) => (p.id === id ? { ...p, pod_returned_date: date || null } : p)))
 
   // ── BBM Multi-Entry State ──
   const [bbmEntries, setBbmEntries] = useState<BbmEntry[]>([])
@@ -514,7 +526,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           biaya_tkbm: currentRowTkbm,
           invoice_date: form.invoice_date || null,
           invoice_received_date: form.invoice_received_date || null,
-          pod_returned_date: form.pod_returned_date || null,
+          pod_dates: podDates.map((p) => ({ id: p.id, date: p.pod_returned_date })),
           // Sibling TKBM updates
           sibling_tkbm: siblingTkbm,
         })
@@ -556,19 +568,6 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       }
     })
   }
-
-  // Dokumen POD vendor kembali ke SRU; dipakai kartu "POD Kembali per Vendor" di Analisa.
-  const podReturnField = (
-    <div>
-      <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tgl POD Diterima di SRU</label>
-      <input
-        type="date"
-        value={form.pod_returned_date}
-        onChange={(e) => up('pod_returned_date', e.target.value)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
-      />
-    </div>
-  )
 
   const modelLabel =
     model === 'Retail'
@@ -940,7 +939,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   Biaya Sewa Trucking
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">No. Invoice Vendor</label>
                   <input
@@ -969,7 +968,6 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                     className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
                   />
                 </div>
-                {podReturnField}
               </div>
 
               {/* Rincian tagihan vendor: DPP, PPh 23 2%, PPN 1,1% */}
@@ -1006,7 +1004,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   Pengiriman Retail
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">No. Resi</label>
                   <input
@@ -1035,7 +1033,36 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                     className="w-full !py-1 text-xs font-medium"
                   />
                 </div>
-                {podReturnField}
+              </div>
+            </div>
+          )}
+
+          {/* ── DOKUMEN POD KEMBALI: PER PSS, TERPISAH DARI INVOICE ── */}
+          {(model === 'Trucking' || model === 'Retail') && podDates.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+              <div className="border-b border-slate-100 pb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Dokumen POD Diterima di SRU</span>
+                <span className="ml-2 text-[11px] text-slate-400">Satu POD per PSS{row.trip_id ? ` · semua PSS di ${row.trip_id}` : ''}</span>
+              </div>
+              <div className="space-y-1.5">
+                {podDates.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 ${p.id === row.id ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-100 bg-slate-50/50'}`}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="shrink-0 font-mono text-xs font-bold text-slate-800">{p.pss_no ?? p.id}</span>
+                      <span className="truncate text-[11px] text-slate-500">{p.customer_name ?? ''}</span>
+                    </div>
+                    <input
+                      type="date"
+                      value={p.pod_returned_date ?? ''}
+                      onChange={(e) => setPodDate(p.id, e.target.value)}
+                      aria-label={`Tanggal POD ${p.pss_no ?? p.id} diterima di SRU`}
+                      className="w-40 shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           )}
