@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { CustomerRow } from '@/components/customer/CustomerRow'
 import CustomerAddButton from '@/components/customer/CustomerAddButton'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 async function getCustomers() {
   const { data } = await supabase.from('customers').select('*').order('customer_code').limit(200)
   return data ?? []

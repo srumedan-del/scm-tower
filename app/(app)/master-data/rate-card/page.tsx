@@ -1,6 +1,9 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import RateCardList from '@/components/rate-card/RateCardList'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 async function getRates() {
   // Use underlying table transport_rate_card directly so we have id for edit/delete
   // Join via view would lose id; try table first, fallback to view

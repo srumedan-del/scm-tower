@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import Link from 'next/link'
 import { BarChart3 } from 'lucide-react'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 export default async function Inventory() {
   const { data } = await supabase.from('vw_inventory_alert').select('*').limit(50)
 

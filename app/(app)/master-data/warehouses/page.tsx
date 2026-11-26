@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { WarehouseRow } from '@/components/warehouse/WarehouseRow'
 import WarehouseAddButton from '@/components/warehouse/WarehouseAddButton'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 async function getWarehouses() {
   const { data } = await supabase.from('warehouses').select('*').order('warehouse_code')
   return data ?? []

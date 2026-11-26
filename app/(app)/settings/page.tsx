@@ -1,5 +1,8 @@
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 export default async function SettingsPage() {
   const [vendorCount, shipmentCount, receivingCount, outboundCount] = await Promise.all([
     supabase.from('vendors').select('id', { count: 'exact', head: true }),

@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import IssueAddButton from '@/components/issue/IssueAddButton'
 import { IssueRow } from '@/components/issue/IssueRow'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 export default async function Issues() {
   const { data } = await supabase
     .from('issue_log')

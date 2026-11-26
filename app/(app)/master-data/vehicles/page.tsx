@@ -3,6 +3,9 @@ import { FleetRow } from '@/components/fleet/FleetRow'
 import FleetAddButton from '@/components/fleet/FleetAddButton'
 import { getLatestVehicleOdometers } from '@/lib/vehicle-odometer'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 async function getFleet() {
   const { data } = await supabase.from('transport_fleet').select('*').order('id').limit(200)
   return data ?? []

@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { SkuRow } from '@/components/sku/SkuRow'
 import SkuAddButton from '@/components/sku/SkuAddButton'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 async function getSkus() {
   const { data } = await supabase.from('master_sku').select('*').order('sku_code')
   return data ?? []

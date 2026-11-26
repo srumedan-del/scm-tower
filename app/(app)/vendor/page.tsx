@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { VendorRow } from '@/components/vendor/VendorRow'
 import VendorAddButton from '@/components/vendor/VendorAddButton'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 type Vendor = {
   id: number
   vendor_code: string

@@ -86,6 +86,9 @@ export default function DriverEditPanel({
       const name = form.driver_name.trim()
       if (!code) { setErr('Kode wajib diisi'); return }
       if (!name) { setErr('Nama wajib diisi'); return }
+      // Dicek di sini juga: pesan error dari server disamarkan di production (React error #441).
+      const pin = (form.pin as string)?.trim()
+      if (pin && (!/^\d{6}$/.test(pin) || pin === '123456')) { setErr('PIN harus 6 angka dan tidak boleh 123456. Kosongkan bila belum ingin diisi.'); return }
       try {
         await upsertDriver({
           id:          driver?.id,

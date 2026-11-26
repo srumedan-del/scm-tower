@@ -2,6 +2,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { RouteRow } from '@/components/route/RouteRow'
 import RouteAddButton from '@/components/route/RouteAddButton'
 
+// Data dibaca dari database tiap request; tanpa ini halaman dibekukan saat build.
+export const dynamic = 'force-dynamic'
+
 async function getRoutes() {
   const { data } = await supabase.from('routes').select('*').order('route_code')
   return data ?? []
