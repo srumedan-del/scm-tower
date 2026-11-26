@@ -21,7 +21,7 @@ async function compressImage(file: File, maxSide = 1600, quality = 0.85): Promis
 }
 
 /** Satu gambar resi per PSS; langsung tersimpan saat dipilih, tidak menunggu tombol Simpan. */
-export function ResiImageField({ trackingId }: { trackingId: number | null | undefined }) {
+export function ResiImageField({ trackingId, noResi }: { trackingId: number | null | undefined; noResi?: string | null }) {
   const [url, setUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(trackingId))
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +48,7 @@ export function ResiImageField({ trackingId }: { trackingId: number | null | und
     startBusy(async () => {
       try {
         const dataUrl = await compressImage(file)
-        setUrl(await uploadResiImage(trackingId, dataUrl))
+        setUrl(await uploadResiImage(trackingId, dataUrl, noResi))
       } catch (e: any) {
         setError(e?.message ?? 'Gagal mengunggah gambar')
       } finally {

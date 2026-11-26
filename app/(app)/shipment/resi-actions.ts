@@ -1,6 +1,5 @@
 'use server'
 
-import { randomUUID } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
 
@@ -22,8 +21,14 @@ export async function getResiImageUrl(trackingId: number) {
   return signed?.signedUrl ?? null
 }
 
-/** Simpan gambar resi (data URL base64 dari browser) untuk satu PSS; gambar lama diganti. */
-export async function uploadResiImage(trackingId: number, dataUrl: string) {
+/** Bagian nama file yang aman: huruf/angka, spasi jadi tanda hubung. */
+function fileSafe(value: string) {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+}
+
+/** Simpan gambar resi (data URL base64 dari browser) untuk satu PSS; gambar lama diganti.
+ *  Nama file: <VENDOR>_<NO-RESI>.jpg (nomor resi dari form bila belum disimpan). */
+export async function uploadResiImage(trackingId: number, dataUrl: string, noResiInput?: string | null) {
   await requireAuthenticatedUser()
   const match = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/)
   if (!match) throw new Error('File harus berupa gambar JPG, PNG, atau WEBP')
@@ -32,23 +37,32 @@ export async function uploadResiImage(trackingId: number, dataUrl: string) {
 
   const { data: current, error: readError } = await supabaseAdmin
     .from('shipment_tracking')
-    .select('resi_image_path')
+    .select('resi_image_path, no_resi, pss_no, transporter_id, notes')
     .eq('id', trackingId)
     .maybeSingle()
   if (readError) throw readError
   if (!current) throw new Error('Shipment tidak ditemukan')
 
+  let vendor = current.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim() ?? ''
+  if (current.transporter_id != null) {
+    const { data: transporter } = await supabaseAdmin.from('master_transporter').select('name').eq('id', current.transporter_id).maybeSingle()
+    vendor = String(transporter?.name ?? '').trim() || vendor
+  }
+  const resi = String(noResiInput ?? '').trim() || String(current.no_resi ?? '').trim()
+  const baseName = [fileSafe(vendor) || 'VENDOR', fileSafe(resi) || fileSafe(current.pss_no ?? '') || String(trackingId)].join('_')
+
   const extension = match[1] === 'image/png' ? 'png' : match[1] === 'image/webp' ? 'webp' : 'jpg'
-  const path = `resi/${trackingId}/${randomUUID()}.${extension}`
-  const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(path, bytes, { contentType: match[1] })
+  // Folder per PSS agar resi yang sama di dua PSS tidak saling menimpa.
+  const path = `resi/${trackingId}/${baseName}.${extension}`
+  const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(path, bytes, { contentType: match[1], upsert: true })
   if (uploadError) throw uploadError
 
   const { error: updateError } = await supabaseAdmin.from('shipment_tracking').update({ resi_image_path: path }).eq('id', trackingId)
   if (updateError) {
-    await supabaseAdmin.storage.from(BUCKET).remove([path])
+    if (current.resi_image_path !== path) await supabaseAdmin.storage.from(BUCKET).remove([path])
     throw updateError
   }
-  if (current.resi_image_path) await supabaseAdmin.storage.from(BUCKET).remove([current.resi_image_path])
+  if (current.resi_image_path && current.resi_image_path !== path) await supabaseAdmin.storage.from(BUCKET).remove([current.resi_image_path])
 
   const { data: signed } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, 60 * 60)
   return signed?.signedUrl ?? null

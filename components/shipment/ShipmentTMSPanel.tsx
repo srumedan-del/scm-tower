@@ -515,7 +515,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                 </Field>
                 <div className="col-span-2">
                   <Field label="Gambar Resi">
-                    <ResiImageField trackingId={shipment?.id} />
+                    <ResiImageField trackingId={shipment?.id} noResi={form.no_resi} />
                   </Field>
                 </div>
               </div>
