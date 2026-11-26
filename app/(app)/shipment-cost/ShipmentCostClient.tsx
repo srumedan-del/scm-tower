@@ -426,6 +426,10 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
     else next.add(trip)
     return next
   })
+  // Kiriman Retail memakai nomor resi, bukan invoice: kolom invoice diganti No. Resi.
+  const retail = summary.items.length > 0 && summary.items.every((i) => i.retail)
+  const docNo = (i: PodReturnItem) => (i.retail ? i.no_resi : i.invoice_no)
+  const cols = retail ? 8 : 9
   // Hanya PSS: tanpa nomor trip, urut tanggal serah ke vendor (terlama di atas) lalu nomor PSS.
   const [pssOnly, setPssOnly] = useState(false)
   const items = useMemo(
@@ -439,15 +443,14 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
 
   async function exportExcel() {
     const XLSX = await import('xlsx')
-    const header = ['Vendor', ...(pssOnly ? [] : ['Trip']), 'PSS', 'Pelanggan', 'Kota', 'No. Invoice', 'Tgl Invoice', 'Serah ke Vendor', 'Target (hari kerja)', 'POD Diterima', 'Hari Kerja', 'Status POD']
+    const header = ['Vendor', ...(pssOnly ? [] : ['Trip']), 'PSS', 'Pelanggan', 'Kota', ...(retail ? ['No. Resi'] : ['No. Invoice', 'Tgl Invoice']), 'Serah ke Vendor', 'Target (hari kerja)', 'POD Diterima', 'Hari Kerja', 'Status POD']
     const lines = byDate.map((i) => [
       summary.vendor,
       ...(pssOnly ? [] : [i.trip_id ?? '-']),
       i.pss_no ?? String(i.id),
       i.customer_name ?? '-',
       i.destination_city ?? '-',
-      i.invoice_no ?? '-',
-      fmtDmy(i.invoice_date),
+      ...(retail ? [i.no_resi ?? '-'] : [docNo(i) ?? '-', fmtDmy(i.invoice_date)]),
       fmtDmy(i.handover),
       i.idealDays,
       fmtDmy(i.returnedDate),
@@ -480,8 +483,8 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
         <button type="button" onClick={() => onOpen(item.id)} className="font-mono font-semibold text-indigo-600 hover:underline">{item.pss_no ?? item.id}</button>
       </td>
       <td className="px-3 py-2 text-slate-700">{item.customer_name ?? '-'}{item.destination_city ? <span className="text-slate-400"> · {item.destination_city}</span> : null}</td>
-      <td className={`${td} font-mono text-slate-700`}>{item.invoice_no ?? '-'}</td>
-      <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>
+      <td className={`${td} font-mono text-slate-700`}>{docNo(item) ?? '-'}</td>
+      {!retail && <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>}
       <td className={`${td} text-slate-700`}>{fmtDmy(item.handover)}</td>
       <td className={`${td} text-right tabular-nums text-slate-600`}>{item.idealDays.toLocaleString('id-ID')} hari</td>
       <td className={`${td} text-slate-700`}>{fmtDmy(item.returnedDate)}</td>
@@ -538,8 +541,8 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
             <tr>
               <th className={th}>{perTrip ? 'Trip / PSS' : 'PSS'}</th>
               <th className={th}>Pelanggan</th>
-              <th className={th}>No. Invoice</th>
-              <th className={th}>Tgl Invoice</th>
+              <th className={th}>{retail ? 'No. Resi' : 'No. Invoice'}</th>
+              {!retail && <th className={th}>Tgl Invoice</th>}
               <th className={th}>Serah ke Vendor</th>
               <th className={`${th} text-right`}>Target</th>
               <th className={th}>POD Diterima</th>
@@ -551,7 +554,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
             {pssOnly && byDate.map(renderItem)}
             {!pssOnly && trips.map(([trip, list]) => {
               const back = list.filter((i) => i.returnedDate).length
-              const invoices = [...new Set(list.map((i) => i.invoice_no).filter(Boolean))]
+              const invoices = [...new Set(list.map(docNo).filter(Boolean))]
               if (perTrip) {
                 const open = expanded.has(trip)
                 const worst = worstStatus(list)
@@ -572,7 +575,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
                         {customers.length ? <span className="text-slate-500"> · {customers.join(', ')}</span> : null}
                       </td>
                       <td className={`${td} font-mono text-slate-700`}>{invoices.length ? invoices.join(', ') : <span className="font-sans text-amber-700">belum ada</span>}</td>
-                      <td className={`${td} text-slate-700`}>{invoiceDates.length ? invoiceDates.map(fmtDmy).join(', ') : '-'}</td>
+                      {!retail && <td className={`${td} text-slate-700`}>{invoiceDates.length ? invoiceDates.map(fmtDmy).join(', ') : '-'}</td>}
                       <td className={`${td} text-slate-700`}>{fmtDmy(handover)}</td>
                       <td className={`${td} text-right tabular-nums text-slate-600`}>{Math.max(...list.map((i) => i.idealDays)).toLocaleString('id-ID')} hari</td>
                       <td className={`${td} font-semibold ${back === list.length ? 'text-emerald-700' : 'text-slate-700'}`}>{back}/{list.length} kembali</td>
@@ -588,11 +591,11 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
               return (
                 <Fragment key={trip}>
                   <tr className="bg-slate-50/70">
-                    <td colSpan={9} className="px-3 py-2 text-[12px] text-slate-600">
+                    <td colSpan={cols} className="px-3 py-2 text-[12px] text-slate-600">
                       <span className="font-mono font-bold text-indigo-700">{trip}</span>
                       <span className="ml-3">{list.length} PSS</span>
                       <span className="ml-3">POD {back}/{list.length}</span>
-                      <span className="ml-3">Invoice: {invoices.length ? invoices.join(', ') : <span className="text-amber-700">belum ada</span>}</span>
+                      <span className="ml-3">{retail ? 'Resi' : 'Invoice'}: {invoices.length ? invoices.join(', ') : <span className="text-amber-700">belum ada</span>}</span>
                     </td>
                   </tr>
                   {list.map(renderItem)}
@@ -600,7 +603,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
               )
             })}
             {!items.length && (
-              <tr><td colSpan={9} className="px-4 py-6 text-center text-slate-400">Semua POD vendor ini sudah kembali.</td></tr>
+              <tr><td colSpan={cols} className="px-4 py-6 text-center text-slate-400">Semua POD vendor ini sudah kembali.</td></tr>
             )}
           </tbody>
         </table>

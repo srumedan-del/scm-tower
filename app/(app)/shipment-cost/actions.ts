@@ -479,6 +479,9 @@ export type PodReturnItem = {
   customer_name: string | null
   destination_city: string | null
   invoice_no: string | null
+  /** Kiriman Retail memakai nomor resi, bukan invoice. */
+  no_resi: string | null
+  retail: boolean
   invoice_date: string | null
   /** Tanggal serah barang + dokumen ke vendor (WIB). */
   handover: string
@@ -561,6 +564,8 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
       customer_name: row.customer_name,
       destination_city: row.destination_city,
       invoice_no: row.invoice_no_eksternal,
+      no_resi: row.no_resi,
+      retail: row.cost_model === 'Retail',
       invoice_date: extra?.invoice_date ?? null,
       handover,
       idealDays: ideal,
