@@ -41,6 +41,12 @@ function newRows(summary: string | null) {
   return matches.length ? matches.reduce((sum, m) => sum + Number(m[1]), 0) : null
 }
 
+/** "PSS Header: 1 baru, 39 dilewati dari 40" -> "PSS Header +1"; baris GAGAL tetap utuh. */
+function compactStep(line: string) {
+  const m = line.match(/^(.+?):\s*(\d+) baru/)
+  return m ? `${m[1].trim()} +${m[2]}` : line
+}
+
 function filterHref(trigger: TriggerFilter, status: StatusFilter) {
   const params = new URLSearchParams()
   if (trigger !== 'all') params.set('jenis', trigger)
@@ -97,7 +103,7 @@ export default async function SyncLogPage({ searchParams }: { searchParams: Prom
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
             <tr>
               {['Waktu', 'Jenis', 'Oleh', 'Status', 'Durasi', 'Data baru', 'Keterangan'].map(h => (
-                <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">{h}</th>
+                <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">{h}</th>
               ))}
             </tr>
           </thead>
@@ -107,34 +113,28 @@ export default async function SyncLogPage({ searchParams }: { searchParams: Prom
               const lines = (run.summary ?? '').split('\n').filter(Boolean)
               const Icon = run.trigger === 'schedule' ? CalendarClock : Hand
               return (
-                <tr key={run.id} className="align-top">
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-[13px] text-slate-700">{wib(run.started_at ?? run.requested_at)}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                <tr key={run.id} className="hover:bg-slate-50/70">
+                  <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] text-slate-700">{wib(run.started_at ?? run.requested_at)}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5">
                     <span className="inline-flex items-center gap-1.5 text-slate-700">
                       <Icon className="h-4 w-4 text-gold-700" aria-hidden="true" />
                       {run.trigger === 'schedule' ? 'Jadwal' : 'Manual'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{run.requested_by ?? '—'}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-2.5 text-slate-700">{run.requested_by ?? '—'}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5">
                     <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[run.status]}`}>
                       {STATUSES[run.status]}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{duration(run)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold text-slate-900">{added ?? '—'}</td>
-                  <td className="min-w-[280px] px-4 py-3 text-slate-600">
-                    {run.error && <div className="mb-1 font-medium text-rose-700">{run.error}</div>}
-                    {lines.length > 0 ? (
-                      <details>
-                        <summary className="cursor-pointer select-none text-slate-500 hover:text-gold-700">{lines.length} langkah</summary>
-                        <ul className="mt-1.5 space-y-0.5 text-[13px]">
-                          {lines.map((line, i) => (
-                            <li key={i} className={line.startsWith('GAGAL') ? 'text-rose-700' : undefined}>{line}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    ) : !run.error && <span className="text-slate-400">—</span>}
+                  <td className="whitespace-nowrap px-4 py-2.5 text-slate-600">{duration(run)}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 font-mono font-semibold text-slate-900">{added ?? '—'}</td>
+                  <td className="max-w-[520px] truncate whitespace-nowrap px-4 py-2.5 text-slate-600" title={[run.error, ...lines].filter(Boolean).join('\n') || undefined}>
+                    {run.error
+                      ? <span className="font-medium text-rose-700">{run.error}</span>
+                      : lines.length > 0
+                        ? lines.map(compactStep).join(' · ')
+                        : <span className="text-slate-400">—</span>}
                   </td>
                 </tr>
               )
