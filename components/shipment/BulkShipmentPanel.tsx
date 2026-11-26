@@ -172,7 +172,7 @@ export default function BulkShipmentPanel({ selectedPss, onClose, onSaved }: Pro
           // Both shipment modes start when the create button is processed.
           dispatch_time:   new Date().toISOString(),
         })
-        onClose(); void showSuccess({ title: 'Shipment berhasil dibuat' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Shipment berhasil dibuat' })
       } catch (e: any) {
         setErr(e.message)
       }

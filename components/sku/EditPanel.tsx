@@ -62,7 +62,7 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteSku(sku.id)
-        onClose(); void showSuccess({ title: 'SKU dihapus' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'SKU dihapus' })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -101,7 +101,7 @@ export default function SkuEditPanel({ sku, onClose, onSaved }: {
         return
       }
 
-      onClose(); void showSuccess({ title: 'SKU tersimpan', message: form.item_name }).then(onSaved)
+      onClose(); onSaved(); void showSuccess({ title: 'SKU tersimpan', message: form.item_name })
     })
   }
 

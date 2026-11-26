@@ -96,10 +96,10 @@ export default function VendorEditPanel({
       try {
         await deleteVendor(vendor.id)
         onClose()
-        void showSuccess({
+        onSaved(); void showSuccess({
           title: 'Vendor dihapus',
           details: [{ label: 'Kode vendor', value: vendor.vendor_code }, { label: 'Nama', value: vendor.vendor_name }],
-        }).then(onSaved)
+        })
       } catch (e: any) {
         setErr(e.message)
       }
@@ -135,14 +135,14 @@ export default function VendorEditPanel({
           multidrop_fee_out_city: form.vendor_type === 'TRUCKING' && form.multidrop_fee_out_city != null ? Number(form.multidrop_fee_out_city) : null,
         })
         onClose()
-        void showSuccess({
+        onSaved(); void showSuccess({
           title: vendor ? 'Perubahan tersimpan' : 'Vendor berhasil ditambahkan',
           details: [
             { label: 'Kode vendor', value: vendor_code },
             { label: 'Nama', value: vendorName },
             { label: 'Tipe', value: VENDOR_TYPES.find(type => type.value === form.vendor_type)?.label ?? form.vendor_type ?? '-' },
           ],
-        }).then(onSaved)
+        })
       } catch (e: any) {
         setErr(e.message)
       }

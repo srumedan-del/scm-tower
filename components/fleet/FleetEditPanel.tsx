@@ -52,7 +52,7 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
     if (!fleet) return
     if (!(await confirmAction({ title: 'Hapus armada?', message: `Armada ${getNo(fleet)} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteFleet(fleet.id); onClose(); void showSuccess({ title: 'Armada dihapus' }).then(onSaved) }
+      try { await deleteFleet(fleet.id); onClose(); onSaved(); void showSuccess({ title: 'Armada dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -71,7 +71,7 @@ export default function FleetEditPanel({ fleet, onClose, onSaved }: {
         status:       form.is_active ? 'aktif' : 'nonaktif',
       }
       if (!payload.vehicle_no) { setErr('NOPOL wajib diisi'); return }
-      try { await upsertFleet(payload, fleet?.id); onClose(); void showSuccess({ title: 'Armada tersimpan', message: form.vehicle_no }).then(onSaved) }
+      try { await upsertFleet(payload, fleet?.id); onClose(); onSaved(); void showSuccess({ title: 'Armada tersimpan', message: form.vehicle_no }) }
       catch (e: any) { setErr(e.message) }
     })
   }

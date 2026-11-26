@@ -3,6 +3,7 @@
 import { DialogShell, DialogHeader, dialogBodyClass, dialogCancelClass, dialogPrimaryClass, DialogCancelButton } from '@/components/ui/FormDialog'
 import { Truck } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   createTripFromShipments,
   getTripCreationOptions,
@@ -16,6 +17,7 @@ import { SkeletonRows } from '@/components/ui/LoadingStates'
 type Props = { onClose: () => void }
 
 export function TripCreatePanel({ onClose }: Props) {
+  const router = useRouter()
   const [vendors, setVendors] = useState<VendorOption[]>([])
   const [shipments, setShipments] = useState<ShipmentOption[]>([])
   const [vendorId, setVendorId] = useState('')
@@ -55,7 +57,7 @@ export function TripCreatePanel({ onClose }: Props) {
           notes,
         })
         onClose()
-        void showSuccess({ title: 'Trip berhasil dibuat', details: [{ label: 'Nomor trip', value: result.trip_no }] }).then(() => window.location.reload())
+        router.refresh(); void showSuccess({ title: 'Trip berhasil dibuat', details: [{ label: 'Nomor trip', value: result.trip_no }] })
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Gagal membuat trip')
       }

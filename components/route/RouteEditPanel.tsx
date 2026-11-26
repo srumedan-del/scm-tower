@@ -61,7 +61,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
     if (!route) return
     if (!(await confirmAction({ title: 'Hapus rute?', message: `Rute ${route.route_code} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteRoute(route.id); onClose(); void showSuccess({ title: 'Rute dihapus' }).then(onSaved) }
+      try { await deleteRoute(route.id); onClose(); onSaved(); void showSuccess({ title: 'Rute dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -85,7 +85,7 @@ export default function RouteEditPanel({ route, onClose, onSaved }: {
         dk_lk:                    form.dk_lk as 'D' | 'L',
         notes:                    form.notes.trim().toUpperCase() || null,
       }
-      try { await upsertRoute(payload, route?.id); onClose(); void showSuccess({ title: 'Rute tersimpan', message: form.destination }).then(onSaved) }
+      try { await upsertRoute(payload, route?.id); onClose(); onSaved(); void showSuccess({ title: 'Rute tersimpan', message: form.destination }) }
       catch (e: any) { setErr(e.message) }
     })
   }

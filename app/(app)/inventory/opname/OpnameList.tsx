@@ -146,12 +146,13 @@ function CreateOpnameDialog({ period, onClose, onCreated }: { period: OpnamePeri
           result = await createOpnameFromRows({ rows, period, opname_date: date, pic, source: 'upload', source_note: file!.name })
         }
         onClose()
+        onCreated()
         void showSuccess({
           title: `Sesi opname ${period.toLowerCase()} dibuat`,
           message: 'Cetak lembar hitung untuk dibawa ke gudang, lalu isi Qty Fisik di halaman sesi.',
           details: [{ label: 'Tanggal', value: opnameDateParts(date).long }, { label: 'Lines opname', value: String(result.lineCount) }, { label: 'Baris SIRUP', value: String(result.totalRows) }],
           actionLabel: 'Buka sesi',
-        }).then(() => { onCreated(); window.location.href = `/inventory/opname/${result.id}` })
+        }).then(() => { window.location.href = `/inventory/opname/${result.id}` })
       } catch (e: any) {
         setError(e.message ?? 'Sesi opname gagal dibuat')
       }

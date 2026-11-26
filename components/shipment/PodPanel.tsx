@@ -78,7 +78,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
     if (!pod) return
     if (!(await confirmAction({ title: 'Hapus POD?', message: 'Data POD shipment ini akan dihapus. Status shipment tidak berubah.' }))) return
     startDeleting(async () => {
-      try { await deletePod(pod.id); setPod(null); await showSuccess({ title: 'POD dihapus' }); onSaved() }
+      try { await deletePod(pod.id); setPod(null); onSaved(); void showSuccess({ title: 'POD dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -111,7 +111,7 @@ export default function PodPanel({ shipment, onClose, onSaved }: Props) {
           await confirmDelivery(shipment.id, receivedAtISO)
         }
 
-        onClose(); void showSuccess({ title: 'POD tersimpan' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'POD tersimpan' })
       } catch (e: any) { setErr(e.message) }
     })
   }

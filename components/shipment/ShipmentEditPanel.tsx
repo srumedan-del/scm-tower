@@ -95,7 +95,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
     startDeleting(async()=>{
       const {error}=await supabase.from('shipments').delete().eq('id',shipment.id)
       if(error){setErr(error.message);return}
-      onClose(); void showSuccess({ title: 'Shipment dihapus' }).then(onSaved)
+      onClose(); onSaved(); void showSuccess({ title: 'Shipment dihapus' })
     })
   }
   function save(){
@@ -140,7 +140,7 @@ export default function ShipmentEditPanel({ shipment, onClose, onSaved, vendors,
         }
       }
       if(error){setErr(error.message);return}
-      onClose(); void showSuccess({ title: 'Shipment tersimpan' }).then(onSaved)
+      onClose(); onSaved(); void showSuccess({ title: 'Shipment tersimpan' })
     })
   }
 

@@ -231,7 +231,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
     if (shipment.trip_id) { setRemoving(true); return }
     if (!(await confirmAction({ title: 'Hapus shipment?', message: `Shipment ${shipment.pss_no ?? 'ini'} beserta data POD-nya akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteShipmentTracking(shipment.id); onClose(); void showSuccess({ title: 'Shipment dihapus' }).then(onSaved) }
+      try { await deleteShipmentTracking(shipment.id); onClose(); onSaved(); void showSuccess({ title: 'Shipment dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -243,7 +243,7 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
         await deleteShipmentTracking(shipment.id, { reason, notes })
         setRemoving(false)
         onClose()
-        void showSuccess({ title: 'Dikeluarkan dari trip', message: `${shipment.pss_no ?? 'Shipment'}: ${reason}` }).then(onSaved)
+        onSaved(); void showSuccess({ title: 'Dikeluarkan dari trip', message: `${shipment.pss_no ?? 'Shipment'}: ${reason}` })
       } catch (e: any) { setRemoving(false); setErr(e.message) }
     })
   }
@@ -304,12 +304,12 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
             })))
         }
         onClose()
-        void showSuccess({
+        onSaved(); void showSuccess({
           title: 'Shipment tersimpan',
           message: shipment && tripRows.length > 1
             ? (applyTo === 'single' ? `Hanya ${shipment.pss_no ?? 'dokumen ini'} yang diubah` : `${tripRows.length} dokumen dalam ${shipment.trip_id} diubah`)
             : undefined,
-        }).then(onSaved)
+        })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -568,7 +568,7 @@ function AttemptRow({ row, onChanged }: { row: ShipmentTrackingRow; onChanged: (
   function run(action: () => Promise<void>, message: string) {
     startBusy(async () => {
       setErr(null)
-      try { await action(); await showSuccess({ title: message }); onChanged() }
+      try { await action(); onChanged(); void showSuccess({ title: message }) }
       catch (e: any) { setErr(e.message) }
     })
   }

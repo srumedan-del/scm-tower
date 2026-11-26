@@ -517,7 +517,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           return
         }
         onClose()
-        void showSuccess({ title: 'Biaya shipment tersimpan', details: [{ label: 'Total biaya', value: rp(previewTotal) }] }).then(() => onSaved(nextRow))
+        onSaved(nextRow); void showSuccess({ title: 'Biaya shipment tersimpan', details: [{ label: 'Total biaya', value: rp(previewTotal) }] })
       } catch (e: any) {
         printWindow?.close()
         setErr(e.message || 'Gagal menyimpan biaya.')

@@ -200,7 +200,7 @@ export default function PtrDetailModal({ ptrNo, onClose, trigger, isOpen: contro
           container_no: c,
         })
         handleClose()
-        void showSuccess({ title: 'Informasi PTR tersimpan', message: ptrNo }).then(() => router.refresh())
+        router.refresh(); void showSuccess({ title: 'Informasi PTR tersimpan', message: ptrNo })
       } catch (error: any) {
         setErrorMsg(error?.message || 'Gagal menyimpan informasi transportasi.')
       }

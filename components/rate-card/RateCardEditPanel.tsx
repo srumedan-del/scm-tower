@@ -141,7 +141,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteRateCard(rate.id)
-        onClose(); void showSuccess({ title: 'Rate card dihapus' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Rate card dihapus' })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -168,7 +168,7 @@ export default function RateCardEditPanel({ rate, onClose, onSaved }: {
       if (!payload.route_id) { setErr('RUTE wajib dipilih dari Master Routes'); return }
       try {
         await upsertRateCard(payload, rate?.id)
-        onClose(); void showSuccess({ title: 'Rate card tersimpan', message: form.rate_code }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Rate card tersimpan', message: form.rate_code })
       } catch (e: any) { setErr(e.message) }
     })
   }

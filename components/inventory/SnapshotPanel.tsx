@@ -71,7 +71,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
     if (!row) return
     if (!(await confirmAction({ title: 'Hapus snapshot stok?', message: `Snapshot ${row.sku_code} — ${row.warehouse_code} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteSnapshot(row.id); onClose(); void showSuccess({ title: 'Snapshot stok dihapus' }).then(onSaved) }
+      try { await deleteSnapshot(row.id); onClose(); onSaved(); void showSuccess({ title: 'Snapshot stok dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -95,7 +95,7 @@ export default function SnapshotPanel({ row, onClose, onSaved }: Props) {
           source:          'manual',
           import_period:   form.snapshot_date.slice(0, 7),
         })
-        onClose(); void showSuccess({ title: 'Snapshot stok tersimpan' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Snapshot stok tersimpan' })
       } catch (e: any) { setErr(e.message) }
     })
   }

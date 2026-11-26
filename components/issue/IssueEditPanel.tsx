@@ -69,7 +69,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteIssue(issue.id)
-        onClose(); void showSuccess({ title: 'Issue dihapus' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Issue dihapus' })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -100,7 +100,7 @@ export default function IssueEditPanel({ issue, onClose, onSaved }: {
       try {
         if (!issue) payload.issue_no = await generateIssueNo(issueDate)
         await upsertIssue(payload, issue?.id)
-        onClose(); void showSuccess({ title: 'Issue tersimpan', message: form.title }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Issue tersimpan', message: form.title })
       } catch (e: any) { setErr(e.message) }
     })
   }

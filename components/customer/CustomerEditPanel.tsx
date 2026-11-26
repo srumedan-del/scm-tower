@@ -108,7 +108,7 @@ export default function CustomerEditPanel({ customer, initial, onClose, onSaved 
     startDeleting(async () => {
       try {
         await deleteCustomer(customer.id)
-        onClose(); void showSuccess({ title: 'Customer dihapus' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Customer dihapus' })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -135,7 +135,7 @@ export default function CustomerEditPanel({ customer, initial, onClose, onSaved 
       }
       try {
         await upsertCustomer(payload, customer?.id)
-        onClose(); void showSuccess({ title: 'Customer tersimpan', message: form.customer_name ?? '' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Customer tersimpan', message: form.customer_name ?? '' })
       } catch (e: any) { setErr(e.message) }
     })
   }

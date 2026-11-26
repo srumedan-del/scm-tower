@@ -74,7 +74,7 @@ export default function DriverEditPanel({
     if (!driver) return
     if (!(await confirmAction({ title: 'Hapus kru?', message: `${driver.role ?? 'Kru'} ${driver.driver_name} akan dihapus dari master data.` }))) return
     startDeleting(async () => {
-      try { await deleteDriver(driver.id); onClose(); void showSuccess({ title: 'Data kru dihapus', message: driver.driver_name }).then(onSaved) }
+      try { await deleteDriver(driver.id); onClose(); onSaved(); void showSuccess({ title: 'Data kru dihapus', message: driver.driver_name }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -99,7 +99,7 @@ export default function DriverEditPanel({
           username:    (form.username as string)?.trim() || code.toLowerCase(),
           pin:         (form.pin as string)?.trim() || null,
         })
-        onClose(); void showSuccess({ title: 'Data kru tersimpan', details: [{ label: 'Kode', value: code.toUpperCase() }, { label: 'Nama', value: name.toUpperCase() }] }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Data kru tersimpan', details: [{ label: 'Kode', value: code.toUpperCase() }, { label: 'Nama', value: name.toUpperCase() }] })
       } catch (e: any) { setErr(e.message) }
     })
   }

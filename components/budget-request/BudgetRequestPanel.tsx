@@ -101,7 +101,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
     if (!request) return
     if (!(await confirmAction({ title: 'Hapus pengajuan dana?', message: `Pengajuan periode ${periodLabel(request.period)} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteBudgetRequest(request.id); onClose(); void showSuccess({ title: 'Pengajuan dana dihapus' }).then(onSaved) }
+      try { await deleteBudgetRequest(request.id); onClose(); onSaved(); void showSuccess({ title: 'Pengajuan dana dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -132,7 +132,7 @@ export default function BudgetRequestPanel({ request, onClose, onSaved }: Props)
             status: 'Pending',
           })
         }
-        onClose(); void showSuccess({ title: 'Pengajuan dana tersimpan' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Pengajuan dana tersimpan' })
       } catch (e: any) { setErr(e.message) }
     })
   }

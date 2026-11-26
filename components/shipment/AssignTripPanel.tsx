@@ -101,7 +101,7 @@ export default function AssignTripPanel({ shipments, onClose, onSaved }: Props) 
             status:         form.status,
           }
         )
-        onClose(); void showSuccess({ title: 'Trip berhasil ditugaskan', message: `${shipments.length} shipment` }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Trip berhasil ditugaskan', message: `${shipments.length} shipment` })
       } catch (e: any) { setErr(e.message) }
     })
   }

@@ -150,11 +150,11 @@ function AddUserDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () 
       try {
         await createAppUser({ full_name: fullName, email, password })
         onClose()
-        void showSuccess({
+        onSaved(); void showSuccess({
           title: 'Pengguna ditambahkan',
           message: 'Pengguna bisa langsung login di SCM Tower.',
           details: [{ label: 'Nama', value: fullName.trim() }, { label: 'Email', value: email.trim().toLowerCase() }, { label: 'Password awal', value: password }],
-        }).then(onSaved)
+        })
       } catch (caught: any) {
         setError(caught.message)
       }

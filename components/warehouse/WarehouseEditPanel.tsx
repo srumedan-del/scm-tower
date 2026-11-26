@@ -39,7 +39,7 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
     startDeleting(async () => {
       try {
         await deleteWarehouse(wh.id)
-        onClose(); void showSuccess({ title: 'Gudang dihapus' }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Gudang dihapus' })
       } catch (e: any) { setErr(e.message) }
     })
   }
@@ -57,7 +57,7 @@ export default function WarehouseEditPanel({ wh, onClose, onSaved }: {
       if (!payload.warehouse_code) { setErr('CODE wajib diisi'); return }
       try {
         await upsertWarehouse(payload, wh?.id)
-        onClose(); void showSuccess({ title: 'Gudang tersimpan', message: form.warehouse_code }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Gudang tersimpan', message: form.warehouse_code })
       } catch (e: any) { setErr(e.message) }
     })
   }

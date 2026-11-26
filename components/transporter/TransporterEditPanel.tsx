@@ -43,7 +43,7 @@ export default function TransporterEditPanel({
     if (!transporter) return
     if (!(await confirmAction({ title: 'Hapus transporter?', message: `Transporter ${transporter.name} akan dihapus.` }))) return
     startDeleting(async () => {
-      try { await deleteTransporter(transporter.id); onClose(); void showSuccess({ title: 'Transporter dihapus' }).then(onSaved) }
+      try { await deleteTransporter(transporter.id); onClose(); onSaved(); void showSuccess({ title: 'Transporter dihapus' }) }
       catch (e: any) { setErr(e.message) }
     })
   }
@@ -66,7 +66,7 @@ export default function TransporterEditPanel({
           is_active:        form.is_active,
           notes:            (form.notes    as string)?.trim() || null,
         })
-        onClose(); void showSuccess({ title: 'Transporter tersimpan', message: String(form.name ?? '') }).then(onSaved)
+        onClose(); onSaved(); void showSuccess({ title: 'Transporter tersimpan', message: String(form.name ?? '') })
       } catch (e: any) { setErr(e.message) }
     })
   }
