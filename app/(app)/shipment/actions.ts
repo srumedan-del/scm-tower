@@ -493,6 +493,8 @@ export async function upsertShipmentTracking(row: Partial<ShipmentTrackingRow> &
     trip_cost,
     // timestamps read-only
     created_at, updated_at, document_created_at,
+    // Gambar resi diatur lewat resi-actions, jangan tertimpa nilai lama dari form.
+    resi_image_path,
     ...payload
   } = row as any
 

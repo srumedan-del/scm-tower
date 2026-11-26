@@ -14,6 +14,7 @@ import {
 } from '@/app/(app)/shipment/actions'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { RemoveFromTripDialog } from './RemoveFromTripDialog'
+import { ResiImageField } from './ResiImageField'
 import { vehicleOptionLabel } from '@/lib/personal-vehicle'
 import { confirmAction, showSuccess } from '@/lib/feedback'
 
@@ -512,6 +513,11 @@ export default function ShipmentTMSPanel({ shipment, relatedShipments, prefillPs
                     placeholder="0"
                   />
                 </Field>
+                <div className="col-span-2">
+                  <Field label="Gambar Resi">
+                    <ResiImageField trackingId={shipment?.id} />
+                  </Field>
+                </div>
               </div>
             )}
           </Section>

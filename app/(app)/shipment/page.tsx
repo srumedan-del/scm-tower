@@ -11,7 +11,7 @@ import ShipmentTMSPanel from '@/components/shipment/ShipmentTMSPanel'
 import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
-import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight } from 'lucide-react'
+import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight, Printer } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { Tabs } from '@/components/ui/Tabs'
 import { statusClass } from '@/lib/status-style'
@@ -552,12 +552,22 @@ export default function ShipmentPage() {
             <p className="text-[14px] font-medium text-slate-600">
               Pengiriman Retail yang sudah diserahterimakan ke vendor dan memiliki <strong className="font-semibold text-slate-800">nomor resi</strong>. Status tetap <strong className="font-semibold text-slate-800">In Transit</strong> sampai barang diterima pelanggan.
             </p>
-            <button
-              onClick={() => loadRetailInTransit(selectedMonth)}
-              className="text-[14px] font-semibold text-brand-primary hover:underline"
-            >
-              Refresh
-            </button>
+            <div className="flex items-center gap-4">
+              <a
+                href={`/print/rekap-resi?month=${selectedMonth}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Printer className="h-4 w-4" /> Cetak Rekap Resi
+              </a>
+              <button
+                onClick={() => loadRetailInTransit(selectedMonth)}
+                className="text-[14px] font-semibold text-brand-primary hover:underline"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
           <div className="receiving-table-scroll data-list-scroll overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xs max-h-[calc(100vh-250px)]">
             <table className="w-full text-[14px] font-sans border-collapse">
