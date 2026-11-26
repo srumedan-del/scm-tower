@@ -8,7 +8,7 @@ import type { PodReturnItem, PodReturnVendorSummary, ShipmentCostRow } from './a
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
-import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight } from 'lucide-react'
+import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight, Download } from 'lucide-react'
 
 function rp(value: number | null | undefined) {
   if (!value) return '-'
@@ -397,6 +397,8 @@ function PodReturnCard({ rows, selected, onSelect }: { rows: PodReturnVendorSumm
   )
 }
 
+const jakartaDate = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+
 const fmtDmy = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '-')
 
 const POD_STATUS: Record<PodReturnItem['status'], { label: string; cls: string }> = {
@@ -424,8 +426,43 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
     else next.add(trip)
     return next
   })
+  // Hanya PSS: tanpa nomor trip, urut tanggal serah ke vendor (terlama di atas) lalu nomor PSS.
+  const [pssOnly, setPssOnly] = useState(false)
+  const items = useMemo(
+    () => (onlyOpen ? summary.items.filter((i) => i.status === 'pending' || i.status === 'overdue' || i.status === 'in_transit') : summary.items),
+    [summary, onlyOpen],
+  )
+  const byDate = useMemo(
+    () => [...items].sort((a, b) => a.handover.localeCompare(b.handover) || (a.pss_no ?? '').localeCompare(b.pss_no ?? '')),
+    [items],
+  )
+
+  async function exportExcel() {
+    const XLSX = await import('xlsx')
+    const header = ['Vendor', ...(pssOnly ? [] : ['Trip']), 'PSS', 'Pelanggan', 'Kota', 'No. Invoice', 'Tgl Invoice', 'Serah ke Vendor', 'Target (hari kerja)', 'POD Diterima', 'Hari Kerja', 'Status POD']
+    const lines = byDate.map((i) => [
+      summary.vendor,
+      ...(pssOnly ? [] : [i.trip_id ?? '-']),
+      i.pss_no ?? String(i.id),
+      i.customer_name ?? '-',
+      i.destination_city ?? '-',
+      i.invoice_no ?? '-',
+      fmtDmy(i.invoice_date),
+      fmtDmy(i.handover),
+      i.idealDays,
+      fmtDmy(i.returnedDate),
+      i.days,
+      POD_STATUS[i.status].label,
+    ])
+    const sheet = XLSX.utils.aoa_to_sheet([header, ...lines])
+    sheet['!cols'] = header.map((h, idx) => ({ wch: Math.min(50, Math.max(h.length, ...lines.map((l) => String(l[idx] ?? '').length)) + 2) }))
+    const book = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(book, sheet, 'POD Vendor')
+    const safeVendor = summary.vendor.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    XLSX.writeFile(book, `pod-${safeVendor}${onlyOpen ? '-belum-kembali' : ''}-${jakartaDate()}.xlsx`)
+  }
+
   const trips = useMemo(() => {
-    const items = onlyOpen ? summary.items.filter((i) => i.status === 'pending' || i.status === 'overdue' || i.status === 'in_transit') : summary.items
     const map = new Map<string, PodReturnItem[]>()
     for (const item of items) {
       const key = item.trip_id ?? `Tanpa trip · ${item.pss_no ?? item.id}`
@@ -434,7 +471,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
     const entries = [...map.entries()]
     if (perTrip) entries.sort((a, b) => STATUS_RANK[worstStatus(a[1])] - STATUS_RANK[worstStatus(b[1])] || b[0].localeCompare(a[0]))
     return entries
-  }, [summary, onlyOpen, perTrip])
+  }, [items, perTrip])
   const th = 'px-3 py-2.5 text-[12px] font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap'
   const td = 'px-3 py-2 whitespace-nowrap'
   const renderItem = (item: PodReturnItem) => (
@@ -466,13 +503,26 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
-            <input type="checkbox" checked={perTrip} onChange={(e) => setPerTrip(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+            <input type="checkbox" checked={perTrip} onChange={(e) => { setPerTrip(e.target.checked); if (e.target.checked) setPssOnly(false) }} className="h-4 w-4 rounded border-slate-300" />
             Tampilkan per Trip
+          </label>
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <input type="checkbox" checked={pssOnly} onChange={(e) => { setPssOnly(e.target.checked); if (e.target.checked) setPerTrip(false) }} className="h-4 w-4 rounded border-slate-300" />
+            Hanya PSS (urut tanggal)
           </label>
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
             <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
             Hanya POD belum kembali
           </label>
+          <button
+            type="button"
+            onClick={() => void exportExcel()}
+            disabled={!byDate.length}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+            title="Unduh daftar PSS yang tampil untuk follow-up ke vendor"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" /> Export Excel
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -498,7 +548,8 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {trips.map(([trip, list]) => {
+            {pssOnly && byDate.map(renderItem)}
+            {!pssOnly && trips.map(([trip, list]) => {
               const back = list.filter((i) => i.returnedDate).length
               const invoices = [...new Set(list.map((i) => i.invoice_no).filter(Boolean))]
               if (perTrip) {
@@ -548,7 +599,7 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
                 </Fragment>
               )
             })}
-            {!trips.length && (
+            {!items.length && (
               <tr><td colSpan={9} className="px-4 py-6 text-center text-slate-400">Semua POD vendor ini sudah kembali.</td></tr>
             )}
           </tbody>
