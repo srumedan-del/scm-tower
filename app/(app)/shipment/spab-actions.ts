@@ -221,7 +221,10 @@ export async function getSpabForPrint(id: number) {
       box_cbm: boxCbm,
       total_cbm: boxes != null && boxCbm != null ? boxes * boxCbm : null,
     }
-  }).sort((a, b) => a.sku.localeCompare(b.sku))
+  })
+    // Barang tanpa data kemasan di Master SKU (mis. HD SET rakitan) tidak dicetak.
+    .filter(item => item.per_box != null || item.box_weight != null || item.box_cbm != null)
+    .sort((a, b) => a.sku.localeCompare(b.sku))
 
   return { doc, items }
 }
