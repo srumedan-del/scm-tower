@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { ImagePlus, Trash2, ExternalLink } from 'lucide-react'
+import { ImagePlus, Trash2, ExternalLink, ScanSearch, CheckCircle2, XCircle } from 'lucide-react'
+import { checkResiText, readResiImage, type ResiCheck } from '@/lib/resi-ocr'
 import { getResiImageUrl, uploadResiImage, removeResiImage } from '@/app/(app)/shipment/resi-actions'
 
 // Foto resi dari HP bisa > 5 MB; kecilkan ke sisi terpanjang 1600 px (masih terbaca jelas saat dicetak).
@@ -21,12 +22,29 @@ async function compressImage(file: File, maxSide = 1600, quality = 0.85): Promis
 }
 
 /** Satu gambar resi per PSS; langsung tersimpan saat dipilih, tidak menunggu tombol Simpan. */
-export function ResiImageField({ trackingId, noResi }: { trackingId: number | null | undefined; noResi?: string | null }) {
+export function ResiImageField({ trackingId, noResi, amount }: { trackingId: number | null | undefined; noResi?: string | null; amount?: number | null }) {
   const [url, setUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(trackingId))
   const [error, setError] = useState<string | null>(null)
   const [busy, startBusy] = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
+  const [check, setCheck] = useState<ResiCheck | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [checkError, setCheckError] = useState<string | null>(null)
+
+  // Cocokkan isi gambar dengan nomor resi dan biaya yang diinput; hanya peringatan, tidak memblokir simpan.
+  async function runCheck(source: string) {
+    setChecking(true)
+    setCheck(null)
+    setCheckError(null)
+    try {
+      setCheck(checkResiText(await readResiImage(source), noResi, amount))
+    } catch {
+      setCheckError('Gambar tidak dapat dibaca otomatis. Periksa nomor resi dan nilai secara manual.')
+    } finally {
+      setChecking(false)
+    }
+  }
 
   useEffect(() => {
     if (!trackingId) return
@@ -49,6 +67,7 @@ export function ResiImageField({ trackingId, noResi }: { trackingId: number | nu
       try {
         const dataUrl = await compressImage(file)
         setUrl(await uploadResiImage(trackingId, dataUrl, noResi))
+        void runCheck(dataUrl)
       } catch (e: any) {
         setError(e?.message ?? 'Gagal mengunggah gambar')
       } finally {
@@ -64,6 +83,8 @@ export function ResiImageField({ trackingId, noResi }: { trackingId: number | nu
       try {
         await removeResiImage(trackingId)
         setUrl(null)
+        setCheck(null)
+        setCheckError(null)
       } catch (e: any) {
         setError(e?.message ?? 'Gagal menghapus gambar')
       }
@@ -88,6 +109,9 @@ export function ResiImageField({ trackingId, noResi }: { trackingId: number | nu
             <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:underline disabled:opacity-50">
               <ImagePlus className="h-3.5 w-3.5" /> Ganti gambar
             </button>
+            <button type="button" disabled={busy || checking} onClick={() => url && runCheck(url)} className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:underline disabled:opacity-50">
+              <ScanSearch className="h-3.5 w-3.5" /> Periksa ulang
+            </button>
             <button type="button" disabled={busy} onClick={onRemove} className="inline-flex items-center gap-1 font-semibold text-red-700 hover:underline disabled:opacity-50">
               <Trash2 className="h-3.5 w-3.5" /> Hapus
             </button>
@@ -105,6 +129,46 @@ export function ResiImageField({ trackingId, noResi }: { trackingId: number | nu
       )}
       {busy && url && <p className="text-xs text-slate-500">Memproses…</p>}
       {error && <p className="text-xs text-red-700">{error}</p>}
+      {checking && <p className="text-xs text-slate-500">Memeriksa nomor resi dan nilai di gambar…</p>}
+      {checkError && <p className="text-xs text-amber-700">{checkError}</p>}
+      {check && <ResiCheckResult check={check} noResi={noResi} amount={amount} />}
+    </div>
+  )
+}
+
+const rp = (value: number) => `Rp ${value.toLocaleString('id-ID')}`
+
+function CheckLine({ ok, children }: { ok: boolean | null; children: React.ReactNode }) {
+  const Icon = ok ? CheckCircle2 : XCircle
+  const tone = ok === null ? 'text-slate-500' : ok ? 'text-green-700' : 'text-red-700'
+  return (
+    <div className={`flex items-start gap-1.5 ${tone}`}>
+      {ok === null ? <span className="mt-0.5 inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-slate-400" /> : <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+      <span>{children}</span>
+    </div>
+  )
+}
+
+function ResiCheckResult({ check, noResi, amount }: { check: ResiCheck; noResi?: string | null; amount?: number | null }) {
+  const allOk = check.resiMatch !== false && check.amountMatch !== false
+  return (
+    <div className={`space-y-1 rounded-lg border px-3 py-2 text-xs ${allOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+      <p className="font-semibold text-slate-800">Pemeriksaan gambar resi</p>
+      <CheckLine ok={check.resiMatch}>
+        {check.resiMatch === null
+          ? 'Nomor resi di form belum diisi.'
+          : check.resiMatch
+            ? `Nomor resi ${noResi} cocok dengan gambar.`
+            : `Nomor resi ${noResi} tidak ditemukan di gambar${check.resiCandidates.length ? ` (terbaca: ${check.resiCandidates.join(', ')})` : ''}.`}
+      </CheckLine>
+      <CheckLine ok={check.amountMatch}>
+        {check.amountMatch === null
+          ? 'Biaya kirim di form belum diisi.'
+          : check.amountMatch
+            ? `Nilai ${rp(Number(amount))} cocok dengan gambar.`
+            : `Nilai ${rp(Number(amount))} tidak ditemukan di gambar${check.amountsFound.length ? ` (terbaca: ${check.amountsFound.map(rp).join(', ')})` : ''}.`}
+      </CheckLine>
+      {!allOk && <p className="text-slate-600">Periksa kembali input atau gambarnya. Pembacaan otomatis bisa keliru bila foto buram atau miring.</p>}
     </div>
   )
 }
