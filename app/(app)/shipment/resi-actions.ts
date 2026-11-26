@@ -108,7 +108,7 @@ function nextMonthFirstDay(month: string) {
 function isRetail(row: { cost_model?: string | null; no_resi?: string | null }, vendor: string) {
   const text = vendor.toUpperCase()
   // Armada SRU sendiri bukan vendor retail, walau ada PSS yang tercatat cost model Retail.
-  if (/^SRU/.test(text)) return false
+  if (/^SRU\b/.test(text)) return false
   if (row.cost_model === 'Retail' || row.no_resi?.trim()) return true
   return text.includes('INDAH LOGISTIK') || text.includes('JNE') || text.includes('RETAIL')
 }
