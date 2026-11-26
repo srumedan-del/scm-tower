@@ -374,7 +374,7 @@ export async function getTripTruckingRate(input: {
   const { data: tripRows } = input.tripId
     ? await supabaseAdmin
       .from('shipment_tracking')
-      .select('id, pss_no, customer_name, destination_city, status')
+      .select('id, pss_no, customer_name, destination_city, status, biaya_trucking')
       .eq('trip_id', input.tripId)
       .neq('status', 'Failed Delivery')
     : { data: [] as any[] }
@@ -409,8 +409,11 @@ export async function getTripTruckingRate(input: {
   }
   if (!main || !self) return { ...base, ...mainInfo, price: null, role: 'no_rate' }
 
+  // Satu titik antar ditagih sekali: oleh PSS yang sudah menyimpan biaya trucking,
+  // atau (bila belum ada) oleh PSS yang sedang diinput.
   const selfGroup = drops.get(dropKey(self))!
-  if (selfGroup[0].id !== self.id) return { ...base, ...mainInfo, price: 0, role: 'same_drop' }
+  const carrier = selfGroup.find(row => row.id !== self.id && Number((row as any).biaya_trucking) > 0)
+  if (carrier) return { ...base, ...mainInfo, mainPss: carrier.pss_no ?? mainInfo.mainPss, price: 0, role: 'same_drop' }
   if (dropKey(self) === dropKey(main.row)) return { ...base, ...mainInfo, price: main.rate.price, role: 'charter' }
 
   const sameCity = normalizeRateText(self.destination_city) === normalizeRateText(main.row.destination_city)
@@ -420,6 +423,14 @@ export async function getTripTruckingRate(input: {
     price: sameCity ? base.multidropFeeInCity ?? 0 : base.multidropFeeOutCity ?? 0,
     role: sameCity ? 'multidrop_in_city' : 'multidrop_out_city',
   }
+}
+
+/** Tanggal invoice vendor (kolom v61) untuk form Input Biaya Shipment. */
+export async function getShipmentInvoiceDates(id: number) {
+  await requireAuthenticatedUser()
+  const { data, error } = await supabaseAdmin.from('shipment_tracking').select('invoice_date, invoice_received_date').eq('id', id).maybeSingle()
+  if (error) throw new Error(error.message)
+  return { invoice_date: (data?.invoice_date as string | null) ?? null, invoice_received_date: (data?.invoice_received_date as string | null) ?? null }
 }
 
 export async function getTruckingRate(destination: string | null, vehicleType: string | null, transporterName: string | null) {
@@ -454,6 +465,8 @@ export type UpsertCostPayload = {
   biaya_tkbm?: number | null
   // Common
   invoice_value?: number | null
+  invoice_date?: string | null
+  invoice_received_date?: string | null
   // Multi-PSS TKBM breakdown
   sibling_tkbm?: Array<{ id: number; tkbm: number }>
 }
@@ -477,6 +490,8 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
         total_biaya_eksternal: null,
         biaya_trucking: null,
         biaya_tkbm: null,
+        invoice_date: null,
+        invoice_received_date: null,
       }
     : costModel === 'Trucking'
       ? {

@@ -8,6 +8,7 @@ import {
   upsertShipmentCost,
   getShipmentCostTripItems,
   getTripReturnStatus,
+  getShipmentInvoiceDates,
   type ShipmentCostRow,
   type TripSiblingItem,
 } from '@/app/(app)/shipment-cost/actions'
@@ -119,7 +120,22 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     invoice_no_eksternal: row.invoice_no_eksternal ?? '',
     total_biaya_eksternal: row.total_biaya_eksternal ?? '',
     biaya_trucking: row.biaya_trucking ?? '',
+    invoice_date: '',
+    invoice_received_date: '',
   })
+
+  // Tanggal invoice vendor tidak ada di view daftar biaya; dibaca terpisah.
+  useEffect(() => {
+    if (model !== 'Trucking' && model !== 'Retail') return
+    let active = true
+    getShipmentInvoiceDates(row.id)
+      .then((d) => {
+        if (!active) return
+        setForm((f) => ({ ...f, invoice_date: d.invoice_date ?? '', invoice_received_date: d.invoice_received_date ?? '' }))
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [row.id, model])
 
   // ── BBM Multi-Entry State ──
   const [bbmEntries, setBbmEntries] = useState<BbmEntry[]>([])
@@ -400,6 +416,18 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     return costs.reduce((sum, value) => sum + value, 0)
   })()
 
+  // Tagihan vendor trucking: DPP = biaya trucking + TKBM; PPN 1,1% ditambahkan, PPh 23 2% dipotong saat bayar.
+  const dpp = model === 'Trucking' ? previewTotal : 0
+  const pph = Math.round(dpp * 0.02)
+  const ppn = Math.round(dpp * 0.011)
+  const invoiceRows = [
+    { label: 'DPP HARGA', value: dpp, note: 'Jumlah total semua rute + TKBM', strong: false },
+    { label: 'PPH 2%', value: pph, note: 'Nominal bukti potong PPh 23 2%', strong: false },
+    { label: 'PPN 1,1%', value: ppn, note: 'Nominal PPN', strong: false },
+    { label: 'TOTAL HARGA', value: dpp + ppn, note: 'Nominal total cetak invoice (DPP + PPN)', strong: true },
+    { label: 'TOTAL BAYAR', value: dpp + ppn - pph, note: 'Nominal yang dibayarkan (Total Harga − PPh 23)', strong: true },
+  ]
+
   const [saving, startSaving] = useTransition()
   const [rateLoading, setRateLoading] = useState(false)
   const [rateMessage, setRateMessage] = useState<string | null>(null)
@@ -483,6 +511,8 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           // Trucking
           biaya_trucking: n(form.biaya_trucking),
           biaya_tkbm: currentRowTkbm,
+          invoice_date: form.invoice_date || null,
+          invoice_received_date: form.invoice_received_date || null,
           // Sibling TKBM updates
           sibling_tkbm: siblingTkbm,
         })
@@ -895,7 +925,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   Biaya Sewa Trucking
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">No. Invoice Vendor</label>
                   <input
@@ -907,15 +937,48 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Biaya Kirim Trucking (Rp)</label>
-                  <CurrencyInput
-                    value={form.biaya_trucking}
-                    onChange={(v) => up('biaya_trucking', v)}
-                    className="w-full !py-1 text-xs font-medium"
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tanggal Invoice</label>
+                  <input
+                    type="date"
+                    value={form.invoice_date}
+                    onChange={(e) => up('invoice_date', e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
                   />
-                  {rateMessage && <p className="mt-1 text-[11px] text-slate-500">{rateMessage}</p>}
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tanggal Terima Invoice</label>
+                  <input
+                    type="date"
+                    value={form.invoice_received_date}
+                    onChange={(e) => up('invoice_received_date', e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
+                  />
                 </div>
               </div>
+
+              {/* Rincian tagihan vendor: DPP, PPh 23 2%, PPN 1,1% */}
+              <table className="w-full max-w-2xl border-collapse text-xs">
+                <tbody>
+                  <tr>
+                    <th className="w-36 border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-right font-bold text-slate-800">Biaya Trucking</th>
+                    <td className="w-44 border border-slate-200 p-0">
+                      <CurrencyInput
+                        value={form.biaya_trucking}
+                        onChange={(v) => up('biaya_trucking', v)}
+                        className="w-full !rounded-none !border-0 !py-1.5 font-semibold !shadow-none"
+                      />
+                    </td>
+                    <td className="px-2.5 py-1.5 italic text-slate-500">{rateLoading ? 'Memuat tarif…' : rateMessage ?? 'Tarif charter / multidrop vendor'}</td>
+                  </tr>
+                  {invoiceRows.map((r) => (
+                    <tr key={r.label}>
+                      <th className={`border border-slate-200 px-2.5 py-1.5 text-right font-bold text-slate-800 ${r.strong ? 'bg-indigo-50' : 'bg-slate-50'}`}>{r.label}</th>
+                      <td className={`border border-slate-200 px-2.5 py-1.5 text-right font-mono tabular-nums ${r.strong ? 'bg-indigo-50 font-bold text-slate-900' : 'text-slate-800'}`}>{r.value.toLocaleString('id-ID')}</td>
+                      <td className="px-2.5 py-1.5 italic text-slate-500">{r.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -1024,7 +1087,7 @@ function chargeMessage(charge: TripTruckingCharge, tripId: string | null) {
         ? `Titik antar tambahan di kota lain. Charter sudah ditagih di ${charge.mainPss}. ${vendor} belum punya tarif multidrop, isi di Master Vendor bila ada.`
         : `Titik antar tambahan di kota lain: biaya multidrop luar kota ${rp(charge.multidropFeeOutCity)}. Charter ditagih di ${charge.mainPss}.`
     case 'same_drop':
-      return `Pelanggan yang sama dengan dokumen lain di ${tripId}, dihitung satu titik antar. Biaya Rp 0.`
+      return `Tarif charter sudah ditagih di ${charge.mainPss ?? 'dokumen lain'} (pelanggan yang sama di ${tripId}).`
     default:
       return `Tarif ${vendor} ${charge.vehicleType ?? ''} ke ${charge.mainDestination ?? 'tujuan ini'} tidak ditemukan di Rate Card.`
   }
