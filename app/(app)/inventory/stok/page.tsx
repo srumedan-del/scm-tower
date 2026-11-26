@@ -1,12 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
-import { Boxes, Download, Layers, Search, Warehouse } from 'lucide-react'
-import { Tabs } from '@/components/ui/Tabs'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, Download, Search } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { getStockByDate, getStockDates, type StockRow } from './actions'
-
-type View = 'lot' | 'item' | 'bin'
 
 // Bin utama gudang Medan; bin lain dipilih lewat dropdown.
 const DEFAULT_BIN = 'MDN-PAR-CON'
@@ -21,14 +18,13 @@ function addMonthsIso(date: string, months: number) {
 }
 
 const fmtQty = (v: number) => v.toLocaleString('id-ID', { maximumFractionDigits: 2 })
-const fmtDate = (d: string | null, long = false) =>
-  d ? new Date(`${d}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: long ? 'long' : 'short', year: 'numeric', ...(long ? { weekday: 'long' } : {}) }) : '-'
-
-function Delta({ qty, prev }: { qty: number; prev: number | null }) {
-  if (prev == null) return <span className="text-slate-400">-</span>
-  const diff = qty - prev
-  if (diff === 0) return <span className="text-slate-400">0</span>
-  return <span className={diff > 0 ? 'text-green-700' : 'text-red-700'}>{diff > 0 ? '+' : '−'}{fmtQty(Math.abs(diff))}</span>
+const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+/** YYYY-MM-DD -> DD/MM/YYYY; long menambahkan nama hari ("Rabu, 25/11/2026"). */
+const fmtDate = (d: string | null, long = false) => {
+  if (!d) return '-'
+  const [y, m, day] = d.slice(0, 10).split('-')
+  const text = `${day}/${m}/${y}`
+  return long ? `${DAYS[new Date(`${d.slice(0, 10)}T00:00:00Z`).getUTCDay()]}, ${text}` : text
 }
 
 async function downloadExcel(filename: string, sheetName: string, header: string[], lines: (string | number | null)[][]) {
@@ -46,14 +42,12 @@ const td = 'px-4 py-2.5 text-sm text-slate-700'
 export default function StokCabangMedanPage() {
   const [dates, setDates] = useState<string[]>([])
   const [date, setDate] = useState('')
-  const [prevDate, setPrevDate] = useState<string | null>(null)
   const [rows, setRows] = useState<StockRow[]>([])
   const [error, setError] = useState('')
   const [datesLoaded, setDatesLoaded] = useState(false)
   const [pending, startLoad] = useTransition()
   const loading = pending || !datesLoaded
 
-  const [view, setView] = useState<View>('lot')
   const [bin, setBin] = useState(DEFAULT_BIN)
   const [kategori, setKategori] = useState('all')
   const [query, setQuery] = useState('')
@@ -67,7 +61,6 @@ export default function StokCabangMedanPage() {
       try {
         const res = await getStockByDate(target)
         setRows(res.rows)
-        setPrevDate(res.prevDate)
         setError('')
       } catch (e: any) {
         setError(e?.message ?? 'Gagal memuat stok')
@@ -85,6 +78,23 @@ export default function StokCabangMedanPage() {
       .finally(() => setDatesLoaded(true))
   }, [])
 
+  // dates terurut terbaru dulu.
+  const dateIndex = dates.indexOf(date)
+  const older = dateIndex >= 0 ? dates[dateIndex + 1] : undefined
+  const newer = dateIndex > 0 ? dates[dateIndex - 1] : undefined
+  const dateInput = useRef<HTMLInputElement>(null)
+  const [dateNote, setDateNote] = useState('')
+
+  /** Tanggal tanpa snapshot (libur/belum ada) memakai snapshot terakhir sebelum tanggal itu. */
+  function pickDate(target: string) {
+    if (!target) return
+    if (dates.includes(target)) { setDateNote(''); load(target); return }
+    const fallback = dates.find(d => d < target)
+    if (!fallback) { setDateNote(`Tidak ada data stok untuk ${fmtDate(target)}.`); return }
+    setDateNote(`Tidak ada snapshot tanggal ${fmtDate(target)}; ditampilkan stok ${fmtDate(fallback, true)}.`)
+    load(fallback)
+  }
+
   const bins = useMemo(() => [...new Set(rows.map(r => r.bincode ?? '-'))].sort(), [rows])
   const categories = useMemo(() => [...new Set(rows.map(r => r.kategori ?? '-'))].sort(), [rows])
 
@@ -99,52 +109,45 @@ export default function StokCabangMedanPage() {
     })
   }, [rows, bin, kategori, query, expiryOn, expiryLimit])
 
-  const lotRows = useMemo(() => [...filtered].sort((a, b) =>
-    (a.bincode ?? '').localeCompare(b.bincode ?? '') ||
-    a.no_item.localeCompare(b.no_item) ||
-    (a.expiration_date ?? '9999').localeCompare(b.expiration_date ?? '9999') ||
-    (a.lot_no ?? '').localeCompare(b.lot_no ?? '')), [filtered])
-
-  const itemRows = useMemo(() => {
-    const map = new Map<string, { no_item: string; nama_item: string | null; kategori: string | null; bins: Set<string>; lots: number; qty: number; prev: number | null; nearestExpiry: string | null }>()
+  // Satu baris total per item; LOT-nya dibuka lewat tombol expand.
+  const itemGroups = useMemo(() => {
+    const map = new Map<string, { no_item: string; nama_item: string | null; bins: Set<string>; lots: StockRow[]; qty: number; nearestExpiry: string | null }>()
     for (const r of filtered) {
-      const g = map.get(r.no_item) ?? { no_item: r.no_item, nama_item: r.nama_item, kategori: r.kategori, bins: new Set<string>(), lots: 0, qty: 0, prev: r.prev_qty == null ? null : 0, nearestExpiry: null }
+      const g = map.get(r.no_item) ?? { no_item: r.no_item, nama_item: r.nama_item, bins: new Set<string>(), lots: [], qty: 0, nearestExpiry: null }
       g.bins.add(r.bincode ?? '-')
-      g.lots += 1
+      g.lots.push(r)
       g.qty += r.qty
-      if (g.prev != null && r.prev_qty != null) g.prev += r.prev_qty
       if (r.expiration_date && (!g.nearestExpiry || r.expiration_date < g.nearestExpiry)) g.nearestExpiry = r.expiration_date
       map.set(r.no_item, g)
     }
+    for (const g of map.values()) g.lots.sort((a, b) =>
+      (a.expiration_date ?? '9999').localeCompare(b.expiration_date ?? '9999') ||
+      (a.lot_no ?? '').localeCompare(b.lot_no ?? '') ||
+      (a.bincode ?? '').localeCompare(b.bincode ?? ''))
     return [...map.values()].sort((a, b) => a.no_item.localeCompare(b.no_item))
   }, [filtered])
 
-  const binRows = useMemo(() => {
-    const map = new Map<string, { bin: string; items: Set<string>; lots: number; qty: number; prev: number | null }>()
-    for (const r of filtered) {
-      const key = r.bincode ?? '-'
-      const g = map.get(key) ?? { bin: key, items: new Set<string>(), lots: 0, qty: 0, prev: r.prev_qty == null ? null : 0 }
-      g.items.add(r.no_item)
-      g.lots += 1
-      g.qty += r.qty
-      if (g.prev != null && r.prev_qty != null) g.prev += r.prev_qty
-      map.set(key, g)
-    }
-    return [...map.values()].sort((a, b) => b.qty - a.qty)
-  }, [filtered])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // Saat mencari (mis. nomor LOT), detail LOT langsung terlihat.
+  const searching = query.trim().length > 0
+  const isOpen = (item: string) => searching || expanded.has(item)
+  const allOpen = itemGroups.length > 0 && itemGroups.every(g => expanded.has(g.no_item))
+  const toggle = (item: string) => setExpanded(prev => {
+    const next = new Set(prev)
+    if (next.has(item)) next.delete(item)
+    else next.add(item)
+    return next
+  })
 
   function exportExcel() {
-    const name = `stok-medan-${date}${bin !== 'all' ? `-${bin}` : ''}-${view}.xlsx`
-    const sheet = view === 'lot' ? 'Per LOT' : view === 'item' ? 'Per Material' : 'Per Store Bin'
-    if (view === 'lot') downloadExcel(name, sheet,['Tanggal', 'Bin', 'No Item', 'Nama Item', 'Kategori', 'LOT', 'Serial', 'Expired', 'Qty', 'Qty Sebelumnya'],
-      lotRows.map(r => [date, r.bincode, r.no_item, r.nama_item, r.kategori, r.lot_no, r.serial_no, r.expiration_date, r.qty, r.prev_qty]))
-    else if (view === 'item') downloadExcel(name, sheet,['Tanggal', 'No Item', 'Nama Item', 'Kategori', 'Bin', 'Jumlah LOT', 'Expired Terdekat', 'Qty', 'Qty Sebelumnya'],
-      itemRows.map(r => [date, r.no_item, r.nama_item, r.kategori, [...r.bins].join(' / '), r.lots, r.nearestExpiry, r.qty, r.prev]))
-    else downloadExcel(name, sheet,['Tanggal', 'Bin', 'Jumlah Item', 'Jumlah LOT', 'Qty', 'Qty Sebelumnya'],
-      binRows.map(r => [date, r.bin, r.items.size, r.lots, r.qty, r.prev]))
+    const name = `stok-medan-${date}${bin !== 'all' ? `-${bin}` : ''}.xlsx`
+    const lines: (string | number | null)[][] = []
+    for (const g of itemGroups) {
+      lines.push([fmtDate(date), g.no_item, g.nama_item, `${g.lots.length} LOT`, null, g.nearestExpiry ? fmtDate(g.nearestExpiry) : null, g.qty, [...g.bins].join(' / ')])
+      for (const r of g.lots) lines.push([fmtDate(date), r.no_item, r.nama_item, r.lot_no, r.serial_no, r.expiration_date ? fmtDate(r.expiration_date) : null, r.qty, r.bincode])
+    }
+    downloadExcel(name, 'Stok Medan', ['Tanggal', 'No Item', 'Nama Item', 'LOT', 'Serial', 'Expired', 'Qty', 'Store Bin'], lines)
   }
-
-  const prevLabel = prevDate ? `vs ${fmtDate(prevDate)}` : 'Perubahan'
 
   return (
     <div className="space-y-4">
@@ -156,15 +159,50 @@ export default function StokCabangMedanPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-semibold text-slate-600" htmlFor="stok-date">Tanggal</label>
-          <select
-            id="stok-date"
-            value={date}
-            onChange={e => load(e.target.value)}
-            className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
-          >
-            {dates.map(d => <option key={d} value={d}>{fmtDate(d, true)}</option>)}
-          </select>
+          <span className="text-sm font-semibold text-slate-600">Tanggal</span>
+          <div className="inline-flex min-h-10 items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <button
+              type="button"
+              onClick={() => { if (older) { setDateNote(''); load(older) } }}
+              disabled={!older || loading}
+              aria-label="Tanggal sebelumnya"
+              title={older ? fmtDate(older) : undefined}
+              className="grid h-10 w-9 place-items-center text-slate-500 hover:bg-slate-50 disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => { try { dateInput.current?.showPicker() } catch { dateInput.current?.focus() } }}
+                className="inline-flex h-10 items-center gap-2 border-x border-slate-200 px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                <CalendarDays className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                {date ? fmtDate(date, true) : 'Pilih tanggal'}
+              </button>
+              <input
+                ref={dateInput}
+                type="date"
+                aria-label="Pilih tanggal stok"
+                value={date}
+                min={dates[dates.length - 1]}
+                max={dates[0]}
+                onChange={e => pickDate(e.target.value)}
+                className="pointer-events-none absolute inset-0 opacity-0"
+                tabIndex={-1}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => { if (newer) { setDateNote(''); load(newer) } }}
+              disabled={!newer || loading}
+              aria-label="Tanggal berikutnya"
+              title={newer ? fmtDate(newer) : undefined}
+              className="grid h-10 w-9 place-items-center text-slate-500 hover:bg-slate-50 disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
           <button
             type="button"
             onClick={exportExcel}
@@ -176,6 +214,7 @@ export default function StokCabangMedanPage() {
         </div>
       </header>
 
+      {dateNote && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{dateNote}</div>}
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -229,86 +268,81 @@ export default function StokCabangMedanPage() {
         </div>
       </div>
 
-      <Tabs
-        label="Tampilan stok"
-        value={view}
-        onChange={setView}
-        items={[
-          { value: 'lot', label: 'Per LOT', icon: Layers, count: lotRows.length },
-          { value: 'item', label: 'Per Material', icon: Boxes, count: itemRows.length },
-          { value: 'bin', label: 'Per Store Bin', icon: Warehouse, count: binRows.length },
-        ]}
-      />
 
-      <div className="data-list-scroll max-h-[calc(100vh-250px)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="data-list-scroll max-h-[calc(100vh-200px)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[900px] border-collapse text-[14px]">
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
-            {view === 'lot' && (
-              <tr>
-                <th className={th}>Store Bin</th><th className={th}>No Item</th><th className={th}>Nama Item</th>
-                <th className={th}>LOT</th><th className={th}>Expired</th>
-                <th className={`${th} text-right`}>Qty</th><th className={`${th} text-right`}>{prevLabel}</th>
-              </tr>
-            )}
-            {view === 'item' && (
-              <tr>
-                <th className={th}>No Item</th><th className={th}>Nama Item</th><th className={th}>Kategori</th>
-                <th className={th}>Store Bin</th><th className={`${th} text-right`}>LOT</th><th className={th}>Expired terdekat</th>
-                <th className={`${th} text-right`}>Qty</th><th className={`${th} text-right`}>{prevLabel}</th>
-              </tr>
-            )}
-            {view === 'bin' && (
-              <tr>
-                <th className={th}>Store Bin</th><th className={`${th} text-right`}>Item</th><th className={`${th} text-right`}>LOT</th>
-                <th className={`${th} text-right`}>Qty</th><th className={`${th} text-right`}>{prevLabel}</th>
-              </tr>
-            )}
+            <tr>
+              <th className={`${th} w-10 !px-2`}>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(allOpen ? new Set() : new Set(itemGroups.map(g => g.no_item)))}
+                  disabled={searching || !itemGroups.length}
+                  title={allOpen ? 'Tutup semua LOT' : 'Buka semua LOT'}
+                  aria-label={allOpen ? 'Tutup semua LOT' : 'Buka semua LOT'}
+                  className="grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-slate-200/60 disabled:opacity-40"
+                >
+                  {allOpen || searching ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+                </button>
+              </th>
+              <th className={th}>No Item</th><th className={th}>Nama Item</th>
+              <th className={th}>LOT</th><th className={th}>Expired</th>
+              <th className={`${th} text-right`}>Qty</th><th className={th}>Store Bin</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && <SkeletonRows cols={view === 'bin' ? 5 : view === 'lot' ? 7 : 8} />}
+            {loading && <SkeletonRows cols={7} />}
             {!loading && !filtered.length && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">{dates.length ? 'Tidak ada stok yang cocok dengan filter.' : 'Belum ada data stok.'}</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">{dates.length ? 'Tidak ada stok yang cocok dengan filter.' : 'Belum ada data stok.'}</td></tr>
             )}
-            {!loading && view === 'lot' && lotRows.map(r => {
-              // Tandai batch yang expired sebelum batas tombol "Expired <" (FEFO).
-              const near = !!r.expiration_date && !!expiryLimit && r.expiration_date < expiryLimit
+            {!loading && itemGroups.map(g => {
+              const open = isOpen(g.no_item)
+              const nearItem = !!g.nearestExpiry && !!expiryLimit && g.nearestExpiry < expiryLimit
               return (
-                <tr key={`${r.bincode}|${r.no_item}|${r.lot_no}|${r.serial_no}`} className="hover:bg-slate-50">
-                  <td className={`${td} whitespace-nowrap`}>{r.bincode ?? '-'}</td>
-                  <td className={`${td} whitespace-nowrap font-semibold text-slate-900`}>{r.no_item}</td>
-                  <td className={td}>{r.nama_item ?? '-'}<div className="text-xs text-slate-400">{r.kategori}</div></td>
-                  <td className={`${td} whitespace-nowrap font-mono text-[13px]`}>{r.lot_no ?? '-'}{r.serial_no ? <div className="text-xs text-slate-400">SN {r.serial_no}</div> : null}</td>
-                  <td className={`${td} whitespace-nowrap`}>
-                    {r.expiration_date
-                      ? <span className={near ? 'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800' : ''}>{fmtDate(r.expiration_date)}</span>
-                      : '-'}
-                  </td>
-                  <td className={`${td} text-right font-semibold tabular-nums text-slate-900`}>{fmtQty(r.qty)}</td>
-                  <td className={`${td} text-right tabular-nums`}><Delta qty={r.qty} prev={r.prev_qty} /></td>
-                </tr>
+                <Fragment key={g.no_item}>
+                  <tr className={`cursor-pointer hover:bg-slate-50 ${open ? 'bg-slate-50/60' : ''}`} onClick={() => { if (!searching) toggle(g.no_item) }}>
+                    <td className="px-2 py-2.5">
+                      <span className="grid h-7 w-7 place-items-center rounded-lg text-slate-500" aria-hidden="true">
+                        <ChevronRight className={`h-4 w-4 transition-transform ${open ? 'rotate-90' : ''}`} />
+                      </span>
+                    </td>
+                    <td className={`${td} whitespace-nowrap font-semibold text-slate-900`}>
+                      <button type="button" aria-expanded={open} className="text-left" onClick={e => { e.stopPropagation(); if (!searching) toggle(g.no_item) }}>
+                        {g.no_item}
+                      </button>
+                    </td>
+                    <td className={td}>{g.nama_item ?? '-'}</td>
+                    <td className={`${td} whitespace-nowrap text-slate-500`}>{g.lots.length} LOT</td>
+                    <td className={`${td} whitespace-nowrap`}>
+                      {g.nearestExpiry
+                        ? <span className={nearItem ? 'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800' : ''}>{fmtDate(g.nearestExpiry)}</span>
+                        : '-'}
+                    </td>
+                    <td className={`${td} text-right font-bold tabular-nums text-slate-900`}>{fmtQty(g.qty)}</td>
+                    <td className={`${td} whitespace-nowrap`}>{[...g.bins].join(' / ')}</td>
+                  </tr>
+                  {open && g.lots.map(r => {
+                    // Tandai batch yang expired sebelum batas tombol "Expired <" (FEFO).
+                    const near = !!r.expiration_date && !!expiryLimit && r.expiration_date < expiryLimit
+                    return (
+                      <tr key={`${r.bincode}|${r.lot_no}|${r.serial_no}`} className="bg-slate-50/40 text-slate-600">
+                        <td />
+                        <td />
+                        <td />
+                        <td className={`${td} whitespace-nowrap font-mono text-[13px]`}>{r.lot_no ?? '-'}{r.serial_no ? <span className="ml-2 text-xs text-slate-400">SN {r.serial_no}</span> : null}</td>
+                        <td className={`${td} whitespace-nowrap`}>
+                          {r.expiration_date
+                            ? <span className={near ? 'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800' : ''}>{fmtDate(r.expiration_date)}</span>
+                            : '-'}
+                        </td>
+                        <td className={`${td} text-right tabular-nums`}>{fmtQty(r.qty)}</td>
+                        <td className={`${td} whitespace-nowrap`}>{r.bincode ?? '-'}</td>
+                      </tr>
+                    )
+                  })}
+                </Fragment>
               )
             })}
-            {!loading && view === 'item' && itemRows.map(r => (
-              <tr key={r.no_item} className="hover:bg-slate-50">
-                <td className={`${td} whitespace-nowrap font-semibold text-slate-900`}>{r.no_item}</td>
-                <td className={td}>{r.nama_item ?? '-'}</td>
-                <td className={`${td} whitespace-nowrap`}>{r.kategori ?? '-'}</td>
-                <td className={`${td} whitespace-nowrap`}>{[...r.bins].join(' / ')}</td>
-                <td className={`${td} text-right tabular-nums`}>{r.lots}</td>
-                <td className={`${td} whitespace-nowrap`}>{fmtDate(r.nearestExpiry)}</td>
-                <td className={`${td} text-right font-semibold tabular-nums text-slate-900`}>{fmtQty(r.qty)}</td>
-                <td className={`${td} text-right tabular-nums`}><Delta qty={r.qty} prev={r.prev} /></td>
-              </tr>
-            ))}
-            {!loading && view === 'bin' && binRows.map(r => (
-              <tr key={r.bin} className="cursor-pointer hover:bg-slate-50" onClick={() => { setBin(r.bin); setView('lot') }} title="Lihat LOT di bin ini">
-                <td className={`${td} whitespace-nowrap font-semibold text-slate-900`}>{r.bin}</td>
-                <td className={`${td} text-right tabular-nums`}>{r.items.size}</td>
-                <td className={`${td} text-right tabular-nums`}>{r.lots}</td>
-                <td className={`${td} text-right font-semibold tabular-nums text-slate-900`}>{fmtQty(r.qty)}</td>
-                <td className={`${td} text-right tabular-nums`}><Delta qty={r.qty} prev={r.prev} /></td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
