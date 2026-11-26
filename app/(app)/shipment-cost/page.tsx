@@ -1,5 +1,5 @@
 import { wibToday } from '@/lib/wib-time'
-import { getShipmentCosts, getShipmentCostAvailableMonths } from './actions'
+import { getShipmentCosts, getShipmentCostAvailableMonths, getPodReturnSummary } from './actions'
 import ShipmentCostClient from './ShipmentCostClient'
 import Link from 'next/link'
 
@@ -18,10 +18,10 @@ export default async function ShipmentCostPage({
     : (availableMonths[0] ?? currentMonthStr)
 
   const selectedMonth = sp.month ?? defaultMonth
-  const rows = await getShipmentCosts({
-    status: 'Delivered',
-    month: selectedMonth,
-  })
+  const [rows, podReturn] = await Promise.all([
+    getShipmentCosts({ status: 'Delivered', month: selectedMonth }),
+    getPodReturnSummary(selectedMonth).catch(() => []),
+  ])
 
   return (
     <div className="space-y-4 font-sans">
@@ -47,6 +47,7 @@ export default async function ShipmentCostPage({
         months={availableMonths}
         defaultMonth={defaultMonth}
         selectedMonth={selectedMonth}
+        podReturn={podReturn}
       />
     </div>
   )

@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { inferDkLk } from '@/lib/dklk'
 import { TRIP_COST_FIELDS, pickTripCostAnchor } from '@/lib/trip-cost'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
+import { jakartaToday, workingDaysSince } from '@/lib/sla'
+import { displayVendorName } from '@/lib/vendor-display'
 
 export type ShipmentCostRow = {
   id: number
@@ -428,9 +430,96 @@ export async function getTripTruckingRate(input: {
 /** Tanggal invoice vendor (kolom v61) untuk form Input Biaya Shipment. */
 export async function getShipmentInvoiceDates(id: number) {
   await requireAuthenticatedUser()
-  const { data, error } = await supabaseAdmin.from('shipment_tracking').select('invoice_date, invoice_received_date').eq('id', id).maybeSingle()
+  const { data, error } = await supabaseAdmin.from('shipment_tracking').select('invoice_date, invoice_received_date, pod_returned_date').eq('id', id).maybeSingle()
   if (error) throw new Error(error.message)
-  return { invoice_date: (data?.invoice_date as string | null) ?? null, invoice_received_date: (data?.invoice_received_date as string | null) ?? null }
+  return {
+    invoice_date: (data?.invoice_date as string | null) ?? null,
+    invoice_received_date: (data?.invoice_received_date as string | null) ?? null,
+    pod_returned_date: (data?.pod_returned_date as string | null) ?? null,
+  }
+}
+
+export type PodReturnVendorSummary = {
+  vendor: string
+  /** PSS vendor yang sudah diserahkan (punya waktu dispatch). */
+  shipments: number
+  returned: number
+  onTime: number
+  avgActualDays: number | null
+  avgIdealDays: number | null
+  /** Belum kembali dan sudah melewati target. */
+  overdue: number
+  pending: number
+}
+
+/**
+ * Lama dokumen POD kembali dari vendor ekspedisi (Trucking/Retail), dihitung dalam hari kerja
+ * dari serah barang + dokumen ke vendor (dispatch) sampai POD diterima di SRU.
+ * Target ideal = 2 x leadtime + 0,5 hari; leadtime dari rate card vendor, cadangan SLA DK 1 / LK 5.
+ */
+export async function getPodReturnSummary(month: string): Promise<PodReturnVendorSummary[]> {
+  await requireAuthenticatedUser()
+  const rows = (await getShipmentCosts({ status: 'Delivered', month }))
+    .filter(row => (row.cost_model === 'Trucking' || row.cost_model === 'Retail') && row.dispatch_time)
+  if (!rows.length) return []
+
+  const returnedById = new Map<number, string | null>()
+  const ids = rows.map(row => row.id)
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabaseAdmin.from('shipment_tracking').select('id, pod_returned_date').in('id', ids.slice(i, i + 200))
+    if (error) throw new Error(error.message)
+    for (const item of data ?? []) returnedById.set(Number(item.id), (item.pod_returned_date as string | null) ?? null)
+  }
+
+  const vendorCache = new Map<string, TruckingVendor | null>()
+  const rateCache = new Map<string, RateCardMatch | null>()
+  async function leadTime(row: ShipmentCostRow) {
+    const vendorKey = normalizeRateText(row.transporter_name)
+    if (!vendorCache.has(vendorKey)) vendorCache.set(vendorKey, await findTruckingVendor(row.transporter_name))
+    const vendor = vendorCache.get(vendorKey)
+    if (vendor) {
+      const rateKey = `${vendor.id}|${normalizeRateText(row.destination_city)}|${normalizeRateText(row.vehicle_type)}`
+      if (!rateCache.has(rateKey)) rateCache.set(rateKey, await findRateCard(vendor.id, row.destination_city, row.vehicle_type))
+      const days = rateCache.get(rateKey)?.lead_time_days
+      if (days && days > 0) return days
+    }
+    return row.dk_lk === 'DK' ? 1 : 5
+  }
+
+  const today = jakartaToday()
+  const groups = new Map<string, { shipments: number; returned: number; onTime: number; actual: number; ideal: number; overdue: number; pending: number }>()
+  for (const row of rows) {
+    const vendor = displayVendorName(row.transporter_name) || row.transporter_name || 'Tanpa vendor'
+    const group = groups.get(vendor) ?? { shipments: 0, returned: 0, onTime: 0, actual: 0, ideal: 0, overdue: 0, pending: 0 }
+    const handover = jakartaToday(new Date(row.dispatch_time!))
+    const ideal = 2 * (await leadTime(row)) + 0.5
+    const returnedDate = returnedById.get(row.id)
+    group.shipments++
+    if (returnedDate) {
+      const actual = workingDaysSince(handover, returnedDate)
+      group.returned++
+      group.actual += actual
+      group.ideal += ideal
+      if (actual <= ideal) group.onTime++
+    } else {
+      group.pending++
+      if (workingDaysSince(handover, today) > ideal) group.overdue++
+    }
+    groups.set(vendor, group)
+  }
+
+  return [...groups.entries()]
+    .map(([vendor, g]) => ({
+      vendor,
+      shipments: g.shipments,
+      returned: g.returned,
+      onTime: g.onTime,
+      avgActualDays: g.returned ? g.actual / g.returned : null,
+      avgIdealDays: g.returned ? g.ideal / g.returned : null,
+      overdue: g.overdue,
+      pending: g.pending,
+    }))
+    .sort((a, b) => b.shipments - a.shipments)
 }
 
 export async function getTruckingRate(destination: string | null, vehicleType: string | null, transporterName: string | null) {
@@ -467,6 +556,7 @@ export type UpsertCostPayload = {
   invoice_value?: number | null
   invoice_date?: string | null
   invoice_received_date?: string | null
+  pod_returned_date?: string | null
   // Multi-PSS TKBM breakdown
   sibling_tkbm?: Array<{ id: number; tkbm: number }>
 }
@@ -492,6 +582,7 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
         biaya_tkbm: null,
         invoice_date: null,
         invoice_received_date: null,
+        pod_returned_date: null,
       }
     : costModel === 'Trucking'
       ? {

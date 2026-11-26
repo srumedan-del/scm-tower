@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel'
 import MonthFilter from '@/components/shared/MonthFilter'
-import type { ShipmentCostRow } from './actions'
+import type { PodReturnVendorSummary, ShipmentCostRow } from './actions'
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
@@ -20,6 +20,7 @@ type Props = {
   months: string[]
   defaultMonth: string
   selectedMonth: string
+  podReturn: PodReturnVendorSummary[]
 }
 
 export default function ShipmentCostTable({
@@ -27,6 +28,7 @@ export default function ShipmentCostTable({
   months,
   defaultMonth,
   selectedMonth,
+  podReturn,
 }: Props) {
   const router = useRouter()
   const [rows, setRows] = useState<ShipmentCostRow[]>(initialRows)
@@ -304,6 +306,8 @@ export default function ShipmentCostTable({
             />
           </div>
 
+          <PodReturnCard rows={podReturn} />
+
           {selectedVendor && (
             <VendorBills
               vendor={selectedVendor}
@@ -315,6 +319,68 @@ export default function ShipmentCostTable({
         </div>
       )}
     </>
+  )
+}
+
+const fmtDays = (value: number | null) => (value == null ? '-' : `${value.toLocaleString('id-ID', { maximumFractionDigits: 1 })} hari`)
+
+/** Lama dokumen POD kembali dari vendor ekspedisi, hari kerja, target 2 x leadtime + 0,5 hari. */
+function PodReturnCard({ rows }: { rows: PodReturnVendorSummary[] }) {
+  const th = 'px-4 py-3 text-[13px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap'
+  return (
+    <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden font-sans">
+      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <h2 className="text-[14px] font-bold uppercase tracking-wider text-slate-800">POD Kembali per Vendor</h2>
+        <p className="text-[11px] text-slate-500 mt-0.5">
+          Hari kerja dari serah barang + dokumen ke vendor sampai dokumen POD diterima di SRU. Target ideal 2 × leadtime + ½ hari
+          (leadtime rate card vendor, atau SLA DK 1 / LK 5 hari bila kosong).
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[14px] text-left">
+          <thead className="border-b border-slate-200 bg-slate-50/60">
+            <tr>
+              <th className={`${th} text-left`}>Vendor</th>
+              <th className={`${th} text-right`}>Shipment</th>
+              <th className={`${th} text-right`}>POD Kembali</th>
+              <th className={`${th} text-right`}>Rata-rata Aktual</th>
+              <th className={`${th} text-right`}>Rata-rata Target</th>
+              <th className={`${th} text-right`}>Tepat Waktu</th>
+              <th className={`${th} text-right`}>Belum Kembali</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row) => {
+              const pct = row.returned ? Math.round((row.onTime / row.returned) * 100) : null
+              const late = row.avgActualDays != null && row.avgIdealDays != null && row.avgActualDays > row.avgIdealDays
+              return (
+                <tr key={row.vendor} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">{row.vendor}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.shipments}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.returned}</td>
+                  <td className={`px-4 py-3 text-right tabular-nums font-semibold ${late ? 'text-rose-700' : 'text-slate-900'}`}>{fmtDays(row.avgActualDays)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-600">{fmtDays(row.avgIdealDays)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                    {pct == null ? <span className="text-slate-400">-</span> : (
+                      <span className={pct >= 90 ? 'font-bold text-emerald-700' : pct >= 70 ? 'font-bold text-amber-700' : 'font-bold text-rose-700'}>
+                        {pct}% <span className="font-normal text-slate-500">({row.onTime}/{row.returned})</span>
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-slate-700">
+                    {row.pending}
+                    {row.overdue > 0 && <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{row.overdue} lewat target</span>}
+                  </td>
+                </tr>
+              )
+            })}
+            {!rows.length && (
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-400">Belum ada shipment vendor ekspedisi pada periode ini.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 

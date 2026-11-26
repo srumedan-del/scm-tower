@@ -122,6 +122,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     biaya_trucking: row.biaya_trucking ?? '',
     invoice_date: '',
     invoice_received_date: '',
+    pod_returned_date: '',
   })
 
   // Tanggal invoice vendor tidak ada di view daftar biaya; dibaca terpisah.
@@ -131,7 +132,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
     getShipmentInvoiceDates(row.id)
       .then((d) => {
         if (!active) return
-        setForm((f) => ({ ...f, invoice_date: d.invoice_date ?? '', invoice_received_date: d.invoice_received_date ?? '' }))
+        setForm((f) => ({ ...f, invoice_date: d.invoice_date ?? '', invoice_received_date: d.invoice_received_date ?? '', pod_returned_date: d.pod_returned_date ?? '' }))
       })
       .catch(() => {})
     return () => { active = false }
@@ -513,6 +514,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
           biaya_tkbm: currentRowTkbm,
           invoice_date: form.invoice_date || null,
           invoice_received_date: form.invoice_received_date || null,
+          pod_returned_date: form.pod_returned_date || null,
           // Sibling TKBM updates
           sibling_tkbm: siblingTkbm,
         })
@@ -554,6 +556,19 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
       }
     })
   }
+
+  // Dokumen POD vendor kembali ke SRU; dipakai kartu "POD Kembali per Vendor" di Analisa.
+  const podReturnField = (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tgl POD Diterima di SRU</label>
+      <input
+        type="date"
+        value={form.pod_returned_date}
+        onChange={(e) => up('pod_returned_date', e.target.value)}
+        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
+      />
+    </div>
+  )
 
   const modelLabel =
     model === 'Retail'
@@ -925,7 +940,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   Biaya Sewa Trucking
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">No. Invoice Vendor</label>
                   <input
@@ -954,6 +969,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                     className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
                   />
                 </div>
+                {podReturnField}
               </div>
 
               {/* Rincian tagihan vendor: DPP, PPh 23 2%, PPN 1,1% */}
@@ -990,7 +1006,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                   Pengiriman Retail
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">No. Resi</label>
                   <input
@@ -1019,6 +1035,7 @@ export default function ShipmentCostInputPanel({ row, onClose, onSaved }: Props)
                     className="w-full !py-1 text-xs font-medium"
                   />
                 </div>
+                {podReturnField}
               </div>
             </div>
           )}
