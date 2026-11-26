@@ -171,9 +171,10 @@ export async function getShipmentTrackings(filters?: { status?: string; month?: 
     if (openTripError) throw openTripError
     const tripList = (openTrips ?? []).map(trip => `"${String(trip.trip_no).replace(/"/g, '')}"`).join(',')
     q = tripList ? q.or(`status.eq."${filters.status}",trip_id.in.(${tripList})`) : q.eq('status', filters.status)
-    // PSS yang POD-nya sudah terisi (Delivered) sudah diterima pelanggan: tidak ditampilkan lagi,
-    // walau Trip-nya belum End Trip. Trip hilang sendiri saat semua PSS-nya Delivered.
-    q = q.neq('status', 'Delivered')
+    // PSS yang POD-nya sudah terisi (Delivered) sudah diterima pelanggan, dan PSS Failed Delivery
+    // sudah dikirim ulang lewat shipment baru: keduanya tidak ditampilkan lagi walau Trip-nya belum End Trip.
+    // Trip hilang sendiri saat semua PSS-nya selesai. Centang "Tampilkan semua status" untuk melihatnya.
+    q = q.not('status', 'in', '("Delivered","Failed Delivery")')
   }
 
   const { data, error } = await q
