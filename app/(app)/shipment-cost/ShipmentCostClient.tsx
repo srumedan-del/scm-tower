@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { Fragment, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel'
 import MonthFilter from '@/components/shared/MonthFilter'
-import type { PodReturnVendorSummary, ShipmentCostRow } from './actions'
+import type { PodReturnItem, PodReturnVendorSummary, ShipmentCostRow } from './actions'
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
@@ -37,6 +37,7 @@ export default function ShipmentCostTable({
   const [subMenu, setSubMenu] = useState<'maintain' | 'analysis'>('maintain')
   const [activeRow, setActiveRow] = useState<ShipmentCostRow | null>(null)
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null)
+  const [podVendor, setPodVendor] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
   const handleSelectMonth = (m: string) => {
@@ -306,7 +307,15 @@ export default function ShipmentCostTable({
             />
           </div>
 
-          <PodReturnCard rows={podReturn} />
+          <PodReturnCard rows={podReturn} selected={podVendor} onSelect={(v) => setPodVendor(v === podVendor ? null : v)} />
+
+          {podVendor && podReturn.find((v) => v.vendor === podVendor) && (
+            <PodVendorDetail
+              summary={podReturn.find((v) => v.vendor === podVendor)!}
+              onClose={() => setPodVendor(null)}
+              onOpen={(id) => { const target = rows.find((r) => r.id === id); if (target) setActiveRow(target) }}
+            />
+          )}
 
           {selectedVendor && (
             <VendorBills
@@ -325,7 +334,7 @@ export default function ShipmentCostTable({
 const fmtDays = (value: number | null) => (value == null ? '-' : `${value.toLocaleString('id-ID', { maximumFractionDigits: 1 })} hari`)
 
 /** Lama dokumen POD kembali dari vendor ekspedisi, hari kerja, target 2 x leadtime + 0,5 hari. */
-function PodReturnCard({ rows }: { rows: PodReturnVendorSummary[] }) {
+function PodReturnCard({ rows, selected, onSelect }: { rows: PodReturnVendorSummary[]; selected: string | null; onSelect: (vendor: string) => void }) {
   const th = 'px-4 py-3 text-[13px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap'
   return (
     <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden font-sans">
@@ -333,7 +342,7 @@ function PodReturnCard({ rows }: { rows: PodReturnVendorSummary[] }) {
         <h2 className="text-[14px] font-bold uppercase tracking-wider text-slate-800">POD Kembali per Vendor</h2>
         <p className="text-[11px] text-slate-500 mt-0.5">
           Hari kerja dari serah barang + dokumen ke vendor sampai dokumen POD diterima di SRU. Target ideal 2 × leadtime + ½ hari
-          (leadtime rate card vendor, atau SLA DK 1 / LK 5 hari bila kosong).
+          (leadtime rate card vendor, atau SLA DK 1 / LK 5 hari bila kosong). Klik nama vendor untuk melihat trip, invoice, dan POD yang belum kembali.
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -354,8 +363,10 @@ function PodReturnCard({ rows }: { rows: PodReturnVendorSummary[] }) {
               const pct = row.returned ? Math.round((row.onTime / row.returned) * 100) : null
               const late = row.avgActualDays != null && row.avgIdealDays != null && row.avgActualDays > row.avgIdealDays
               return (
-                <tr key={row.vendor} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">{row.vendor}</td>
+                <tr key={row.vendor} className={`hover:bg-slate-50 ${selected === row.vendor ? 'bg-indigo-50/60' : ''}`}>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <button type="button" onClick={() => onSelect(row.vendor)} className="text-left font-semibold text-indigo-600 hover:underline">{row.vendor}</button>
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.shipments}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.returned}</td>
                   <td className={`px-4 py-3 text-right tabular-nums font-semibold ${late ? 'text-rose-700' : 'text-slate-900'}`}>{fmtDays(row.avgActualDays)}</td>
@@ -376,6 +387,112 @@ function PodReturnCard({ rows }: { rows: PodReturnVendorSummary[] }) {
             })}
             {!rows.length && (
               <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-400">Belum ada shipment vendor ekspedisi pada periode ini.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+const fmtDmy = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '-')
+
+const POD_STATUS: Record<PodReturnItem['status'], { label: string; cls: string }> = {
+  on_time: { label: 'Kembali tepat waktu', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  late: { label: 'Kembali terlambat', cls: 'bg-amber-50 text-amber-800 border-amber-200' },
+  pending: { label: 'Belum kembali', cls: 'bg-slate-50 text-slate-600 border-slate-200' },
+  overdue: { label: 'Belum kembali, lewat target', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+}
+
+/** Trip dan invoice satu vendor ekspedisi, dengan status dokumen POD tiap PSS. */
+function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendorSummary; onClose: () => void; onOpen: (id: number) => void }) {
+  const [onlyOpen, setOnlyOpen] = useState(summary.pending > 0)
+  const trips = useMemo(() => {
+    const items = onlyOpen ? summary.items.filter((i) => i.status === 'pending' || i.status === 'overdue') : summary.items
+    const map = new Map<string, PodReturnItem[]>()
+    for (const item of items) {
+      const key = item.trip_id ?? `Tanpa trip · ${item.pss_no ?? item.id}`
+      map.set(key, [...(map.get(key) ?? []), item])
+    }
+    return [...map.entries()]
+  }, [summary, onlyOpen])
+  const th = 'px-3 py-2.5 text-[12px] font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap'
+  const td = 'px-3 py-2 whitespace-nowrap'
+  return (
+    <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-50">
+        <div>
+          <h2 className="text-[14px] font-bold uppercase tracking-wider text-slate-800">Trip &amp; Invoice: {summary.vendor}</h2>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {summary.shipments} PSS · {summary.returned} POD kembali · {summary.pending} belum kembali
+            {summary.overdue > 0 ? ` (${summary.overdue} lewat target)` : ''}. Klik PSS untuk mengisi Tgl POD Diterima di SRU.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+            Hanya POD belum kembali
+          </label>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+      <div className="data-list-scroll max-h-[calc(100vh-14rem)] overflow-auto">
+        <table className="w-full min-w-[980px] text-[13px] text-left">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
+            <tr>
+              <th className={th}>PSS</th>
+              <th className={th}>Pelanggan</th>
+              <th className={th}>No. Invoice</th>
+              <th className={th}>Tgl Invoice</th>
+              <th className={th}>Serah ke Vendor</th>
+              <th className={`${th} text-right`}>Target</th>
+              <th className={th}>POD Diterima</th>
+              <th className={`${th} text-right`}>Hari Kerja</th>
+              <th className={th}>Status POD</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {trips.map(([trip, list]) => {
+              const back = list.filter((i) => i.returnedDate).length
+              const invoices = [...new Set(list.map((i) => i.invoice_no).filter(Boolean))]
+              return (
+                <Fragment key={trip}>
+                  <tr className="bg-slate-50/70">
+                    <td colSpan={9} className="px-3 py-2 text-[12px] text-slate-600">
+                      <span className="font-mono font-bold text-indigo-700">{trip}</span>
+                      <span className="ml-3">{list.length} PSS</span>
+                      <span className="ml-3">POD {back}/{list.length}</span>
+                      <span className="ml-3">Invoice: {invoices.length ? invoices.join(', ') : <span className="text-amber-700">belum ada</span>}</span>
+                    </td>
+                  </tr>
+                  {list.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className={td}>
+                        <button type="button" onClick={() => onOpen(item.id)} className="font-mono font-semibold text-indigo-600 hover:underline">{item.pss_no ?? item.id}</button>
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">{item.customer_name ?? '-'}{item.destination_city ? <span className="text-slate-400"> · {item.destination_city}</span> : null}</td>
+                      <td className={`${td} font-mono text-slate-700`}>{item.invoice_no ?? '-'}</td>
+                      <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>
+                      <td className={`${td} text-slate-700`}>{fmtDmy(item.handover)}</td>
+                      <td className={`${td} text-right tabular-nums text-slate-600`}>{item.idealDays.toLocaleString('id-ID')} hari</td>
+                      <td className={`${td} text-slate-700`}>{fmtDmy(item.returnedDate)}</td>
+                      <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{item.days}</td>
+                      <td className={td}>
+                        <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[item.status].cls}`}>{POD_STATUS[item.status].label}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              )
+            })}
+            {!trips.length && (
+              <tr><td colSpan={9} className="px-4 py-6 text-center text-slate-400">Semua POD vendor ini sudah kembali.</td></tr>
             )}
           </tbody>
         </table>
