@@ -27,6 +27,10 @@ const otdBadge = (isOnTime: boolean | null) => {
     : <span className="text-xs rounded-full px-2 py-0.5 bg-red-100 text-red-700 font-medium">Late</span>
 }
 
+// Nama transporter yang tampil di tabel; dipakai juga untuk filter.
+const transporterLabel = (r: ShipmentTrackingRow) =>
+  r.transporter_name ?? (r.cost_model === 'Internal' || r.fleet_type === 'Internal' ? 'SRU MEDAN' : (r.notes?.match(/Vendor: ([^|]+)/)?.[1]?.trim()) ?? '-')
+
 const formatRupiah = (amount: number | null) => {
   if (amount === null || amount === undefined) return '-'
   return `Rp ${Math.round(amount).toLocaleString('id-ID')}`
@@ -48,6 +52,15 @@ export default function ShipmentPage() {
   const [tmsAvail, setTmsAvail]         = useState<boolean | null>(null)
   const [showAllStatuses, setShowAllStatuses] = useState(false)
   const [retailInTransit, setRetailInTransit] = useState<ShipmentTrackingRow[]>([])
+  const [transporterFilter, setTransporterFilter] = useState('')
+  const transporterOptions = useMemo(
+    () => [...new Set(rows.map(transporterLabel))].sort((a, b) => a.localeCompare(b)),
+    [rows],
+  )
+  const visibleRows = useMemo(
+    () => (transporterFilter ? rows.filter(row => transporterLabel(row) === transporterFilter) : rows),
+    [rows, transporterFilter],
+  )
   const [collapsedTrips, setCollapsedTrips] = useState<Set<string>>(new Set())
   const toggleTrip = (key: string) => setCollapsedTrips(current => {
     const next = new Set(current)
@@ -58,14 +71,14 @@ export default function ShipmentPage() {
   // Baris sudah terurut per Trip; kelompokkan berurutan.
   const tripGroups = useMemo(() => {
     const groups: { key: string; tripId: string | null; rows: ShipmentTrackingRow[] }[] = []
-    for (const row of rows) {
+    for (const row of visibleRows) {
       const key = row.trip_id ?? '__tanpa_trip__'
       const last = groups[groups.length - 1]
       if (last && last.key === key) last.rows.push(row)
       else groups.push({ key, tripId: row.trip_id ?? null, rows: [row] })
     }
     return groups
-  }, [rows])
+  }, [visibleRows])
   const [loadingRetail, startLoadRetail]      = useTransition()
 
   // Panels
@@ -240,7 +253,7 @@ export default function ShipmentPage() {
           onChange={value => setMainTab(value)}
           items={[
             { value: 'untracked', label: 'For Transport Planning', icon: AlertCircle, count: untracked.length, attention: true },
-            { value: 'tracking', label: 'List Outbound Deliveries', icon: Truck, count: rows.length },
+            { value: 'tracking', label: 'List Outbound Deliveries', icon: Truck, count: visibleRows.length },
             { value: 'retail-in-transit', label: 'Pengiriman Retail', icon: MapPinned, count: retailInTransit.length, attention: true },
           ]}
         />
@@ -381,6 +394,21 @@ export default function ShipmentPage() {
             <p className="text-sm text-gray-500">
               Daftar <strong>Shipment</strong> Pengiriman.
             </p>
+            <div className="flex items-center gap-4 flex-wrap">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Transporter</span>
+              <select
+                value={transporterFilter}
+                onChange={e => setTransporterFilter(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
+              >
+                <option value="">Semua transporter</option>
+                {transporterFilter && !transporterOptions.includes(transporterFilter) && (
+                  <option value={transporterFilter}>{transporterFilter}</option>
+                )}
+                {transporterOptions.map(name => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -394,6 +422,7 @@ export default function ShipmentPage() {
               />
               Tampilkan semua status
             </label>
+            </div>
           </div>
 
           {tmsAvail === false && (
@@ -426,6 +455,13 @@ export default function ShipmentPage() {
                   <tr>
                     <td className="px-4 py-3 text-sm font-medium text-slate-600">
                       Belum ada shipment. Buat dari tab <strong>Belum Dibuat</strong>.
+                    </td>
+                  </tr>
+                )}
+                {!loading && rows.length > 0 && visibleRows.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
+                      Tidak ada shipment untuk transporter {transporterFilter}.
                     </td>
                   </tr>
                 )}
@@ -466,7 +502,7 @@ export default function ShipmentPage() {
                     <td className="px-4 py-3 text-sm font-medium whitespace-nowrap text-slate-600">{r.document_date ?? '-'}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-600">{r.customer_name ?? '-'}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-600">
-                      <div>{r.transporter_name ?? (r.cost_model === 'Internal' || r.fleet_type === 'Internal' ? 'SRU MEDAN' : (r.notes?.match(/Vendor: ([^|]+)/)?.[1]?.trim()) ?? '-')}</div>
+                      <div>{transporterLabel(r)}</div>
                       {r.transporter_service_model && <div className="text-gray-400">{r.transporter_service_model}</div>}
                       {!r.transporter_name && r.notes?.match(/Nopol: ([^|]+)/)?.[1] && (
                         <div className="text-gray-400 font-medium text-xs">{r.notes.match(/Nopol: ([^|]+)/)?.[1]?.trim()}</div>
