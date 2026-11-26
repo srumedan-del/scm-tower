@@ -142,6 +142,7 @@ export async function getShipmentCosts(filters?: {
   from_date?: string
   to_date?: string
   month?: string
+  id?: number
 }): Promise<ShipmentCostRow[]> {
   await requireAuthenticatedUser()
   let q = supabaseAdmin
@@ -179,6 +180,7 @@ export async function getShipmentCosts(filters?: {
   }
   if (filters?.from_date) q = q.gte('document_date', filters.from_date)
   if (filters?.to_date) q = q.lte('document_date', filters.to_date)
+  if (filters?.id) q = q.eq('id', filters.id)
 
   const { data, error } = await q
   if (error) throw error
@@ -482,6 +484,8 @@ export type PodReturnItem = {
   /** Kiriman Retail memakai nomor resi, bukan invoice. */
   no_resi: string | null
   retail: boolean
+  /** Nilai resi (total biaya kirim) untuk kiriman Retail. */
+  amount: number | null
   invoice_date: string | null
   /** Tanggal serah barang + dokumen ke vendor (WIB). */
   handover: string
@@ -566,6 +570,7 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
       invoice_no: row.invoice_no_eksternal,
       no_resi: row.no_resi,
       retail: row.cost_model === 'Retail',
+      amount: row.cost_model === 'Retail' ? Number(row.total_biaya_eksternal) || null : null,
       invoice_date: extra?.invoice_date ?? null,
       handover,
       idealDays: ideal,
@@ -729,4 +734,11 @@ export async function upsertShipmentCost(payload: UpsertCostPayload) {
       }
     }
   }
+}
+
+/** Satu baris biaya (status apa pun), mis. PSS In Transit yang dibuka dari kartu POD per vendor. */
+export async function getShipmentCostRow(id: number): Promise<ShipmentCostRow | null> {
+  await requireAuthenticatedUser()
+  const rows = await getShipmentCosts({ status: 'all', id })
+  return rows[0] ?? null
 }

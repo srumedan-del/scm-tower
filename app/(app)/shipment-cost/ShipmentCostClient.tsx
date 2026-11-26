@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel'
 import MonthFilter from '@/components/shared/MonthFilter'
-import type { PodReturnItem, PodReturnVendorSummary, ShipmentCostRow } from './actions'
+import { getShipmentCostRow, type PodReturnItem, type PodReturnVendorSummary, type ShipmentCostRow } from './actions'
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
@@ -313,7 +313,12 @@ export default function ShipmentCostTable({
             <PodVendorDetail
               summary={podReturn.find((v) => v.vendor === podVendor)!}
               onClose={() => setPodVendor(null)}
-              onOpen={(id) => { const target = rows.find((r) => r.id === id); if (target) setActiveRow(target) }}
+              onOpen={(id) => {
+                // PSS In Transit/Closed tidak ada di daftar Delivered: ambil langsung.
+                const target = rows.find((r) => r.id === id)
+                if (target) setActiveRow(target)
+                else getShipmentCostRow(id).then((row) => { if (row) setActiveRow(row) }).catch(() => {})
+              }}
             />
           )}
 
@@ -429,7 +434,8 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
   // Kiriman Retail memakai nomor resi, bukan invoice: kolom invoice diganti No. Resi.
   const retail = summary.items.length > 0 && summary.items.every((i) => i.retail)
   const docNo = (i: PodReturnItem) => (i.retail ? i.no_resi : i.invoice_no)
-  const cols = retail ? 8 : 9
+  const cols = 8
+  const fmtRp = (v: number | null) => (v ? `Rp ${v.toLocaleString('id-ID')}` : '-')
   // Hanya PSS: tanpa nomor trip, urut tanggal serah ke vendor (terlama di atas) lalu nomor PSS.
   const [pssOnly, setPssOnly] = useState(false)
   const items = useMemo(
@@ -443,16 +449,15 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
 
   async function exportExcel() {
     const XLSX = await import('xlsx')
-    const header = ['Vendor', ...(pssOnly ? [] : ['Trip']), 'PSS', 'Pelanggan', 'Kota', ...(retail ? ['No. Resi'] : ['No. Invoice', 'Tgl Invoice']), 'Serah ke Vendor', 'Target (hari kerja)', 'POD Diterima', 'Hari Kerja', 'Status POD']
+    const header = ['Vendor', ...(pssOnly ? [] : ['Trip']), 'PSS', 'Pelanggan', 'Kota', ...(retail ? ['No. Resi', 'Nilai Resi'] : ['No. Invoice', 'Tgl Invoice']), 'Serah ke Vendor', 'POD Diterima', 'Hari Kerja', 'Status POD']
     const lines = byDate.map((i) => [
       summary.vendor,
       ...(pssOnly ? [] : [i.trip_id ?? '-']),
       i.pss_no ?? String(i.id),
       i.customer_name ?? '-',
       i.destination_city ?? '-',
-      ...(retail ? [i.no_resi ?? '-'] : [docNo(i) ?? '-', fmtDmy(i.invoice_date)]),
+      ...(retail ? [i.no_resi ?? '-', i.amount ?? ''] : [docNo(i) ?? '-', fmtDmy(i.invoice_date)]),
       fmtDmy(i.handover),
-      i.idealDays,
       fmtDmy(i.returnedDate),
       i.days,
       POD_STATUS[i.status].label,
@@ -484,9 +489,10 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
       </td>
       <td className="px-3 py-2 text-slate-700">{item.customer_name ?? '-'}{item.destination_city ? <span className="text-slate-400"> · {item.destination_city}</span> : null}</td>
       <td className={`${td} font-mono text-slate-700`}>{docNo(item) ?? '-'}</td>
-      {!retail && <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>}
+      {retail
+        ? <td className={`${td} text-right tabular-nums text-slate-800`}>{fmtRp(item.amount)}</td>
+        : <td className={`${td} text-slate-700`}>{fmtDmy(item.invoice_date)}</td>}
       <td className={`${td} text-slate-700`}>{fmtDmy(item.handover)}</td>
-      <td className={`${td} text-right tabular-nums text-slate-600`}>{item.idealDays.toLocaleString('id-ID')} hari</td>
       <td className={`${td} text-slate-700`}>{fmtDmy(item.returnedDate)}</td>
       <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{item.days}</td>
       <td className={td}>
@@ -542,9 +548,8 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
               <th className={th}>{perTrip ? 'Trip / PSS' : 'PSS'}</th>
               <th className={th}>Pelanggan</th>
               <th className={th}>{retail ? 'No. Resi' : 'No. Invoice'}</th>
-              {!retail && <th className={th}>Tgl Invoice</th>}
+              {retail ? <th className={`${th} text-right`}>Nilai Resi</th> : <th className={th}>Tgl Invoice</th>}
               <th className={th}>Serah ke Vendor</th>
-              <th className={`${th} text-right`}>Target</th>
               <th className={th}>POD Diterima</th>
               <th className={`${th} text-right`}>Hari Kerja</th>
               <th className={th}>Status POD</th>
@@ -575,9 +580,10 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
                         {customers.length ? <span className="text-slate-500"> · {customers.join(', ')}</span> : null}
                       </td>
                       <td className={`${td} font-mono text-slate-700`}>{invoices.length ? invoices.join(', ') : <span className="font-sans text-amber-700">belum ada</span>}</td>
-                      {!retail && <td className={`${td} text-slate-700`}>{invoiceDates.length ? invoiceDates.map(fmtDmy).join(', ') : '-'}</td>}
+                      {retail
+                        ? <td className={`${td} text-right tabular-nums font-semibold text-slate-800`}>{fmtRp(list.reduce((sum, i) => sum + (i.amount ?? 0), 0) || null)}</td>
+                        : <td className={`${td} text-slate-700`}>{invoiceDates.length ? invoiceDates.map(fmtDmy).join(', ') : '-'}</td>}
                       <td className={`${td} text-slate-700`}>{fmtDmy(handover)}</td>
-                      <td className={`${td} text-right tabular-nums text-slate-600`}>{Math.max(...list.map((i) => i.idealDays)).toLocaleString('id-ID')} hari</td>
                       <td className={`${td} font-semibold ${back === list.length ? 'text-emerald-700' : 'text-slate-700'}`}>{back}/{list.length} kembali</td>
                       <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{Math.max(...list.map((i) => i.days))}</td>
                       <td className={td}>
