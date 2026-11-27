@@ -15,7 +15,7 @@ type Row = { draft: SpabDraft; checked: boolean; seq: number | ''; address: stri
 const openPrint = (id: number) => window.open(`/print/spab/${id}`, '_blank', 'noopener')
 const openPdf = (id: number) => window.open(`/print/spab/${id}?pdf=1`, '_blank', 'noopener')
 
-/** Buat SPAB (Surat Perintah Ambil Barang) per PSS, biasanya langsung setelah trip dibuat. */
+/** Buat SPAB (Surat Perintah Ambil Barang) per PSS, sebelum shipment/trip dibuat. */
 export default function SpabDialog({ pssNos, onClose }: { pssNos: string[]; onClose: () => void }) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,7 +62,7 @@ export default function SpabDialog({ pssNos, onClose }: { pssNos: string[]; onCl
     startSaving(async () => {
       try {
         const result = await createSpabDocuments(selected.map(row => ({
-          tracking_id: row.draft.tracking_id,
+          pss_no: row.draft.pss_no,
           seq: Number(row.seq),
           spab_date: spabDate,
           pickup_date: pickupDate || null,
@@ -125,7 +125,7 @@ export default function SpabDialog({ pssNos, onClose }: { pssNos: string[]; onCl
             <div className="space-y-3">
               {rows.length === 0 && <p className="text-sm text-slate-500">PSS tidak ditemukan di Shipment Tracking.</p>}
               {rows.map((row, index) => (
-                <div key={row.draft.tracking_id} className={`rounded-xl border p-3 ${row.checked ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200'}`}>
+                <div key={row.draft.pss_no} className={`rounded-xl border p-3 ${row.checked ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200'}`}>
                   <label className="flex cursor-pointer items-start gap-3">
                     <input type="checkbox" checked={row.checked} onChange={e => update(index, { checked: e.target.checked })} className="mt-1 rounded border-slate-300" />
                     <span className="min-w-0 flex-1">

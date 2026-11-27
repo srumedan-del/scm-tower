@@ -12,7 +12,7 @@ import BulkShipmentPanel from '@/components/shipment/BulkShipmentPanel'
 import SpabDialog from '@/components/shipment/SpabDialog'
 import PodPanel from '@/components/shipment/PodPanel'
 import { ShipmentExportButton } from '@/components/shipment/ShipmentExportButton'
-import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight, Printer } from 'lucide-react'
+import { Plus, Truck, CheckCircle2, PackageCheck, AlertCircle, MapPinned, ChevronRight, Printer, FileText } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { Tabs } from '@/components/ui/Tabs'
 import { statusClass } from '@/lib/status-style'
@@ -399,6 +399,13 @@ export default function ShipmentPage() {
               >
                 {onlyRedeliverySelected ? 'Jadwalkan Ulang →' : 'Buat Shipment →'}
               </button>
+              {/* SPAB dibuat lebih dulu, sebelum shipment/trip. */}
+              <button
+                onClick={() => setSpabPss(selectedUtRows.map(row => row.pss_no))}
+                className="inline-flex items-center gap-1.5 border border-white/60 text-white font-bold text-sm px-4 py-1.5 rounded-xl hover:bg-white/10"
+              >
+                <FileText className="h-4 w-4" /> Buat SPAB
+              </button>
               <button onClick={() => setCheckedUt(new Set())} className="text-indigo-300 hover:text-white text-xs">
                 Batal pilih
               </button>
@@ -737,8 +744,6 @@ export default function ShipmentPage() {
           onClose={() => { setSelected(null); setAdding(false); setPrefillPss(null) }}
           onOpenSpab={pssNos => { setSelected(null); setAdding(false); setPrefillPss(null); setSpabPss(pssNos) }}
           onSaved={() => {
-            // Shipment baru dari satu PSS: langsung tawarkan pembuatan SPAB.
-            if (adding && !selected && prefillPss?.pss_no) setSpabPss([prefillPss.pss_no])
             // Tetap di tab yang sedang dibuka, agar bisa lanjut membuat trip untuk PSS lain.
             setSelected(null); setAdding(false); setPrefillPss(null)
             loadTracking(); loadUntracked(); loadRetailInTransit()
@@ -757,7 +762,6 @@ export default function ShipmentPage() {
           selectedPss={selectedUtRows}
           onClose={() => setBulkOpen(false)}
           onSaved={() => {
-            setSpabPss(selectedUtRows.map(row => row.pss_no))
             setBulkOpen(false); setCheckedUt(new Set()); loadUntracked(); loadTracking(); loadRetailInTransit()
           }}
         />

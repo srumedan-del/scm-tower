@@ -19,7 +19,8 @@ function formatSpabNo(seq: number, date: string) {
 export type SpabExisting = { id: number; spab_no: string; spab_date: string }
 
 export type SpabDraft = {
-  tracking_id: number
+  /** Kosong bila PSS belum dibuatkan shipment (SPAB dibuat sebelum shipment). */
+  tracking_id: number | null
   pss_no: string
   trip_id: string | null
   customer_name: string | null
@@ -28,7 +29,7 @@ export type SpabDraft = {
   recipient: string
   vehicle_no: string | null
   driver_name: string | null
-  fleet_type: string
+  fleet_type: string | null
   existing: SpabExisting[]
 }
 
@@ -42,7 +43,10 @@ async function nextSeq(year: number) {
   return Number(last) + 1
 }
 
-/** Data awal dialog SPAB untuk PSS yang dipilih (biasanya semua PSS di trip yang baru dibuat). */
+/**
+ * Data awal dialog SPAB untuk PSS yang dipilih. SPAB dibuat sebelum shipment, jadi PSS tanpa
+ * shipment diambil dari Outbound (atau Crossdocking); kendaraan/driver menyusul saat trip dibuat.
+ */
 export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDraft[]; nextSeq: number; today: string }> {
   await requireAuthenticatedUser()
   const today = wibToday()
@@ -60,6 +64,26 @@ export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDra
   // PSS bisa punya shipment lama (gagal kirim); pakai yang terbaru.
   const latest = new Map<string, any>()
   for (const row of rows ?? []) if (row.pss_no && !latest.has(row.pss_no)) latest.set(row.pss_no, row)
+
+  // PSS yang belum punya shipment: data customer dari Outbound, cadangan Crossdocking.
+  const withoutShipment = list.filter(pss => !latest.has(pss))
+  if (withoutShipment.length) {
+    const [outbound, crossdock] = await Promise.all([
+      supabaseAdmin.from('outbound_header').select('pss_no, customer_code, customer_name, ship_to_city').in('pss_no', withoutShipment),
+      supabaseAdmin.from('crossdocking_header').select('pss_no, customer_code, customer_name, destination_city').in('pss_no', withoutShipment),
+    ])
+    if (outbound.error) throw outbound.error
+    const fromSource = new Map<string, any>()
+    for (const row of crossdock.data ?? []) if (row.pss_no) fromSource.set(row.pss_no, { ...row })
+    for (const row of outbound.data ?? []) if (row.pss_no) fromSource.set(row.pss_no, { ...row, destination_city: row.ship_to_city })
+    for (const pss of withoutShipment) {
+      const source = fromSource.get(pss)
+      latest.set(pss, {
+        id: null, pss_no: pss, trip_id: null, customer_name: source?.customer_name ?? null, destination_city: source?.destination_city ?? null,
+        destination_address: null, transporter_id: null, vehicle_id: null, driver_id: null, cost_model: null, notes: null, status: null,
+      })
+    }
+  }
   const shipments = list.map(pss => latest.get(pss)).filter(Boolean)
 
   const ids = (key: string) => [...new Set(shipments.map(row => row[key]).filter((id: unknown) => id != null))]
@@ -78,6 +102,7 @@ export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDra
   const address = new Map((customers.data ?? []).map((row: any) => [String(row.customer_name).toUpperCase(), row.address as string | null]))
 
   const drafts: SpabDraft[] = shipments.map(row => {
+    const planned = row.id != null
     const internal = row.cost_model === 'Internal'
     const vendor = (row.transporter_id != null ? transporterName.get(Number(row.transporter_id)) : null) ?? noteField(row.notes, 'Vendor')
     return {
@@ -90,7 +115,7 @@ export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDra
       recipient: internal || !vendor ? 'MOBIL SINAR RODA UTAMA' : vendor,
       vehicle_no: (row.vehicle_id != null ? vehicleNo.get(Number(row.vehicle_id)) : null) ?? noteField(row.notes, 'Nopol'),
       driver_name: (row.driver_id != null ? driverName.get(Number(row.driver_id)) : null) ?? noteField(row.notes, 'Driver'),
-      fleet_type: internal ? 'INTERNAL' : 'EKSTERNAL',
+      fleet_type: planned ? (internal ? 'INTERNAL' : 'EKSTERNAL') : null,
       existing: ((existing.data ?? []) as any[]).filter(doc => doc.pss_no === row.pss_no).map(doc => ({ id: doc.id, spab_no: doc.spab_no, spab_date: doc.spab_date })),
     }
   })
@@ -99,7 +124,7 @@ export async function getSpabDrafts(pssNos: string[]): Promise<{ drafts: SpabDra
 }
 
 export type CreateSpabInput = {
-  tracking_id: number
+  pss_no: string
   seq: number
   spab_date: string
   pickup_date: string | null
@@ -123,23 +148,18 @@ export async function createSpabDocuments(inputs: CreateSpabInput[]) {
     seen.add(key)
   }
 
-  const { data: shipments, error } = await supabaseAdmin
-    .from('shipment_tracking')
-    .select('id, pss_no, trip_id, customer_name, transporter_id, vehicle_id, driver_id, cost_model, notes')
-    .in('id', inputs.map(input => input.tracking_id))
-  if (error) throw error
-  const drafts = (await getSpabDrafts((shipments ?? []).map(row => row.pss_no).filter(Boolean) as string[])).drafts
-  const draftById = new Map(drafts.map(draft => [draft.tracking_id, draft]))
+  const drafts = (await getSpabDrafts(inputs.map(input => String(input.pss_no ?? '').trim()))).drafts
+  const draftByPss = new Map(drafts.map(draft => [draft.pss_no, draft]))
 
   const rows = inputs.map(input => {
-    const draft = draftById.get(input.tracking_id)
-    if (!draft) throw new Error('Shipment tidak ditemukan')
+    const draft = draftByPss.get(String(input.pss_no ?? '').trim())
+    if (!draft) throw new Error(`PSS ${input.pss_no} tidak ditemukan`)
     return {
       spab_no: formatSpabNo(input.seq, input.spab_date),
       seq: input.seq,
       year: Number(input.spab_date.slice(0, 4)),
       spab_date: input.spab_date,
-      tracking_id: input.tracking_id,
+      tracking_id: draft.tracking_id,
       pss_no: draft.pss_no,
       trip_id: draft.trip_id,
       customer_name: draft.customer_name,
@@ -225,6 +245,17 @@ export async function getSpabForPrint(id: number) {
     // Barang tanpa data kemasan di Master SKU (mis. HD SET rakitan) tidak dicetak.
     .filter(item => item.per_box != null || item.box_weight != null || item.box_cbm != null)
     .sort((a, b) => a.sku.localeCompare(b.sku))
+
+  // SPAB dibuat sebelum shipment: kendaraan/driver diambil dari shipment PSS bila sudah ada.
+  if (doc.pss_no && (!doc.vehicle_no || !doc.driver_name || !doc.fleet_type)) {
+    const latest = (await getSpabDrafts([doc.pss_no])).drafts[0]
+    if (latest?.tracking_id) {
+      doc.vehicle_no ??= latest.vehicle_no
+      doc.driver_name ??= latest.driver_name
+      doc.fleet_type ??= latest.fleet_type
+      doc.trip_id ??= latest.trip_id
+    }
+  }
 
   return { doc, items }
 }
