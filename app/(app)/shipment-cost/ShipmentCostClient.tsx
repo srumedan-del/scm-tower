@@ -435,8 +435,10 @@ function PodVendorDetail({ summary, onClose, onOpen, onConfirmReceipt }: {
   onConfirmReceipt: (id: number) => void
 }) {
   const [onlyOpen, setOnlyOpen] = useState(summary.pending + summary.inTransit > 0)
+  // Vendor tanpa POD (JNE): tampil per PSS agar tombol konfirmasi telepon langsung terlihat.
+  const phoneVendor = summary.items.length > 0 && summary.items.every((i) => i.phoneConfirm)
   // Per Trip: satu baris ringkas per trip, yang paling butuh perhatian di atas; klik untuk membuka PSS-nya.
-  const [perTrip, setPerTrip] = useState(true)
+  const [perTrip, setPerTrip] = useState(!phoneVendor)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const toggleTrip = (trip: string) => setExpanded((prev) => {
     const next = new Set(prev)
@@ -450,7 +452,7 @@ function PodVendorDetail({ summary, onClose, onOpen, onConfirmReceipt }: {
   const cols = 8
   const fmtRp = (v: number | null) => (v ? `Rp ${v.toLocaleString('id-ID')}` : '-')
   // Hanya PSS: tanpa nomor trip, urut tanggal serah ke vendor (terlama di atas) lalu nomor PSS.
-  const [pssOnly, setPssOnly] = useState(false)
+  const [pssOnly, setPssOnly] = useState(phoneVendor)
   const items = useMemo(
     () => (onlyOpen ? summary.items.filter((i) => i.status === 'pending' || i.status === 'overdue' || i.status === 'in_transit') : summary.items),
     [summary, onlyOpen],
@@ -532,8 +534,10 @@ function PodVendorDetail({ summary, onClose, onOpen, onConfirmReceipt }: {
         <div>
           <h2 className="text-[14px] font-bold uppercase tracking-wider text-slate-800">Trip &amp; Invoice: {summary.vendor}</h2>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            {summary.shipments} PSS · {summary.returned} POD kembali · {summary.pending} belum kembali
-            {summary.overdue > 0 ? ` (${summary.overdue} lewat target)` : ''}{summary.inTransit > 0 ? ` · ${summary.inTransit} masih In Transit` : ''}. Klik PSS untuk mengisi Tgl POD Diterima di SRU.
+            {phoneVendor
+              ? <>{summary.shipments} PSS · {summary.returned} sudah dikonfirmasi telepon · {summary.shipments - summary.returned} belum. {summary.vendor} tidak mengembalikan POD: klik Konfirmasi penerimaan, telepon PIC pelanggan, lalu catat hasilnya.</>
+              : <>{summary.shipments} PSS · {summary.returned} POD kembali · {summary.pending} belum kembali
+                {summary.overdue > 0 ? ` (${summary.overdue} lewat target)` : ''}{summary.inTransit > 0 ? ` · ${summary.inTransit} masih In Transit` : ''}. Klik PSS untuk mengisi Tgl POD Diterima di SRU.</>}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -576,9 +580,9 @@ function PodVendorDetail({ summary, onClose, onOpen, onConfirmReceipt }: {
               <th className={th}>{retail ? 'No. Resi' : 'No. Invoice'}</th>
               {retail ? <th className={`${th} text-right`}>Nilai Resi</th> : <th className={th}>Tgl Invoice</th>}
               <th className={th}>Serah ke Vendor</th>
-              <th className={th}>POD Diterima</th>
+              <th className={th}>{phoneVendor ? 'Dikonfirmasi' : 'POD Diterima'}</th>
               <th className={`${th} text-right`}>Hari Kerja</th>
-              <th className={th}>Status POD</th>
+              <th className={th}>{phoneVendor ? 'Konfirmasi Penerimaan' : 'Status POD'}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -613,7 +617,9 @@ function PodVendorDetail({ summary, onClose, onOpen, onConfirmReceipt }: {
                       <td className={`${td} font-semibold ${back === list.length ? 'text-emerald-700' : 'text-slate-700'}`}>{back}/{list.length} kembali</td>
                       <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{Math.max(...list.map((i) => i.days))}</td>
                       <td className={td}>
-                        <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[worst].cls}`}>{POD_STATUS[worst].label}</span>
+                        {phoneVendor
+                          ? <span className="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">{back}/{list.length} dikonfirmasi, buka untuk telepon</span>
+                          : <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[worst].cls}`}>{POD_STATUS[worst].label}</span>}
                       </td>
                     </tr>
                     {open && list.map(renderItem)}
