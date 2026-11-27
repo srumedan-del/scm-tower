@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { isAuthRetryableFetchError } from '@supabase/supabase-js'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { hasScmAccess } from '@/lib/appAccess'
 
 async function loginPath() {
   const referer = (await headers()).get('referer')
@@ -27,7 +28,11 @@ export async function requireAuthenticatedUser() {
   let result = await supabase.auth.getUser()
   if (isAuthRetryableFetchError(result.error)) result = await supabase.auth.getUser()
 
-  if (result.data.user) return result.data.user
+  if (result.data.user) {
+    if (hasScmAccess(result.data.user)) return result.data.user
+    console.warn('[auth] akun tanpa akses SCM ditolak:', result.data.user.id)
+    redirect('/login?error=no-access')
+  }
   if (isAuthRetryableFetchError(result.error)) {
     throw new Error('Layanan login tidak dapat dihubungi, silakan coba lagi')
   }

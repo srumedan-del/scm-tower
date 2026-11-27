@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
+import { hasScmAccess } from '@/lib/appAccess'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -25,8 +26,10 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
+  // Akun Supabase tanpa tanda akses SCM (mis. hasil daftar sendiri) diperlakukan seperti belum login.
+  const user = hasScmAccess(authUser) ? authUser : null
 
   // Portal driver memakai sesi cookie sendiri (lib/driverAuth.ts), bukan Supabase Auth.
   const publicPaths = ['/login', '/_next', '/favicon', '/api', '/driver']

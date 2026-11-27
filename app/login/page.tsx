@@ -1,10 +1,13 @@
 'use client'
 
-import { FormEvent, useState, Suspense } from 'react'
+import { FormEvent, useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion'
 import { Mail, Lock, LogIn, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { hasScmAccess } from '@/lib/appAccess'
+
+const NO_ACCESS_MESSAGE = 'Akun ini tidak memiliki akses ke SCM Tower. Hubungi admin.'
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -15,19 +18,30 @@ function LoginForm() {
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
+  const [error, setError]       = useState(searchParams.get('error') === 'no-access' ? NO_ACCESS_MESSAGE : '')
   const [loading, setLoading]   = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+
+  // Dialihkan ke sini karena akun tanpa akses SCM: buang sesinya.
+  useEffect(() => {
+    if (searchParams.get('error') === 'no-access') void supabase.auth.signOut()
+  }, [searchParams])
 
   async function signIn(event: FormEvent) {
     event.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
       setError(signInError.message === 'Invalid login credentials' ? 'Email atau password salah' : signInError.message)
+      setLoading(false)
+      return
+    }
+    if (!hasScmAccess(data.user)) {
+      await supabase.auth.signOut()
+      setError(NO_ACCESS_MESSAGE)
       setLoading(false)
       return
     }

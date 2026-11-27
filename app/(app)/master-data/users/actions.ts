@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAuthenticatedUser } from '@/lib/requireUser'
+import { SCM_ACCESS_FLAG } from '@/lib/appAccess'
 
 export type AppUser = {
   id: string
@@ -50,6 +51,7 @@ export async function createAppUser(input: { full_name: string; email: string; p
     password: input.password,
     email_confirm: true,
     user_metadata: { full_name: fullName },
+    app_metadata: { [SCM_ACCESS_FLAG]: true },
   })
   if (error) {
     if (/already|registered|exists/i.test(error.message)) throw new Error('Email ini sudah terdaftar.')
