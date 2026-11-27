@@ -460,15 +460,14 @@ export async function getServiceLevelShipments(startDate: string, endDate: strin
 }
 
 /** Retail shipments handed to a vendor with a resi, but not yet received by customer. */
-export async function getRetailInTransitShipments(month?: string) {
+/** Semua pengiriman Retail bulan ini dengan status apa pun (In Transit diberi tombol Terima di UI). */
+export async function getRetailShipments(month?: string) {
   await requireAuthenticatedUser()
   const filterMonth = month && month !== 'all' ? month : '2026-11'
   const rows = await getShipmentTrackings({ status: 'all', month: filterMonth })
   return rows
     .filter(row =>
-      row.status === 'In Transit'
-      && Boolean(row.no_resi?.trim())
-      && (row.cost_model === 'Retail' || isRetailCourier(row.transporter_name) || isRetailCourier(row.notes))
+      (row.cost_model === 'Retail' || isRetailCourier(row.transporter_name) || isRetailCourier(row.notes))
       && (filterMonth ? (row.document_date ? row.document_date >= `${filterMonth}-01` : true) : true)
     )
     .sort((first, second) => String(second.document_date ?? '').localeCompare(String(first.document_date ?? '')))

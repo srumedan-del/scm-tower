@@ -3,7 +3,7 @@ import { wibToday } from '@/lib/wib-time'
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
 import {
-  getShipmentTrackings, getUntrackedPss, getRetailInTransitShipments, getShipmentAvailableMonths,
+  getShipmentTrackings, getUntrackedPss, getRetailShipments, getShipmentAvailableMonths,
   type ShipmentTrackingRow, type UntrackedPssRow,
 } from './actions'
 import MonthFilter from '@/components/shared/MonthFilter'
@@ -68,9 +68,17 @@ export default function ShipmentPage() {
     () => [...new Set(retailInTransit.map(transporterLabel))].sort((a, b) => a.localeCompare(b)),
     [retailInTransit],
   )
+  // Tab Pengiriman Retail memuat semua status; default menampilkan semuanya.
+  const [retailStatus, setRetailStatus] = useState('')
+  const retailStatusOptions = useMemo(
+    () => [...new Set(retailInTransit.map(row => row.status).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b)),
+    [retailInTransit],
+  )
+  const retailPending = useMemo(() => retailInTransit.filter(row => row.status === 'In Transit').length, [retailInTransit])
   const visibleRetail = useMemo(
-    () => (retailVendor ? retailInTransit.filter(row => transporterLabel(row) === retailVendor) : retailInTransit),
-    [retailInTransit, retailVendor],
+    () => retailInTransit.filter(row =>
+      (!retailVendor || transporterLabel(row) === retailVendor) && (!retailStatus || row.status === retailStatus)),
+    [retailInTransit, retailVendor, retailStatus],
   )
   const [collapsedTrips, setCollapsedTrips] = useState<Set<string>>(new Set())
   const toggleTrip = (key: string) => setCollapsedTrips(current => {
@@ -148,7 +156,7 @@ export default function ShipmentPage() {
   function loadRetailInTransit(targetMonth?: string) {
     const m = typeof targetMonth === 'string' ? targetMonth : selectedMonth
     startLoadRetail(async () => {
-      try { setRetailInTransit(await getRetailInTransitShipments(m)) } catch {}
+      try { setRetailInTransit(await getRetailShipments(m)) } catch {}
     })
   }
 
@@ -267,7 +275,8 @@ export default function ShipmentPage() {
           items={[
             { value: 'untracked', label: 'For Transport Planning', icon: AlertCircle, count: untracked.length, attention: true },
             { value: 'tracking', label: 'List Outbound Deliveries', icon: Truck, count: visibleRows.length },
-            { value: 'retail-in-transit', label: 'Pengiriman Retail', icon: MapPinned, count: retailInTransit.length, attention: true },
+            // Angka tab = retail yang masih In Transit (perlu update diterima).
+            { value: 'retail-in-transit', label: 'Pengiriman Retail', icon: MapPinned, count: retailPending, attention: true },
           ]}
         />
       </div>
@@ -561,11 +570,24 @@ export default function ShipmentPage() {
       {/* ── Panels ── */}
       {mainTab === 'retail-in-transit' && (
         <>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-[14px] font-medium text-slate-600">
-              Pengiriman Retail yang sudah diserahterimakan ke vendor dan memiliki <strong className="font-semibold text-slate-800">nomor resi</strong>. Status tetap <strong className="font-semibold text-slate-800">In Transit</strong> sampai barang diterima pelanggan.
-            </p>
+          <div className="flex items-center justify-end gap-3 flex-wrap">
             <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <span>Status</span>
+                <select
+                  value={retailStatus}
+                  onChange={e => setRetailStatus(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
+                >
+                  <option value="">Semua status ({retailInTransit.length})</option>
+                  {retailStatus && !retailStatusOptions.includes(retailStatus) && <option value={retailStatus}>{retailStatus}</option>}
+                  {retailStatusOptions.map(status => (
+                    <option key={status} value={status}>
+                      {status} ({retailInTransit.filter(row => row.status === status).length})
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="flex items-center gap-2 text-sm text-gray-600">
                 <span>Vendor</span>
                 <select
@@ -643,7 +665,7 @@ export default function ShipmentPage() {
                 {!loadingRetail && visibleRetail.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-10 text-center text-[14px] font-medium text-slate-400">
-                      {retailVendor ? `Tidak ada pengiriman retail untuk vendor ${retailVendor}.` : 'Tidak ada shipment Retail yang sedang dalam perjalanan.'}
+                      {retailVendor || retailStatus ? 'Tidak ada pengiriman retail untuk filter ini.' : 'Belum ada pengiriman Retail di bulan ini.'}
                     </td>
                   </tr>
                 )}
@@ -672,23 +694,31 @@ export default function ShipmentPage() {
                       {r.no_resi ?? '-'}
                     </td>
                     <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-600">
-                      {r.dispatch_time ? new Date(r.dispatch_time).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) : '-'}
+                      {r.dispatch_time ? new Date(r.dispatch_time).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
                     <td className="px-4 py-3 text-[14px] font-medium text-right whitespace-nowrap text-slate-800">
                       {formatRupiah(r.total_biaya_eksternal)}
                     </td>
                     <td className="px-4 py-3 text-[14px] text-center whitespace-nowrap">
-                      <span className="inline-block rounded-full bg-orange-100 px-2.5 py-0.5 text-[12px] font-semibold text-orange-700">
-                        In Transit
+                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${statusBadge(r.status)}`}>
+                        {r.status ?? '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => setPodShipment(r)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-[13px] font-semibold text-green-700 hover:bg-green-200 transition-colors shadow-xs"
-                      >
-                        <PackageCheck className="h-4 w-4" /> Terima
-                      </button>
+                      {r.status === 'In Transit' ? (
+                        <button
+                          onClick={() => setPodShipment(r)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-[13px] font-semibold text-green-700 hover:bg-green-200 transition-colors shadow-xs"
+                        >
+                          <PackageCheck className="h-4 w-4" /> Terima
+                        </button>
+                      ) : r.delivery_time ? (
+                        <span className="text-[13px] font-medium text-slate-600">
+                          {new Date(r.delivery_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      ) : (
+                        <span className="text-[13px] text-slate-400">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}
