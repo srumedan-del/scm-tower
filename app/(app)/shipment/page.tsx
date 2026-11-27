@@ -630,48 +630,35 @@ export default function ShipmentPage() {
             </div>
           </div>
           <div className="receiving-table-scroll data-list-scroll overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xs max-h-[calc(100vh-250px)]">
-            <table className="w-full text-[14px] font-sans border-collapse">
+            {/* 7 kolom ringkas: data yang berkaitan ditumpuk (PSS+tanggal, customer+kota, vendor+resi) agar muat tanpa geser ke samping. */}
+            <table className="w-full min-w-[960px] table-fixed text-[14px] font-sans border-collapse">
+              <colgroup>
+                <col className="w-[150px]" />
+                <col />
+                <col className="w-[230px]" />
+                <col className="w-[120px]" />
+                <col className="w-[130px]" />
+                <col className="w-[110px]" />
+                <col className="w-[120px]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    PSS / CD No.
-                  </th>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Document Date Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Kota Tujuan
-                  </th>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Vendor
-                  </th>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Nomor Resi
-                  </th>
-                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Waktu Serah Terima
-                  </th>
-                  <th className="px-4 py-3 text-right text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Biaya Pengiriman
-                  </th>
-                  <th className="px-4 py-3 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
-                    Penerimaan
-                  </th>
+                <tr className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+                  <th className="px-4 py-2.5 text-left">PSS<span className="block font-medium normal-case tracking-normal text-slate-400">Tgl dokumen</span></th>
+                  <th className="px-4 py-2.5 text-left">Customer<span className="block font-medium normal-case tracking-normal text-slate-400">Kota tujuan</span></th>
+                  <th className="px-4 py-2.5 text-left">Vendor<span className="block font-medium normal-case tracking-normal text-slate-400">Nomor resi</span></th>
+                  <th className="px-4 py-2.5 text-left">Serah terima<span className="block font-medium normal-case tracking-normal text-slate-400">ke vendor</span></th>
+                  <th className="px-4 py-2.5 text-right">Biaya<span className="block font-medium normal-case tracking-normal text-slate-400">pengiriman</span></th>
+                  <th className="px-4 py-2.5 text-center">Status</th>
+                  <th className="px-4 py-2.5 text-center">Penerimaan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loadingRetail && (
-                  <SkeletonRows cols={10} />
+                  <SkeletonRows cols={7} />
                 )}
                 {!loadingRetail && visibleRetail.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-10 text-center text-[14px] font-medium text-slate-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-[14px] font-medium text-slate-400">
                       {retailVendor || retailStatus ? 'Tidak ada pengiriman retail untuk filter ini.' : 'Belum ada pengiriman Retail di bulan ini.'}
                     </td>
                   </tr>
@@ -680,33 +667,32 @@ export default function ShipmentPage() {
                   <tr
                     key={r.id}
                     onClick={() => setSelected(r)}
-                    className="group cursor-pointer transition-colors hover:bg-orange-50/70"
+                    className="group cursor-pointer align-top transition-colors hover:bg-orange-50/70"
                   >
-                    <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-800">
-                      {r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}
+                    <td className="px-4 py-3">
+                      <div className="font-mono text-[13px] font-semibold text-slate-900">{r.pss_no ?? (r.crossdocking_id ? `CD-${r.crossdocking_id}` : '-')}</div>
+                      <div className="mt-0.5 text-[12px] text-slate-500">{r.document_date ?? '-'}</div>
                     </td>
-                    <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-600">
-                      {r.document_date ?? '-'}
+                    <td className="px-4 py-3">
+                      <div className="font-semibold leading-snug text-slate-800">{r.customer_name ?? '-'}</div>
+                      <div className={`mt-0.5 text-[12px] ${r.destination_city ? 'text-slate-500' : 'text-amber-700'}`}>{r.destination_city ?? 'Kota belum diisi'}</div>
                     </td>
-                    <td className="px-4 py-3 text-[14px] font-medium text-slate-800">
-                      {r.customer_name ?? '-'}
+                    <td className="px-4 py-3">
+                      <div className="truncate font-semibold text-slate-700" title={transporterLabel(r)}>{transporterLabel(r)}</div>
+                      <div className={`mt-0.5 truncate font-mono text-[12px] ${r.no_resi ? 'text-slate-600' : 'font-sans text-amber-700'}`}>{r.no_resi ?? 'Resi belum ada'}</div>
                     </td>
-                    <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-600">
-                      {r.destination_city ?? '-'}
+                    <td className="px-4 py-3 whitespace-nowrap text-slate-600">
+                      {r.dispatch_time ? (
+                        <>
+                          <div>{new Date(r.dispatch_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short' })}</div>
+                          <div className="mt-0.5 text-[12px] text-slate-500">{new Date(r.dispatch_time).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })}</div>
+                        </>
+                      ) : '-'}
                     </td>
-                    <td className="px-4 py-3 text-[14px] font-semibold whitespace-nowrap text-slate-700">
-                      {transporterLabel(r)}
-                    </td>
-                    <td className="px-4 py-3 text-[14px] font-mono font-medium whitespace-nowrap text-slate-800">
-                      {r.no_resi ?? '-'}
-                    </td>
-                    <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-600">
-                      {r.dispatch_time ? new Date(r.dispatch_time).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-[14px] font-medium text-right whitespace-nowrap text-slate-800">
+                    <td className={`px-4 py-3 text-right whitespace-nowrap tabular-nums ${r.total_biaya_eksternal ? 'font-semibold text-slate-800' : 'text-slate-400'}`}>
                       {formatRupiah(r.total_biaya_eksternal)}
                     </td>
-                    <td className="px-4 py-3 text-[14px] text-center whitespace-nowrap">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <span className={`inline-block rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${statusBadge(r.status)}`}>
                         {r.status ?? '-'}
                       </span>
@@ -721,7 +707,7 @@ export default function ShipmentPage() {
                         </button>
                       ) : r.delivery_time ? (
                         <span className="text-[13px] font-medium text-slate-600">
-                          {new Date(r.delivery_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          {new Date(r.delivery_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
                       ) : (
                         <span className="text-[13px] text-slate-400">-</span>
