@@ -494,7 +494,15 @@ export type PodReturnItem = {
   /** Hari kerja sampai POD kembali, atau sampai hari ini bila belum kembali. */
   days: number
   status: 'on_time' | 'late' | 'pending' | 'overdue' | 'in_transit'
+  /** Vendor tanpa dokumen POD (JNE): penerimaan dikonfirmasi lewat telepon ke pelanggan. */
+  phoneConfirm: boolean
+  /** Tanggal barang diterima menurut konfirmasi telepon. */
+  receiptDate: string | null
+  confirmedWith: string | null
 }
+
+/** JNE tidak mengembalikan dokumen POD; penggantinya konfirmasi telepon ke pelanggan. */
+const isPhoneConfirmVendor = (vendor: string | null | undefined) => /\bJNE\b/i.test(vendor ?? '')
 
 /**
  * Lama dokumen POD kembali dari vendor ekspedisi (Trucking/Retail), dihitung dalam hari kerja
@@ -509,12 +517,16 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
     .filter(row => (row.cost_model === 'Trucking' || row.cost_model === 'Retail') && row.dispatch_time)
   if (!rows.length) return []
 
-  const extraById = new Map<number, { pod_returned_date: string | null; invoice_date: string | null }>()
+  type Extra = { pod_returned_date: string | null; invoice_date: string | null; receipt_received_date: string | null; receipt_confirmed_with: string | null; receipt_confirmed_at: string | null }
+  const extraById = new Map<number, Extra>()
   const ids = rows.map(row => row.id)
   for (let i = 0; i < ids.length; i += 200) {
-    const { data, error } = await supabaseAdmin.from('shipment_tracking').select('id, pod_returned_date, invoice_date').in('id', ids.slice(i, i + 200))
+    const { data, error } = await supabaseAdmin
+      .from('shipment_tracking')
+      .select('id, pod_returned_date, invoice_date, receipt_received_date, receipt_confirmed_with, receipt_confirmed_at')
+      .in('id', ids.slice(i, i + 200))
     if (error) throw new Error(error.message)
-    for (const item of data ?? []) extraById.set(Number(item.id), { pod_returned_date: item.pod_returned_date ?? null, invoice_date: item.invoice_date ?? null })
+    for (const item of data ?? []) extraById.set(Number(item.id), item as Extra)
   }
 
   const vendorCache = new Map<string, TruckingVendor | null>()
@@ -540,7 +552,11 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
     const handover = jakartaToday(new Date(row.dispatch_time!))
     const ideal = 2 * (await leadTime(row)) + 0.5
     const extra = extraById.get(row.id)
-    const returnedDate = extra?.pod_returned_date ?? null
+    const phoneConfirm = isPhoneConfirmVendor(vendor)
+    // JNE: tanggal konfirmasi telepon menggantikan tanggal POD diterima di SRU.
+    const returnedDate = phoneConfirm
+      ? (extra?.receipt_confirmed_at ? jakartaToday(new Date(extra.receipt_confirmed_at)) : null)
+      : extra?.pod_returned_date ?? null
     let days: number
     let status: PodReturnItem['status']
     group.shipments++
@@ -577,6 +593,9 @@ export async function getPodReturnSummary(month: string): Promise<PodReturnVendo
       returnedDate,
       days,
       status,
+      phoneConfirm,
+      receiptDate: extra?.receipt_received_date ?? null,
+      confirmedWith: extra?.receipt_confirmed_with ?? null,
     })
     groups.set(vendor, group)
   }

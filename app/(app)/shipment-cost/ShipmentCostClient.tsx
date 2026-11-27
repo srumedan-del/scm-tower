@@ -1,14 +1,15 @@
 'use client'
 
-import { Fragment, useEffect, useState, useMemo } from 'react'
+import { Fragment, useCallback, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel'
+import ReceiptConfirmDialog from '@/components/shipment/ReceiptConfirmDialog'
 import MonthFilter from '@/components/shared/MonthFilter'
 import { getShipmentCostRow, type PodReturnItem, type PodReturnVendorSummary, type ShipmentCostRow } from './actions'
 import { computeCostSummary } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
-import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight, Download } from 'lucide-react'
+import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight, Download, Phone } from 'lucide-react'
 
 function rp(value: number | null | undefined) {
   if (!value) return '-'
@@ -38,6 +39,8 @@ export default function ShipmentCostTable({
   const [activeRow, setActiveRow] = useState<ShipmentCostRow | null>(null)
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null)
   const [podVendor, setPodVendor] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+  const closeConfirm = useCallback(() => setConfirmId(null), [])
   const [search, setSearch] = useState('')
 
   const handleSelectMonth = (m: string) => {
@@ -309,10 +312,15 @@ export default function ShipmentCostTable({
 
           <PodReturnCard rows={podReturn} selected={podVendor} onSelect={(v) => setPodVendor(v === podVendor ? null : v)} />
 
+          {confirmId != null && (
+            <ReceiptConfirmDialog trackingId={confirmId} onClose={closeConfirm} onSaved={() => router.refresh()} />
+          )}
+
           {podVendor && podReturn.find((v) => v.vendor === podVendor) && (
             <PodVendorDetail
               summary={podReturn.find((v) => v.vendor === podVendor)!}
               onClose={() => setPodVendor(null)}
+              onConfirmReceipt={setConfirmId}
               onOpen={(id) => {
                 // PSS In Transit/Closed tidak ada di daftar Delivered: ambil langsung.
                 const target = rows.find((r) => r.id === id)
@@ -420,7 +428,12 @@ const worstStatus = (list: PodReturnItem[]) =>
   list.reduce<PodReturnItem['status']>((worst, item) => (STATUS_RANK[item.status] < STATUS_RANK[worst] ? item.status : worst), 'on_time')
 
 /** Trip dan invoice satu vendor ekspedisi, dengan status dokumen POD tiap PSS. */
-function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendorSummary; onClose: () => void; onOpen: (id: number) => void }) {
+function PodVendorDetail({ summary, onClose, onOpen, onConfirmReceipt }: {
+  summary: PodReturnVendorSummary
+  onClose: () => void
+  onOpen: (id: number) => void
+  onConfirmReceipt: (id: number) => void
+}) {
   const [onlyOpen, setOnlyOpen] = useState(summary.pending + summary.inTransit > 0)
   // Per Trip: satu baris ringkas per trip, yang paling butuh perhatian di atas; klik untuk membuka PSS-nya.
   const [perTrip, setPerTrip] = useState(true)
@@ -496,7 +509,20 @@ function PodVendorDetail({ summary, onClose, onOpen }: { summary: PodReturnVendo
       <td className={`${td} text-slate-700`}>{fmtDmy(item.returnedDate)}</td>
       <td className={`${td} text-right tabular-nums font-semibold text-slate-900`}>{item.days}</td>
       <td className={td}>
-        <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[item.status].cls}`}>{POD_STATUS[item.status].label}</span>
+        {item.phoneConfirm ? (
+          // JNE tanpa POD: status diganti tombol konfirmasi telepon ke pelanggan.
+          <button
+            type="button"
+            onClick={() => onConfirmReceipt(item.id)}
+            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-semibold ${item.returnedDate ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'}`}
+            title={item.confirmedWith ? `Dikonfirmasi oleh ${item.confirmedWith}` : 'Telepon pelanggan untuk konfirmasi penerimaan'}
+          >
+            <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+            {item.returnedDate ? `Diterima ${fmtDmy(item.receiptDate)} (telepon)` : 'Konfirmasi penerimaan'}
+          </button>
+        ) : (
+          <span className={`inline-flex rounded-lg border px-2 py-0.5 text-xs font-semibold ${POD_STATUS[item.status].cls}`}>{POD_STATUS[item.status].label}</span>
+        )}
       </td>
     </tr>
   )
