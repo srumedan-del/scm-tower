@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
-import { CheckCircle2, MapPinOff, ReceiptText, RefreshCw, Hospital, Wand2 } from 'lucide-react'
+import { CheckCircle2, MapPinOff, RefreshCw, Hospital, Wand2 } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/LoadingStates'
 import { notify } from '@/lib/feedback'
 import { applyShipmentCities, getMaintainOverview, updateCustomerCity, type MaintainOverview } from './actions'
 
-const EMPTY: MaintainOverview = { missingCity: [], customersWithoutCity: [], retailGaps: [], cityOptions: [] }
+const EMPTY: MaintainOverview = { missingCity: [], customersWithoutCity: [], cityOptions: [] }
 const th = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600'
 const td = 'px-4 py-2.5 align-middle'
 const input = 'w-full min-w-[160px] rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm uppercase focus:border-indigo-400 focus:outline-none'
@@ -101,7 +100,7 @@ export default function MaintainDataPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">Maintain Data</h1>
-          <p className="mt-1 text-sm text-slate-500">Data yang belum lengkap di Shipment Tracking, Shipment Cost, dan Master Customer.</p>
+          <p className="mt-1 text-sm text-slate-500">Kota tujuan yang belum lengkap di Shipment Tracking, Shipment Cost, dan Master Customer.</p>
         </div>
         <button type="button" onClick={load} disabled={loading} className={smallButton}>
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Periksa ulang
@@ -240,46 +239,6 @@ export default function MaintainDataPage() {
         )}
       </Section>
 
-      {/* 3b. Retail In Transit yang belum lengkap: biaya kosong tampil "-" dan tidak masuk Rekap Resi. */}
-      <Section
-        icon={ReceiptText}
-        title="Pengiriman retail belum lengkap"
-        count={data.retailGaps.length}
-        desc="Retail In Transit tanpa nomor resi, biaya, atau gambar resi. Biaya kosong tampil “-” dan tidak terhitung di Shipment Cost."
-        action={<Link href="/shipment" className={smallButton}>Buka Shipment Tracking</Link>}
-      >
-        {!showSkeleton && loaded && data.retailGaps.length === 0 ? <AllGood text="Semua pengiriman retail sudah lengkap." /> : (
-          <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50">
-                <tr>
-                  <th className={th}>PSS</th>
-                  <th className={th}>Customer</th>
-                  <th className={th}>Tgl Dokumen</th>
-                  <th className={th}>Vendor</th>
-                  <th className={th}>Belum ada</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {showSkeleton && <SkeletonRows cols={5} rows={3} />}
-                {data.retailGaps.map(row => (
-                  <tr key={row.id}>
-                    <td className={`${td} font-mono text-xs font-semibold`}>{row.pss_no ?? '-'}</td>
-                    <td className={`${td} font-semibold text-slate-800`}>{row.customer_name ?? '-'}</td>
-                    <td className={td}>{row.document_date ?? '-'}</td>
-                    <td className={td}>{row.transporter ?? '-'}</td>
-                    <td className={td}>
-                      <div className="flex flex-wrap gap-1">
-                        {row.missing.map(item => <span key={item} className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{item}</span>)}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
     </div>
   )
 }

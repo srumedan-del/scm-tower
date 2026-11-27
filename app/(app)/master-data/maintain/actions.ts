@@ -38,19 +38,9 @@ export type CustomerWithoutCity = {
   shipments: number
 }
 
-export type RetailGap = {
-  id: number
-  pss_no: string | null
-  customer_name: string | null
-  document_date: string | null
-  transporter: string | null
-  missing: string[]
-}
-
 export type MaintainOverview = {
   missingCity: MissingCityShipment[]
   customersWithoutCity: CustomerWithoutCity[]
-  retailGaps: RetailGap[]
   cityOptions: string[]
 }
 
@@ -58,7 +48,7 @@ export type MaintainOverview = {
 export async function getMaintainOverview(): Promise<MaintainOverview> {
   await requireAuthenticatedUser()
 
-  const [shipmentsResult, customersResult, retailResult, transportersResult] = await Promise.all([
+  const [shipmentsResult, customersResult] = await Promise.all([
     supabaseAdmin
       .from('shipment_tracking')
       .select('id, pss_no, trip_id, customer_code, customer_name, document_date, status, cost_model, destination_city')
@@ -66,16 +56,8 @@ export async function getMaintainOverview(): Promise<MaintainOverview> {
       .order('document_date', { ascending: false })
       .limit(500),
     supabaseAdmin.from('customers').select('id, customer_code, customer_name, city, address, province, is_active').limit(5000),
-    supabaseAdmin
-      .from('shipment_tracking')
-      .select('id, pss_no, customer_name, document_date, transporter_id, notes, no_resi, total_biaya_eksternal, resi_image_path')
-      .eq('cost_model', 'Retail')
-      .eq('status', 'In Transit')
-      .order('document_date', { ascending: false })
-      .limit(500),
-    supabaseAdmin.from('master_transporter').select('id, name'),
   ])
-  for (const result of [shipmentsResult, customersResult, retailResult]) if (result.error) throw new Error(result.error.message)
+  for (const result of [shipmentsResult, customersResult]) if (result.error) throw new Error(result.error.message)
 
   const customers = customersResult.data ?? []
   const byCode = new Map(customers.filter(c => !blank(c.customer_code)).map(c => [nameKey(c.customer_code), c]))
@@ -115,28 +97,8 @@ export async function getMaintainOverview(): Promise<MaintainOverview> {
     }))
     .sort((a, b) => b.shipments - a.shipments || nameKey(a.customer_name).localeCompare(nameKey(b.customer_name)))
 
-  const transporterName = new Map((transportersResult.data ?? []).map(t => [Number(t.id), String(t.name)]))
-  const retailGaps: RetailGap[] = (retailResult.data ?? [])
-    .map(row => {
-      const missing = [
-        blank(row.no_resi) && 'Nomor resi',
-        !(Number(row.total_biaya_eksternal) > 0) && 'Biaya pengiriman',
-        blank(row.resi_image_path) && 'Gambar resi',
-      ].filter(Boolean) as string[]
-      return {
-        id: row.id,
-        pss_no: row.pss_no,
-        customer_name: row.customer_name,
-        document_date: row.document_date,
-        transporter: (row.transporter_id != null ? transporterName.get(Number(row.transporter_id)) : null)
-          ?? row.notes?.match(/Vendor:\s*([^|]+)/i)?.[1]?.trim() ?? null,
-        missing,
-      }
-    })
-    .filter(row => row.missing.length > 0)
-
   const cityOptions = [...new Set(customers.map(c => String(c.city ?? '').trim().toUpperCase()).filter(Boolean))].sort()
-  return { missingCity, customersWithoutCity, retailGaps, cityOptions }
+  return { missingCity, customersWithoutCity, cityOptions }
 }
 
 /**

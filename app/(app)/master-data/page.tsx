@@ -63,7 +63,7 @@ const groups: { title: string; items: { name: string; path: string; desc: string
     title: 'Sistem',
     items: [
       { name: 'Pengguna', path: '/master-data/users', desc: 'Akun login web: tambah, reset password, nonaktifkan', icon: Users, count: 'users' },
-      { name: 'Maintain Data', path: '/master-data/maintain', desc: 'Periksa dan lengkapi kota tujuan shipment, kota customer, data retail', icon: Wrench, count: 'missingCity' },
+      { name: 'Maintain Data', path: '/master-data/maintain', desc: 'Periksa dan lengkapi kota tujuan shipment dan kota customer', icon: Wrench, count: 'missingCity' },
       { name: 'Log', path: '/master-data/log', desc: 'Riwayat download dan update data NAV, terjadwal maupun manual', icon: History, count: 'logs' },
     ],
   },
