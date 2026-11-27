@@ -468,6 +468,9 @@ export async function getRetailShipments(month?: string) {
   return rows
     .filter(row =>
       (row.cost_model === 'Retail' || isRetailCourier(row.transporter_name) || isRetailCourier(row.notes))
+      // Armada sendiri (SRU MEDAN) bukan vendor retail walau model biayanya tercatat Retail.
+      && !/^SRU\b/i.test(row.transporter_name ?? '')
+      && row.fleet_type !== 'Internal'
       && (filterMonth ? (row.document_date ? row.document_date >= `${filterMonth}-01` : true) : true)
     )
     .sort((first, second) => String(second.document_date ?? '').localeCompare(String(first.document_date ?? '')))

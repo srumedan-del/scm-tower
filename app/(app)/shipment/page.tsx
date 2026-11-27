@@ -68,8 +68,8 @@ export default function ShipmentPage() {
     () => [...new Set(retailInTransit.map(transporterLabel))].sort((a, b) => a.localeCompare(b)),
     [retailInTransit],
   )
-  // Tab Pengiriman Retail memuat semua status; default menampilkan semuanya.
-  const [retailStatus, setRetailStatus] = useState('')
+  // Tab Pengiriman Retail memuat semua status; default hanya In Transit (yang perlu update diterima).
+  const [retailStatus, setRetailStatus] = useState('In Transit')
   const retailStatusOptions = useMemo(
     () => [...new Set(retailInTransit.map(row => row.status).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b)),
     [retailInTransit],
