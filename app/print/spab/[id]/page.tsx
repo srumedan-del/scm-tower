@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import { getSpabForPrint } from '@/app/(app)/shipment/spab-actions'
-import { PrintOnLoad } from '@/app/print/opname/[id]/PrintOnLoad'
+import { SpabToolbar } from './SpabToolbar'
 
 export const dynamic = 'force-dynamic'
 
-type Props = { params: Promise<{ id: string }> }
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ pdf?: string }> }
+
+const archiveName = (doc: { spab_no: string; customer_name: string | null; pss_no: string | null }) =>
+  ['No.', String(doc.spab_no).replace(/\//g, ''), doc.customer_name, doc.pss_no].filter(Boolean).join(' ')
 
 const longDate = (date: string | null) =>
   date ? new Date(`${date}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }) : ''
@@ -18,12 +21,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const data = await getSpabForPrint(Number(id)).catch(() => null)
   if (!data) return { title: 'SPAB' }
-  const { doc } = data
-  return { title: ['No.', String(doc.spab_no).replace(/\//g, ''), doc.customer_name, doc.pss_no].filter(Boolean).join(' ') }
+  return { title: archiveName(data.doc) }
 }
 
-export default async function SpabPrintPage({ params }: Props) {
+export default async function SpabPrintPage({ params, searchParams }: Props) {
   const { id } = await params
+  const { pdf } = await searchParams
   const data = await getSpabForPrint(Number(id))
   if (!data) return <p style={{ padding: 24 }}>SPAB tidak ditemukan.</p>
   const { doc, items } = data
@@ -37,7 +40,7 @@ export default async function SpabPrintPage({ params }: Props) {
 
   return (
     <div className="spab-print">
-      <PrintOnLoad />
+      <SpabToolbar fileName={archiveName(doc)} autoPrint={pdf !== '1'} />
       <div className="page">
         <header className="kop">
           <strong>PT. SINAR RODA UTAMA</strong>
@@ -159,7 +162,9 @@ export default async function SpabPrintPage({ params }: Props) {
         @page { size: A4 portrait; margin: 14mm 14mm 12mm; }
         body { background: #f1f1f1; }
         .spab-print { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 9.5pt; padding: 16px; }
-        .spab-print .toolbar { margin: 0 auto 12px; max-width: 182mm; display: flex; gap: 8px; }
+        .spab-print .toolbar { margin: 0 auto 12px; max-width: 182mm; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .spab-print .toolbar button:disabled { opacity: .6; cursor: wait; }
+        .spab-print .toolbar-msg { font-size: 9pt; color: #1a7f37; }
         .spab-print .toolbar button { font: inherit; font-size: 10pt; padding: 6px 14px; border-radius: 8px; border: 1px solid #999; background: #fff; cursor: pointer; }
         .spab-print .page { background: #fff; max-width: 182mm; margin: 0 auto; padding: 12mm; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
         .spab-print p { margin: 6px 0; }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import { FileText, Printer } from 'lucide-react'
+import { Download, FileText, Printer } from 'lucide-react'
 import { DialogShell, DialogHeader, DialogCancelButton, dialogBodyClass, dialogFooterClass, dialogPrimaryClass, FormField as Field } from '@/components/ui/FormDialog'
 import { getSpabDrafts, createSpabDocuments, type SpabDraft } from '@/app/(app)/shipment/spab-actions'
 import { DEFAULT_SPAB_SIGNER } from '@/lib/spab'
@@ -13,6 +13,7 @@ const previewNo = (seq: number | '', date: string) =>
 type Row = { draft: SpabDraft; checked: boolean; seq: number | ''; address: string; recipient: string }
 
 const openPrint = (id: number) => window.open(`/print/spab/${id}`, '_blank', 'noopener')
+const openPdf = (id: number) => window.open(`/print/spab/${id}?pdf=1`, '_blank', 'noopener')
 
 /** Buat SPAB (Surat Perintah Ambil Barang) per PSS, biasanya langsung setelah trip dibuat. */
 export default function SpabDialog({ pssNos, onClose }: { pssNos: string[]; onClose: () => void }) {
@@ -93,9 +94,14 @@ export default function SpabDialog({ pssNos, onClose }: { pssNos: string[]; onCl
               {created.map(doc => (
                 <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <span><span className="font-mono font-semibold text-slate-800">{doc.spab_no}</span> <span className="text-slate-500">· {doc.pss_no}</span></span>
-                  <button type="button" onClick={() => openPrint(doc.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <Printer className="h-4 w-4" /> Cetak
-                  </button>
+                  <span className="flex gap-2">
+                    <button type="button" onClick={() => openPdf(doc.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                      <Download className="h-4 w-4" /> Unduh PDF
+                    </button>
+                    <button type="button" onClick={() => openPrint(doc.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                      <Printer className="h-4 w-4" /> Cetak
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -132,9 +138,14 @@ export default function SpabDialog({ pssNos, onClose }: { pssNos: string[]; onCl
                         <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-800">
                           Sudah ada SPAB:
                           {row.draft.existing.map(doc => (
-                            <button key={doc.id} type="button" onClick={e => { e.preventDefault(); openPrint(doc.id) }} className="font-mono font-semibold underline">
-                              {doc.spab_no}
-                            </button>
+                            <span key={doc.id} className="inline-flex items-center gap-1.5">
+                              <button type="button" onClick={e => { e.preventDefault(); openPrint(doc.id) }} className="font-mono font-semibold underline">
+                                {doc.spab_no}
+                              </button>
+                              <button type="button" title="Unduh PDF" onClick={e => { e.preventDefault(); openPdf(doc.id) }} className="inline-flex items-center gap-0.5 font-semibold underline">
+                                <Download className="h-3.5 w-3.5" /> PDF
+                              </button>
+                            </span>
                           ))}
                         </span>
                       )}
