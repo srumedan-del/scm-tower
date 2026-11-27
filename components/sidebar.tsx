@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
   ArrowLeftRight, Boxes, CheckSquare, ChevronDown, ClipboardList, Database, DollarSign,
-  LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, X,
+  LayoutDashboard, LogOut, MapPin, Menu, Package, PackageOpen, PanelLeftClose, PanelLeftOpen, Radio, Truck, Warehouse, Wrench, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getNavBadges, type NavBadges } from '@/app/(app)/nav-badges'
@@ -34,17 +34,27 @@ const inventory: NavParent = {
   ],
 }
 
+// href induk sengaja bukan path nyata: "Semua Master Data" (/master-data) adalah anak sendiri.
+const masterData: NavParent = {
+  label: 'Master Data', href: '#master-data', icon: Database, collapsedHref: '/master-data',
+  children: [
+    ['Semua Master Data', '/master-data', Database],
+    ['Maintain Data', '/master-data/maintain', Wrench],
+  ],
+}
+
 const dashboard: NavItem = ['Dashboard', '/dashboard', LayoutDashboard]
 const groups: readonly { label: string; items: readonly NavEntry[] }[] = [
   { label: 'Workspace', items: [['Task Board', '/', CheckSquare], ['Peta & Stok HD', '/peta-stok-hd', MapPin], ['Live Tracking', '/live-tracking', Radio]] },
   { label: 'Operasional', items: [['Receiving', '/receiving', Package], ['Outbound', '/outbound', PackageOpen], ['Crossdocking', '/crossdocking', ArrowLeftRight], ['Shipment', '/shipment', Truck], ['Shipment Cost', '/shipment-cost', DollarSign]] },
   { label: 'Monitoring', items: [inventory, stockOpname] },
-  { label: 'Data & Sistem', items: [['Master Data', '/master-data', Database]] },
+  { label: 'Data & Sistem', items: [masterData] },
 ]
 
 const BADGE_HINT: Record<string, string> = {
   '/shipment': 'PSS belum dibuatkan shipment bulan ini',
   '/crossdocking': 'PTS belum diputuskan lebih dari 2 hari kerja',
+  '/master-data/maintain': 'shipment tanpa kota tujuan',
 }
 
 const COLLAPSE_KEY = 'scm-sidebar-collapsed'
@@ -99,11 +109,12 @@ function NavLink({ item, activeHref, indicatorId, collapsed, badge, onNavigate, 
   )
 }
 
-function NavParentLink({ parent, activeHref, indicatorId, collapsed, onNavigate }: {
+function NavParentLink({ parent, activeHref, indicatorId, collapsed, badges, onNavigate }: {
   parent: NavParent
   activeHref: string | undefined
   indicatorId: string
   collapsed: boolean
+  badges: NavBadges
   onNavigate?: () => void
 }) {
   const inside = activeHref === parent.href || parent.children.some(child => child[1] === activeHref)
@@ -136,7 +147,7 @@ function NavParentLink({ parent, activeHref, indicatorId, collapsed, onNavigate 
           >
             <div className="space-y-0.5">
               {parent.children.map(child => (
-                <NavLink key={child[1]} item={child} activeHref={activeHref} indicatorId={indicatorId} collapsed={false} onNavigate={onNavigate} nested />
+                <NavLink key={child[1]} item={child} activeHref={activeHref} indicatorId={indicatorId} collapsed={false} badge={badges[child[1]]} onNavigate={onNavigate} nested />
               ))}
             </div>
           </motion.div>
@@ -155,7 +166,7 @@ function Navigation({ pathname, indicatorId, collapsed, badges, onNavigate }: {
 }) {
   const activeHref = findActiveHref(pathname)
   const link = (item: NavEntry) => isParent(item)
-    ? <NavParentLink key={item.href} parent={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} onNavigate={onNavigate} />
+    ? <NavParentLink key={item.href} parent={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} badges={badges} onNavigate={onNavigate} />
     : <NavLink key={item[1]} item={item} activeHref={activeHref} indicatorId={indicatorId} collapsed={collapsed} badge={badges[item[1]]} onNavigate={onNavigate} />
   return (
     <nav className="space-y-0.5" aria-label="Navigasi utama">

@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import {
-  Building2, ChevronRight, History, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, type LucideIcon,
+  Building2, ChevronRight, History, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, Wrench, type LucideIcon,
 } from 'lucide-react'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { countAppUsers } from './users/actions'
 
-type CountKey = 'users' | 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters' | 'logs'
+type CountKey = 'users' | 'missingCity' | 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters' | 'logs'
 
-const TABLES: Record<Exclude<CountKey, 'users'>, string> = {
+const TABLES: Record<Exclude<CountKey, 'users' | 'missingCity'>, string> = {
   vendors: 'vendors',
   customers: 'customers',
   rates: 'transport_rate_card',
@@ -22,12 +22,16 @@ const TABLES: Record<Exclude<CountKey, 'users'>, string> = {
 
 async function getCounts() {
   const entries = await Promise.all(
-    (Object.entries(TABLES) as [Exclude<CountKey, 'users'>, string][]).map(async ([key, table]) => {
+    (Object.entries(TABLES) as [Exclude<CountKey, 'users' | 'missingCity'>, string][]).map(async ([key, table]) => {
       const { count } = await supabase.from(table).select('*', { count: 'exact', head: true })
       return [key, count ?? 0] as const
     }),
   )
-  return { ...Object.fromEntries(entries), users: await countAppUsers() } as Record<CountKey, number>
+  const { count: missingCity } = await supabase
+    .from('shipment_tracking')
+    .select('id', { count: 'exact', head: true })
+    .or('destination_city.is.null,destination_city.eq.')
+  return { ...Object.fromEntries(entries), users: await countAppUsers(), missingCity: missingCity ?? 0 } as Record<CountKey, number>
 }
 
 const groups: { title: string; items: { name: string; path: string; desc: string; icon: LucideIcon; count: CountKey }[] }[] = [
@@ -59,6 +63,7 @@ const groups: { title: string; items: { name: string; path: string; desc: string
     title: 'Sistem',
     items: [
       { name: 'Pengguna', path: '/master-data/users', desc: 'Akun login web: tambah, reset password, nonaktifkan', icon: Users, count: 'users' },
+      { name: 'Maintain Data', path: '/master-data/maintain', desc: 'Periksa dan lengkapi kota tujuan shipment, kota customer, data retail', icon: Wrench, count: 'missingCity' },
       { name: 'Log', path: '/master-data/log', desc: 'Riwayat download dan update data NAV, terjadwal maupun manual', icon: History, count: 'logs' },
     ],
   },
