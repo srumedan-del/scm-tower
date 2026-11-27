@@ -62,6 +62,16 @@ export default function ShipmentPage() {
     () => (transporterFilter ? rows.filter(row => transporterLabel(row) === transporterFilter) : rows),
     [rows, transporterFilter],
   )
+  // Filter vendor di tab Pengiriman Retail (terpisah dari filter transporter di List Outbound).
+  const [retailVendor, setRetailVendor] = useState('')
+  const retailVendorOptions = useMemo(
+    () => [...new Set(retailInTransit.map(transporterLabel))].sort((a, b) => a.localeCompare(b)),
+    [retailInTransit],
+  )
+  const visibleRetail = useMemo(
+    () => (retailVendor ? retailInTransit.filter(row => transporterLabel(row) === retailVendor) : retailInTransit),
+    [retailInTransit, retailVendor],
+  )
   const [collapsedTrips, setCollapsedTrips] = useState<Set<string>>(new Set())
   const toggleTrip = (key: string) => setCollapsedTrips(current => {
     const next = new Set(current)
@@ -555,7 +565,25 @@ export default function ShipmentPage() {
             <p className="text-[14px] font-medium text-slate-600">
               Pengiriman Retail yang sudah diserahterimakan ke vendor dan memiliki <strong className="font-semibold text-slate-800">nomor resi</strong>. Status tetap <strong className="font-semibold text-slate-800">In Transit</strong> sampai barang diterima pelanggan.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <span>Vendor</span>
+                <select
+                  value={retailVendor}
+                  onChange={e => setRetailVendor(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
+                >
+                  <option value="">Semua vendor ({retailInTransit.length})</option>
+                  {retailVendor && !retailVendorOptions.includes(retailVendor) && (
+                    <option value={retailVendor}>{retailVendor}</option>
+                  )}
+                  {retailVendorOptions.map(name => (
+                    <option key={name} value={name}>
+                      {name} ({retailInTransit.filter(row => transporterLabel(row) === name).length})
+                    </option>
+                  ))}
+                </select>
+              </label>
               <a
                 href={`/print/rekap-resi?month=${selectedMonth}`}
                 target="_blank"
@@ -589,6 +617,9 @@ export default function ShipmentPage() {
                     Kota Tujuan
                   </th>
                   <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
+                    Vendor
+                  </th>
+                  <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
                     Nomor Resi
                   </th>
                   <th className="px-4 py-3 text-left text-[14px] font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
@@ -607,16 +638,16 @@ export default function ShipmentPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loadingRetail && (
-                  <SkeletonRows cols={9} />
+                  <SkeletonRows cols={10} />
                 )}
-                {!loadingRetail && retailInTransit.length === 0 && (
+                {!loadingRetail && visibleRetail.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-[14px] font-medium text-slate-400">
-                      Tidak ada shipment Retail yang sedang dalam perjalanan.
+                    <td colSpan={10} className="px-4 py-10 text-center text-[14px] font-medium text-slate-400">
+                      {retailVendor ? `Tidak ada pengiriman retail untuk vendor ${retailVendor}.` : 'Tidak ada shipment Retail yang sedang dalam perjalanan.'}
                     </td>
                   </tr>
                 )}
-                {retailInTransit.map(r => (
+                {visibleRetail.map(r => (
                   <tr
                     key={r.id}
                     onClick={() => setSelected(r)}
@@ -633,6 +664,9 @@ export default function ShipmentPage() {
                     </td>
                     <td className="px-4 py-3 text-[14px] font-medium whitespace-nowrap text-slate-600">
                       {r.destination_city ?? '-'}
+                    </td>
+                    <td className="px-4 py-3 text-[14px] font-semibold whitespace-nowrap text-slate-700">
+                      {transporterLabel(r)}
                     </td>
                     <td className="px-4 py-3 text-[14px] font-mono font-medium whitespace-nowrap text-slate-800">
                       {r.no_resi ?? '-'}
