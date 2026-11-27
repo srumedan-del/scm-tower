@@ -635,9 +635,9 @@ export default function ShipmentPage() {
               <colgroup>
                 <col className="w-[150px]" />
                 <col />
-                <col className="w-[230px]" />
-                <col className="w-[120px]" />
-                <col className="w-[130px]" />
+                <col className="w-[200px]" />
+                <col className="w-[135px]" />
+                <col className="w-[125px]" />
                 <col className="w-[110px]" />
                 <col className="w-[120px]" />
               </colgroup>
