@@ -761,3 +761,29 @@ export async function getShipmentCostRow(id: number): Promise<ShipmentCostRow | 
   const rows = await getShipmentCosts({ status: 'all', id })
   return rows[0] ?? null
 }
+
+export type ExternalCostInput = {
+  id: number
+  /** Model biaya yang tampil di Shipment Cost; menentukan kolom yang dipakai total_biaya. */
+  cost_model: 'Trucking' | 'Retail'
+  amount: number
+  invoice_no?: string | null
+}
+
+/** Isi cepat biaya vendor eksternal yang masih kosong (modal sebelum Export Excel). */
+export async function saveExternalVendorCosts(items: ExternalCostInput[]) {
+  await requireAuthenticatedUser()
+  for (const item of items) {
+    const id = Number(item.id)
+    const amount = Number(item.amount)
+    if (!Number.isInteger(id) || !Number.isFinite(amount) || amount <= 0) continue
+    const invoice = item.invoice_no?.trim()
+    // total_biaya adalah kolom generated dari cost_model, jadi cost_model ikut disimpan.
+    const update: Record<string, unknown> = item.cost_model === 'Retail'
+      ? { cost_model: 'Retail', total_biaya_eksternal: amount }
+      : { cost_model: 'Trucking', biaya_trucking: amount }
+    if (invoice) update.invoice_no_eksternal = invoice
+    const { error } = await supabaseAdmin.from('shipment_tracking').update(update).eq('id', id)
+    if (error) throw new Error(error.message)
+  }
+}

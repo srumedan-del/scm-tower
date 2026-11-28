@@ -4,9 +4,10 @@ import { Fragment, useCallback, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel'
 import ReceiptConfirmDialog from '@/components/shipment/ReceiptConfirmDialog'
+import ExternalCostDialog from '@/components/shipment/ExternalCostDialog'
 import MonthFilter from '@/components/shared/MonthFilter'
 import { getShipmentCostRow, type PodReturnItem, type PodReturnVendorSummary, type ShipmentCostRow } from './actions'
-import { computeCostSummary, matchesCostSearch } from './utils'
+import { computeCostSummary, externalRowsWithoutCost, matchesCostSearch } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
 import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight, Download, Phone } from 'lucide-react'
@@ -61,6 +62,20 @@ export default function ShipmentCostTable({
   const summary = computeCostSummary(filteredRows)
 
   const exportHref = `/api/shipment-cost/export?${new URLSearchParams({ month: selectedMonth, ...(search.trim() ? { q: search.trim() } : {}) })}`
+  const [missingCost, setMissingCost] = useState<ShipmentCostRow[] | null>(null)
+  const downloadExcel = () => {
+    const a = document.createElement('a')
+    a.href = exportHref
+    a.download = ''
+    a.click()
+  }
+  // Sebelum export: tanyakan biaya vendor eksternal yang masih kosong.
+  const startExport = () => {
+    const visible = new Set(filteredRows.map((r) => r.id))
+    const missing = externalRowsWithoutCost(rows).filter((r) => visible.has(r.id))
+    if (missing.length) setMissingCost(missing)
+    else downloadExcel()
+  }
 
   const vendorBills = selectedVendor
     ? rows.filter((row) => {
@@ -82,6 +97,18 @@ export default function ShipmentCostTable({
             )
             setActiveRow(null)
             router.refresh()
+          }}
+        />
+      )}
+
+      {missingCost && (
+        <ExternalCostDialog
+          rows={missingCost}
+          onClose={() => setMissingCost(null)}
+          onExport={(saved) => {
+            setMissingCost(null)
+            if (saved) router.refresh()
+            downloadExcel()
           }}
         />
       )}
@@ -120,16 +147,16 @@ export default function ShipmentCostTable({
             )}
           </div>
 
-          <a
-            href={filteredRows.length ? exportHref : undefined}
-            download
-            aria-disabled={!filteredRows.length}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-50 hover:border-emerald-200 aria-disabled:pointer-events-none aria-disabled:opacity-40 transition-colors"
+          <button
+            type="button"
+            onClick={startExport}
+            disabled={!filteredRows.length}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-50 hover:border-emerald-200 disabled:opacity-40 transition-colors"
             title="Unduh rekap realisasi biaya kirim bulan ini (format laporan bulanan)"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
             Export Excel
-          </a>
+          </button>
 
           {/* Month Filter */}
           {months.length > 0 && (

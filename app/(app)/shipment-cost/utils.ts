@@ -53,3 +53,17 @@ export function matchesCostSearch(r: ShipmentCostRow, search: string) {
   return [r.trip_id, pss, r.customer_name, r.destination_city, r.transporter_name]
     .some((v) => (v ?? '').toLowerCase().includes(q))
 }
+
+/**
+ * Shipment vendor eksternal yang belum punya biaya. PSS lain dalam trip yang sama yang sudah
+ * berbiaya dianggap menanggung biaya trip, jadi tidak ditanyakan lagi.
+ */
+export function externalRowsWithoutCost(rows: ShipmentCostRow[]) {
+  const tripsWithCost = new Set(rows.filter((r) => r.trip_id && Number(r.total_biaya ?? 0) > 0).map((r) => r.trip_id))
+  return rows.filter((r) =>
+    r.cost_model !== 'Internal' && !(Number(r.total_biaya ?? 0) > 0) && !(r.trip_id && tripsWithCost.has(r.trip_id)))
+}
+
+/** Crossdocking = pengiriman tujuan Riau & Sumatera Barat lewat crossdock. */
+export const isCrossdocking = (row: Pick<ShipmentCostRow, 'source_type' | 'crossdocking_id'>) =>
+  row.source_type === 'Crossdocking' || row.crossdocking_id != null

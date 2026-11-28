@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import type { ShipmentCostRow } from '@/app/(app)/shipment-cost/actions'
+import { isCrossdocking } from '@/app/(app)/shipment-cost/utils'
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const NUM = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
@@ -62,83 +63,87 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
   const sorted = [...rows].sort((a, b) =>
     (a.document_date ?? '').localeCompare(b.document_date ?? '') || docNo(a).localeCompare(docNo(b)))
 
-  // ── Sheet 1: detail ──
-  const ws = wb.addWorksheet('Realisasi Biaya', { views: [{ showGridLines: false, zoomScale: 85, state: 'frozen', ySplit: 5, xSplit: 3 }] })
-  ws.columns = COLUMNS.map((c) => ({ width: c.width }))
-  ws.getCell('A1').value = 'Realisasi biaya kirim SCM Medan DK & LK Sumatera Utara - Nangroe Aceh Darussalam'
-  ws.getCell('A2').value = `Periode : ${period}`
-  for (const a of ['A1', 'A2']) ws.getCell(a).font = { bold: true, size: 11 }
+  // Sheet detail terpisah: pengiriman Sumut & Aceh vs Crossdocking (Riau & Sumatera Barat).
+  const addDetail = (sheetName: string, title: string, list: ShipmentCostRow[]) => {
+    const ws = wb.addWorksheet(sheetName, { views: [{ showGridLines: false, zoomScale: 85, state: 'frozen', ySplit: 5, xSplit: 3 }] })
+    ws.columns = COLUMNS.map((c) => ({ width: c.width }))
+    ws.getCell('A1').value = title
+    ws.getCell('A2').value = `Periode : ${period}`
+    for (const a of ['A1', 'A2']) ws.getCell(a).font = { bold: true, size: 11 }
 
-  const header = ws.getRow(4)
-  COLUMNS.forEach((c, i) => {
-    const cell = header.getCell(i + 1)
-    cell.value = c.header
-    cell.font = { bold: true }
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    cell.border = BORDER
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }
-  })
-  header.height = 32
-
-  const first = 6
-  const last = first + Math.max(sorted.length, 1) - 1
-  sorted.forEach((r, i) => {
-    const internal = r.cost_model === 'Internal'
-    const total = Number(r.total_biaya ?? 0)
-    const values: Record<string, unknown> = {
-      'Date': r.document_date?.slice(0, 7) ?? '',
-      'Customer Name': r.customer_name ?? '',
-      'Document No.': docNo(r),
-      'No. Trip': r.trip_id ?? '',
-      'Tanggal PSS': toDate(r.document_date),
-      'DK / LK': r.dk_lk ?? '',
-      'INT / EXT': internal ? 'INT' : 'EXT',
-      'Ekspedisi': vendorOf(r),
-      'No. Invoice (Ekspedisi Eksternal)': internal ? '' : (r.invoice_no_eksternal ?? r.no_resi ?? ''),
-      'Total Biaya Kirim Eksternal': internal ? null : num(total),
-      'No. Payment': r.payment_voucher_no ?? '',
-      'BBM Liter': internal ? num(r.bbm_liter) : null,
-      'BBM Rupiah': internal ? num(r.bbm_rupiah) : null,
-      'Bongkar Muat': internal ? num(Number(r.bongkar_muat_cost ?? 0) + Number(r.biaya_tkbm ?? 0)) : null,
-      'Hotel': internal ? num(r.hotel_cost) : null,
-      'Uang Makan Driver': internal ? num(r.uang_makan_driver) : null,
-      'Uang Makan Helper': internal ? num(r.uang_makan_helper) : null,
-      'Tol': internal ? num(r.toll_cost) : null,
-      'Parkir': internal ? num(r.parkir_cost) : null,
-      'Total Biaya': num(total),
-      'Keterangan': null,
-    }
-    const row = ws.getRow(first + i)
-    COLUMNS.forEach((c, ci) => {
-      const cell = row.getCell(ci + 1)
-      cell.value = values[c.header] as never
+    const header = ws.getRow(4)
+    COLUMNS.forEach((c, i) => {
+      const cell = header.getCell(i + 1)
+      cell.value = c.header
+      cell.font = { bold: true }
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
       cell.border = BORDER
-      if (c.money) cell.numFmt = NUM
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }
     })
-    row.getCell(COL('Tanggal PSS')).numFmt = 'dd/mm/yyyy'
-    row.getCell(COL('BBM Liter')).numFmt = NUM_DEC
-    for (const h of ['Date', 'Tanggal PSS', 'DK / LK', 'INT / EXT']) row.getCell(COL(h)).alignment = { horizontal: 'center' }
-  })
+    header.height = 32
 
-  // Baris TOTAL di atas data (seperti format bulanan), rumus SUM agar tetap benar jika diedit.
-  const totalRow = ws.getRow(5)
-  totalRow.getCell(2).value = `TOTAL ${period.toUpperCase()}`
-  const sumHeaders = COLUMNS.filter((c) => c.money || c.header === 'BBM Liter').map((c) => c.header)
-  COLUMNS.forEach((c, ci) => {
-    const cell = totalRow.getCell(ci + 1)
-    cell.font = { bold: true }
-    cell.border = BORDER
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TOTAL_FILL } }
-    if (sumHeaders.includes(c.header)) {
-      const L = letter(ci + 1)
-      const result = sorted.reduce((s, r, i) => s + Number(ws.getRow(first + i).getCell(ci + 1).value ?? 0), 0)
-      cell.value = { formula: `SUM(${L}${first}:${L}${last})`, result }
-      cell.numFmt = c.header === 'BBM Liter' ? NUM_DEC : NUM
-    }
-  })
-  totalRow.getCell(1).value = sorted.length
-  totalRow.getCell(1).numFmt = '0" PSS"'
-  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: COLUMNS.length } }
+    const first = 6
+    const last = first + Math.max(list.length, 1) - 1
+    list.forEach((r, i) => {
+      const internal = r.cost_model === 'Internal'
+      const total = Number(r.total_biaya ?? 0)
+      const values: Record<string, unknown> = {
+        'Date': r.document_date?.slice(0, 7) ?? '',
+        'Customer Name': r.customer_name ?? '',
+        'Document No.': docNo(r),
+        'No. Trip': r.trip_id ?? '',
+        'Tanggal PSS': toDate(r.document_date),
+        'DK / LK': r.dk_lk ?? '',
+        'INT / EXT': internal ? 'INT' : 'EXT',
+        'Ekspedisi': vendorOf(r),
+        'No. Invoice (Ekspedisi Eksternal)': internal ? '' : (r.invoice_no_eksternal ?? r.no_resi ?? ''),
+        'Total Biaya Kirim Eksternal': internal ? null : num(total),
+        'No. Payment': r.payment_voucher_no ?? '',
+        'BBM Liter': internal ? num(r.bbm_liter) : null,
+        'BBM Rupiah': internal ? num(r.bbm_rupiah) : null,
+        'Bongkar Muat': internal ? num(Number(r.bongkar_muat_cost ?? 0) + Number(r.biaya_tkbm ?? 0)) : null,
+        'Hotel': internal ? num(r.hotel_cost) : null,
+        'Uang Makan Driver': internal ? num(r.uang_makan_driver) : null,
+        'Uang Makan Helper': internal ? num(r.uang_makan_helper) : null,
+        'Tol': internal ? num(r.toll_cost) : null,
+        'Parkir': internal ? num(r.parkir_cost) : null,
+        'Total Biaya': num(total),
+        'Keterangan': null,
+      }
+      const row = ws.getRow(first + i)
+      COLUMNS.forEach((c, ci) => {
+        const cell = row.getCell(ci + 1)
+        cell.value = values[c.header] as never
+        cell.border = BORDER
+        if (c.money) cell.numFmt = NUM
+      })
+      row.getCell(COL('Tanggal PSS')).numFmt = 'dd/mm/yyyy'
+      row.getCell(COL('BBM Liter')).numFmt = NUM_DEC
+      for (const h of ['Date', 'Tanggal PSS', 'DK / LK', 'INT / EXT']) row.getCell(COL(h)).alignment = { horizontal: 'center' }
+    })
+
+    // Baris TOTAL di atas data (seperti format bulanan), rumus SUM agar tetap benar jika diedit.
+    const totalRow = ws.getRow(5)
+    totalRow.getCell(2).value = `TOTAL ${period.toUpperCase()}`
+    const sumHeaders = COLUMNS.filter((c) => c.money || c.header === 'BBM Liter').map((c) => c.header)
+    COLUMNS.forEach((c, ci) => {
+      const cell = totalRow.getCell(ci + 1)
+      cell.font = { bold: true }
+      cell.border = BORDER
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TOTAL_FILL } }
+      if (sumHeaders.includes(c.header)) {
+        const L = letter(ci + 1)
+        const result = list.reduce((s, r, i) => s + Number(ws.getRow(first + i).getCell(ci + 1).value ?? 0), 0)
+        cell.value = { formula: `SUM(${L}${first}:${L}${last})`, result }
+        cell.numFmt = c.header === 'BBM Liter' ? NUM_DEC : NUM
+      }
+    })
+    totalRow.getCell(1).value = list.length
+    totalRow.getCell(1).numFmt = '0" PSS"'
+    ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: COLUMNS.length } }
+  }
+  addDetail('Sumut & Aceh', 'Realisasi biaya kirim SCM Medan DK & LK Sumatera Utara - Nangroe Aceh Darussalam', sorted.filter((r) => !isCrossdocking(r)))
+  addDetail('Crossdocking', 'Realisasi biaya kirim Crossdocking SCM Medan - Riau & Sumatera Barat', sorted.filter(isCrossdocking))
 
   // ── Sheet 2: rekap ──
   const rk = wb.addWorksheet('Rekap', { views: [{ showGridLines: false }] })
@@ -196,6 +201,7 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
     }
     return m
   }
+  section('Per Wilayah', group((r) => (isCrossdocking(r) ? 'CROSSDOCKING (RIAU & SUMATERA BARAT)' : 'SUMATERA UTARA & ACEH')))
   section('Per Model (Internal / Eksternal)', group((r) => (r.cost_model === 'Internal' ? 'INTERNAL' : (r.cost_model ?? 'EKSTERNAL').toUpperCase())))
   section('Per Vendor / Ekspedisi', group(vendorOf))
   section('Per DK / LK', group((r) => r.dk_lk ?? '-'))
