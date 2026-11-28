@@ -142,7 +142,7 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
 
   // ── Sheet 2: rekap ──
   const rk = wb.addWorksheet('Rekap', { views: [{ showGridLines: false }] })
-  rk.columns = [{ width: 38 }, { width: 12 }, { width: 18 }, { width: 18 }, { width: 12 }]
+  rk.columns = [{ width: 38 }, { width: 12 }, { width: 18 }]
   rk.getCell('A1').value = 'Rekap Realisasi Biaya Kirim SCM Medan'
   rk.getCell('A2').value = `Periode : ${period}`
   for (const a of ['A1', 'A2']) rk.getCell(a).font = { bold: true, size: 11 }
@@ -153,7 +153,7 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
     rk.getCell(`A${at}`).font = { bold: true }
     at++
     const head = rk.getRow(at)
-    ;['Kategori', 'Shipment', 'Realisasi Biaya', 'Nilai PSS', 'Rasio %'].forEach((h, i) => {
+    ;['Kategori', 'Shipment', 'Realisasi Biaya'].forEach((h, i) => {
       const cell = head.getCell(i + 1)
       cell.value = h
       cell.font = { bold: true }
@@ -165,28 +165,20 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
     const start = at
     const entries = [...groups.entries()].sort((a, b) => sumBy(b[1]) - sumBy(a[1]))
     for (const [name, list] of entries) {
-      const biaya = sumBy(list)
-      const nilai = list.reduce((s, r) => s + Number(r.invoice_value ?? 0), 0)
-      const row = rk.getRow(at)
-      row.values = [name, list.length, biaya, nilai || null, null]
-      row.getCell(5).value = { formula: `IF(D${at}>0,C${at}/D${at}*100,"")`, result: nilai ? (biaya / nilai) * 100 : '' }
+      rk.getRow(at).values = [name, list.length, sumBy(list)]
       at++
     }
     const tot = rk.getRow(at)
     const tb = sumBy(sorted)
-    const tn = sorted.reduce((s, r) => s + Number(r.invoice_value ?? 0), 0)
     tot.values = ['TOTAL']
     tot.getCell(2).value = { formula: `SUM(B${start}:B${at - 1})`, result: sorted.length }
     tot.getCell(3).value = { formula: `SUM(C${start}:C${at - 1})`, result: tb }
-    tot.getCell(4).value = { formula: `SUM(D${start}:D${at - 1})`, result: tn }
-    tot.getCell(5).value = { formula: `IF(D${at}>0,C${at}/D${at}*100,"")`, result: tn ? (tb / tn) * 100 : '' }
     for (let r = start; r <= at; r++) {
       const row = rk.getRow(r)
-      for (let c = 1; c <= 5; c++) {
+      for (let c = 1; c <= 3; c++) {
         const cell = row.getCell(c)
         cell.border = BORDER
-        if (c === 3 || c === 4) cell.numFmt = NUM
-        if (c === 5) cell.numFmt = '0.0'
+        if (c === 3) cell.numFmt = NUM
         if (r === at) {
           cell.font = { bold: true }
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TOTAL_FILL } }
@@ -222,8 +214,6 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
     ['Uang Makan Helper', (r) => Number(r.uang_makan_helper ?? 0)],
     ['Tol', (r) => Number(r.toll_cost ?? 0)],
     ['Parkir', (r) => Number(r.parkir_cost ?? 0)],
-    ['Kirim Paket', (r) => Number(r.kirim_paket_cost ?? 0)],
-    ['Lain-lain', (r) => Number(r.misc_cost ?? 0)],
   ]
   const kh = rk.getRow(at)
   ;['Komponen', '', 'Biaya'].forEach((h, i) => {
