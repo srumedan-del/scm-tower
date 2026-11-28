@@ -26,7 +26,7 @@ const docNo = (row: ShipmentCostRow) => row.pss_no ?? (row.crossdocking_id ? `CD
 const toDate = (iso: string | null) => (iso ? new Date(`${iso.slice(0, 10)}T00:00:00Z`) : null)
 
 // Kolom mengikuti format laporan bulanan "Realisasi Biaya Kirim Internal Medan DK & LK";
-// tambahan: No. Trip, Ekspedisi, Lain-lain, Nilai PSS, Rasio Biaya.
+// tambahan: No. Trip, Ekspedisi. Keterangan sengaja dikosongkan untuk diisi manual.
 const COLUMNS: { header: string; width: number; money?: boolean }[] = [
   { header: 'Date', width: 9 },
   { header: 'Customer Name', width: 44 },
@@ -47,12 +47,8 @@ const COLUMNS: { header: string; width: number; money?: boolean }[] = [
   { header: 'Uang Makan Helper', width: 11, money: true },
   { header: 'Tol', width: 11, money: true },
   { header: 'Parkir', width: 9, money: true },
-  { header: 'Kirim Paket', width: 11, money: true },
-  { header: 'Lain-lain', width: 11, money: true },
   { header: 'Total Biaya', width: 13, money: true },
   { header: 'Keterangan', width: 40 },
-  { header: 'Nilai PSS', width: 15, money: true },
-  { header: 'Rasio Biaya %', width: 9 },
 ]
 const COL = (header: string) => COLUMNS.findIndex((c) => c.header === header) + 1
 const letter = (n: number) => String.fromCharCode(64 + n)
@@ -65,10 +61,6 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
   const period = periodLabel(month)
   const sorted = [...rows].sort((a, b) =>
     (a.document_date ?? '').localeCompare(b.document_date ?? '') || docNo(a).localeCompare(docNo(b)))
-
-  // PSS di trip yang sama: biaya trip dicatat di satu PSS saja (anchor).
-  const tripHasCost = new Map<string, string>()
-  for (const r of sorted) if (r.trip_id && (r.total_biaya ?? 0) > 0 && !tripHasCost.has(r.trip_id)) tripHasCost.set(r.trip_id, docNo(r))
 
   // ── Sheet 1: detail ──
   const ws = wb.addWorksheet('Realisasi Biaya', { views: [{ showGridLines: false, zoomScale: 85, state: 'frozen', ySplit: 5, xSplit: 3 }] })
@@ -93,11 +85,6 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
   sorted.forEach((r, i) => {
     const internal = r.cost_model === 'Internal'
     const total = Number(r.total_biaya ?? 0)
-    let keterangan = r.misc_cost_notes?.trim() || ''
-    if (!total) {
-      const anchor = r.trip_id ? tripHasCost.get(r.trip_id) : undefined
-      keterangan = anchor ? `Biaya trip tercatat di ${anchor}` : 'TIDAK ADA BIAYA KIRIM'
-    }
     const values: Record<string, unknown> = {
       'Date': r.document_date?.slice(0, 7) ?? '',
       'Customer Name': r.customer_name ?? '',
@@ -118,12 +105,8 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
       'Uang Makan Helper': internal ? num(r.uang_makan_helper) : null,
       'Tol': internal ? num(r.toll_cost) : null,
       'Parkir': internal ? num(r.parkir_cost) : null,
-      'Kirim Paket': internal ? num(r.kirim_paket_cost) : null,
-      'Lain-lain': internal ? num(r.misc_cost) : null,
       'Total Biaya': num(total),
-      'Keterangan': keterangan,
-      'Nilai PSS': num(r.invoice_value),
-      'Rasio Biaya %': r.cost_ratio == null ? null : Number(r.cost_ratio),
+      'Keterangan': null,
     }
     const row = ws.getRow(first + i)
     COLUMNS.forEach((c, ci) => {
@@ -134,7 +117,6 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
     })
     row.getCell(COL('Tanggal PSS')).numFmt = 'dd/mm/yyyy'
     row.getCell(COL('BBM Liter')).numFmt = NUM_DEC
-    row.getCell(COL('Rasio Biaya %')).numFmt = '0.0'
     for (const h of ['Date', 'Tanggal PSS', 'DK / LK', 'INT / EXT']) row.getCell(COL(h)).alignment = { horizontal: 'center' }
   })
 
