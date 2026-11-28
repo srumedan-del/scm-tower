@@ -69,6 +69,23 @@ export default function ShipmentCostTable({
 
   const summary = computeCostSummary(filteredRows)
 
+  const [exporting, setExporting] = useState(false)
+  async function exportReport() {
+    setExporting(true)
+    try {
+      const { buildShipmentCostWorkbook, periodLabel } = await import('@/lib/shipment-cost-excel')
+      const blob = await buildShipmentCostWorkbook(filteredRows, selectedMonth)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Realisasi Biaya Kirim SCM Medan DK & LK - ${periodLabel(selectedMonth)}.xlsx`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const vendorBills = selectedVendor
     ? rows.filter((row) => {
         const notesVendor = row.notes?.match(/(?:^|\|\s*)Vendor:\s*([^|]+)/i)?.[1]?.trim()
@@ -126,6 +143,17 @@ export default function ShipmentCostTable({
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => void exportReport()}
+            disabled={!filteredRows.length || exporting}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-50 hover:border-emerald-200 disabled:opacity-40 transition-colors"
+            title="Unduh rekap realisasi biaya kirim bulan ini (format laporan bulanan)"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            {exporting ? 'Menyiapkan…' : 'Export Excel'}
+          </button>
 
           {/* Month Filter */}
           {months.length > 0 && (
