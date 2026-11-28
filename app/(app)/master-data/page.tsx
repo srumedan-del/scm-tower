@@ -1,16 +1,17 @@
 import Link from 'next/link'
 import {
-  Building2, ChevronRight, History, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, Wrench, type LucideIcon,
+  Building2, ChevronRight, HandCoins, History, Hospital, Package, Receipt, Route, Truck, UserRound, Users, Warehouse, Wrench, type LucideIcon,
 } from 'lucide-react'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { countAppUsers } from './users/actions'
 
-type CountKey = 'users' | 'missingCity' | 'vendors' | 'customers' | 'rates' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters' | 'logs'
+type CountKey = 'users' | 'missingCity' | 'vendors' | 'customers' | 'rates' | 'tkbm' | 'fleet' | 'drivers' | 'routes' | 'warehouses' | 'skus' | 'transporters' | 'logs'
 
 const TABLES: Record<Exclude<CountKey, 'users' | 'missingCity'>, string> = {
   vendors: 'vendors',
   customers: 'customers',
   rates: 'transport_rate_card',
+  tkbm: 'master_tkbm_rate',
   fleet: 'transport_fleet',
   drivers: 'master_driver',
   routes: 'routes',
@@ -41,6 +42,7 @@ const groups: { title: string; items: { name: string; path: string; desc: string
       { name: 'Vendor', path: '/vendor', desc: 'Vendor transport, PIC, SLA, all-in TKBM, multidrop', icon: Building2, count: 'vendors' },
       { name: 'Customer', path: '/master-data/customers', desc: 'Klinik dan rumah sakit, DK/LK, kota, alamat', icon: Hospital, count: 'customers' },
       { name: 'Rate Card', path: '/master-data/rate-card', desc: 'Tarif transport per vendor, tujuan, dan jenis unit', icon: Receipt, count: 'rates' },
+      { name: 'Tarif TKBM', path: '/master-data/tkbm-rate', desc: 'Biaya bongkar muat di tujuan, per koli atau flat per bulan', icon: HandCoins, count: 'tkbm' },
     ],
   },
   {
