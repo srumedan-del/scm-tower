@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs'
 import type { ShipmentCostRow } from '@/app/(app)/shipment-cost/actions'
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -57,8 +58,7 @@ const COL = (header: string) => COLUMNS.findIndex((c) => c.header === header) + 
 const letter = (n: number) => String.fromCharCode(64 + n)
 
 /** Buat file .xlsx rekap biaya kirim bulanan (detail per PSS + rekap vendor/DK-LK). */
-export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: string): Promise<Blob> {
-  const ExcelJS = (await import('exceljs')).default
+export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: string): Promise<Buffer> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'SCM Tower'
   wb.calcProperties.fullCalcOnLoad = true
@@ -276,8 +276,7 @@ export async function buildShipmentCostWorkbook(rows: ShipmentCostRow[], month: 
     }
   }
 
-  const buffer = await wb.xlsx.writeBuffer()
-  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  return Buffer.from(await wb.xlsx.writeBuffer())
 }
 
 function sumBy(list: ShipmentCostRow[]) {

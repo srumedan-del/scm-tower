@@ -6,7 +6,7 @@ import ShipmentCostInputPanel from '@/components/shipment/ShipmentCostInputPanel
 import ReceiptConfirmDialog from '@/components/shipment/ReceiptConfirmDialog'
 import MonthFilter from '@/components/shared/MonthFilter'
 import { getShipmentCostRow, type PodReturnItem, type PodReturnVendorSummary, type ShipmentCostRow } from './actions'
-import { computeCostSummary } from './utils'
+import { computeCostSummary, matchesCostSearch } from './utils'
 import { displayVendorName } from '@/lib/vendor-display'
 import { Tabs } from '@/components/ui/Tabs'
 import { Search, X, CheckCircle2, DollarSign, Wallet, FileText, BarChart3, ChevronRight, Download, Phone } from 'lucide-react'
@@ -55,36 +55,12 @@ export default function ShipmentCostTable({
       const byTrip = (b.trip_id ?? '').localeCompare(a.trip_id ?? '')
       return byTrip || ref(a).localeCompare(ref(b))
     })
-    if (!search.trim()) return sorted
-    const q = search.toLowerCase()
-    return sorted.filter((r) => {
-      const trip = (r.trip_id ?? '').toLowerCase()
-      const pss = (r.pss_no ?? (r.crossdocking_id ? `cd-${r.crossdocking_id}` : '')).toLowerCase()
-      const cust = (r.customer_name ?? '').toLowerCase()
-      const city = (r.destination_city ?? '').toLowerCase()
-      const trans = (r.transporter_name ?? '').toLowerCase()
-      return trip.includes(q) || pss.includes(q) || cust.includes(q) || city.includes(q) || trans.includes(q)
-    })
+    return sorted.filter((r) => matchesCostSearch(r, search))
   }, [rows, search])
 
   const summary = computeCostSummary(filteredRows)
 
-  const [exporting, setExporting] = useState(false)
-  async function exportReport() {
-    setExporting(true)
-    try {
-      const { buildShipmentCostWorkbook, periodLabel } = await import('@/lib/shipment-cost-excel')
-      const blob = await buildShipmentCostWorkbook(filteredRows, selectedMonth)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Realisasi Biaya Kirim SCM Medan DK & LK - ${periodLabel(selectedMonth)}.xlsx`
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-    } finally {
-      setExporting(false)
-    }
-  }
+  const exportHref = `/api/shipment-cost/export?${new URLSearchParams({ month: selectedMonth, ...(search.trim() ? { q: search.trim() } : {}) })}`
 
   const vendorBills = selectedVendor
     ? rows.filter((row) => {
@@ -144,16 +120,16 @@ export default function ShipmentCostTable({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => void exportReport()}
-            disabled={!filteredRows.length || exporting}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-50 hover:border-emerald-200 disabled:opacity-40 transition-colors"
+          <a
+            href={filteredRows.length ? exportHref : undefined}
+            download
+            aria-disabled={!filteredRows.length}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-50 hover:border-emerald-200 aria-disabled:pointer-events-none aria-disabled:opacity-40 transition-colors"
             title="Unduh rekap realisasi biaya kirim bulan ini (format laporan bulanan)"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            {exporting ? 'Menyiapkan…' : 'Export Excel'}
-          </button>
+            Export Excel
+          </a>
 
           {/* Month Filter */}
           {months.length > 0 && (

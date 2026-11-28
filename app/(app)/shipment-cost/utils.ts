@@ -44,3 +44,12 @@ export function computeCostSummary(rows: ShipmentCostRow[]): CostSummary {
     byDkLk,
   }
 }
+
+/** Pencarian toolbar Shipment Cost: Trip, PSS/CD, customer, kota, vendor. */
+export function matchesCostSearch(r: ShipmentCostRow, search: string) {
+  const q = search.trim().toLowerCase()
+  if (!q) return true
+  const pss = r.pss_no ?? (r.crossdocking_id ? `cd-${r.crossdocking_id}` : '')
+  return [r.trip_id, pss, r.customer_name, r.destination_city, r.transporter_name]
+    .some((v) => (v ?? '').toLowerCase().includes(q))
+}
