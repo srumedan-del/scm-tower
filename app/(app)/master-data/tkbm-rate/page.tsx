@@ -15,12 +15,14 @@ export default function TkbmRatePage() {
   const [adding, setAdding] = useState(false)
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const [loading, startLoad] = useTransition()
 
   function load() {
     startLoad(async () => {
       try { setRows(await getTkbmRates()); setError(null) }
       catch (e: any) { setError(e.message) }
+      finally { setLoaded(true) }
     })
   }
 
@@ -73,11 +75,11 @@ export default function TkbmRatePage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && rows.length === 0 && <SkeletonRows cols={6} />}
+            {!loaded && <SkeletonRows cols={6} />}
             {error && (
               <tr><td colSpan={6} className="px-4 py-6 text-sm text-red-600">{error}</td></tr>
             )}
-            {!loading && !error && filtered.length === 0 && (
+            {loaded && !loading && !error && filtered.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">Belum ada tarif TKBM.</td></tr>
             )}
             {filtered.map(r => (
@@ -91,7 +93,7 @@ export default function TkbmRatePage() {
                   {formatTkbmRate(r)}
                 </td>
                 <td className={`${td} whitespace-nowrap`}>{new Date(`${r.effective_from}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                <td className={`${td} text-slate-500`}>{r.notes ?? '-'}</td>
+                <td className={`${td} min-w-[16rem] text-slate-500`}>{r.notes ?? '-'}</td>
                 <td className={td}>
                   <span className={`inline-block text-xs rounded-full px-2 py-0.5 ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                     {r.is_active ? 'Aktif' : 'Nonaktif'}
